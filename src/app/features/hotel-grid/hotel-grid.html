@@ -1,0 +1,189 @@
+<div class="hotel-grid-page">
+
+  <div class="grid-header">
+
+    <div>
+      <h1>Шахматка номерів</h1>
+      <p>Доступність номерів і бронювання на обраний період</p>
+    </div>
+
+    <div class="grid-period">
+      <span>
+        {{ days[0] | date:'dd MMM yyyy':'':'uk' }}
+      </span>
+
+      <span>—</span>
+
+      <span>
+        {{ days[days.length - 1] | date:'dd MMM yyyy':'':'uk' }}
+      </span>
+    </div>
+
+    <div class="period-controls">
+      <button type="button" (click)="changeMonth(-1)" aria-label="Попередній місяць">‹</button>
+      <input aria-label="Обрати місяць" type="month" [value]="periodMonth" (change)="setSelectedMonth($any($event.target).value)">
+      <button type="button" (click)="changeMonth(1)" aria-label="Наступний місяць">›</button>
+      <button type="button" class="today-button" (click)="goToCurrentMonth()">Сьогодні</button>
+      <a class="new-booking-button" routerLink="/reservations">＋ Нове бронювання</a>
+    </div>
+
+  </div>
+
+  @if (loading) {
+
+    <div class="state-message">
+      Loading hotel grid...
+    </div>
+
+  } @else if (error) {
+
+    <div class="state-message error">
+      {{ error }}
+    </div>
+
+  } @else {
+
+    <div class="grid-wrapper">
+
+      <div
+        class="hotel-grid"
+        [style.--day-width.px]="dayWidth"
+        [style.--room-column-width.px]="roomColumnWidth"
+      >
+
+        <div class="grid-header-row">
+
+          <div class="corner-cell">
+            <span>ROOM</span>
+          </div>
+
+          @for (day of days; track day.getTime()) {
+
+            <div
+              class="day-header"
+              [class.today]="isToday(day)"
+            >
+
+              <span class="weekday">
+                {{ day | date:'EEE' }}
+              </span>
+
+              <span class="day-number">
+                {{ day | date:'dd' }}
+              </span>
+
+              <span class="month">
+                {{ day | date:'MMM' }}
+              </span>
+
+            </div>
+
+          }
+
+        </div>
+
+        @for (room of rooms; track room.id) {
+
+          <div class="room-row">
+
+            <div class="room-cell">
+
+              <div class="room-number">
+                {{ room.roomNumber }}
+              </div>
+
+              <div class="room-info">
+  <span>
+    Floor {{ room.floor }}
+  </span>
+
+                <span>
+    {{ room.categoryName }}
+  </span>
+              </div>
+
+            </div>
+
+            <div class="room-days">
+
+              @for (day of days; track day.getTime()) {
+
+                <div
+                  class="room-day"
+                  [class.today]="isToday(day)"
+                ></div>
+
+              }
+
+              @for (reservation of getReservationsForRoom(room);
+                track reservation.id) {
+
+                <div
+                  class="reservation"
+                  [routerLink]="['/reservations', reservation.id]"
+                  role="link"
+                  tabindex="0"
+                  [class.reserved]="reservation.status === 'RESERVED'"
+                  [class.confirmed]="reservation.status === 'CONFIRMED'"
+                  [class.checked-in]="reservation.status === 'CHECKED_IN'"
+                  [class.completed]="reservation.status === 'COMPLETED'"
+                  [class.cancelled]="reservation.status === 'CANCELLED'"
+                  [class.no-show]="reservation.status === 'NO_SHOW'"
+                  [style.left.px]="
+                    getReservationLeft(reservation) -
+                    roomColumnWidth
+                  "
+                  [style.width.px]="
+                    getReservationWidth(reservation)
+                  "
+                  [attr.title]="getReservationLabel(reservation)"
+                >
+
+                  <div class="reservation-content">
+
+                    <div class="reservation-guest">
+                      {{ reservation.guestLastName }}
+                      {{ reservation.guestFirstName }}
+                    </div>
+
+                    <div class="reservation-phone">
+                      {{ reservation.guestPhone }}
+                    </div>
+
+                    <div class="reservation-dates">
+                      {{ formatReservationDate(reservation.checkIn) }}
+                      →
+                      {{ formatReservationDate(reservation.checkOut) }}
+                    </div>
+
+                    <div class="reservation-status">
+                      {{ reservation.status }}
+                    </div>
+
+                  </div>
+
+                </div>
+
+              }
+
+            </div>
+
+          </div>
+
+        }
+
+        @if (rooms.length === 0) {
+
+          <div class="empty-state">
+            No rooms found.
+          </div>
+
+        }
+
+      </div>
+
+    </div>
+
+  }
+
+</div>

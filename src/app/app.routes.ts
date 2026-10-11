@@ -18,14 +18,42 @@ export const routes: Routes = [
       ),
     children: [
       {
-        path: 'in-house-guests',
-        loadComponent: () =>
-          import('./features/reservations/in-house/in-house').then(m => m.InHouseComponent)
+        path: '',
+        pathMatch: 'full',
+        redirectTo: 'in-house'
       },
+      {
+        path: 'in-house',
+        loadComponent: () =>
+          import('./features/reservations/in-house/in-house').then(
+            m => m.InHouseComponent
+          )
+      },
+      {
+        path: 'dashboard',
+        loadComponent: () =>
+          import('./features/hotel-grid/hotel-grid').then(
+            m => m.HotelGrid
+          )
+      },
+      {
+        path: 'reservations/check-in',
+        loadComponent: () =>
+          import('./features/reservations/check-in/check-in').then(
+            m => m.CheckIn
+          )
+      },
+      {
+        path: 'reservations/check-out',
+        loadComponent: () =>
+          import('./features/reservations/check-out/check-out').then(
+            m => m.CheckOut
+          )
+      }
     ]
   },
   {
     path: '**',
-    redirectTo: 'dashboard'
+    redirectTo: 'in-house'
   }
 ];
