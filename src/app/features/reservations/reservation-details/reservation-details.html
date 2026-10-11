@@ -1,0 +1,428 @@
+<div class="reservation-details-page">
+
+  @if (loading()) {
+    <div class="state-message">
+      Завантаження бронювання…
+    </div>
+  } @else if (error()) {
+    <div class="error-message">
+      {{ error() }}
+    </div>
+  } @else {
+    @if (reservation(); as reservation) {
+
+      <div class="page-header">
+        <button
+          class="back-button"
+          type="button"
+          (click)="goBack()"
+        >
+          ← Назад
+        </button>
+
+        <div class="title-row">
+          <div>
+            <h1>Деталі бронювання</h1>
+            <p>
+              Підтвердження № {{ reservation.confirmationNumber }}
+            </p>
+          </div>
+
+          <span
+            class="status"
+            [class.reserved]="reservation.status === 'RESERVED'"
+            [class.confirmed]="reservation.status === 'CONFIRMED'"
+            [class.checked-in]="reservation.status === 'CHECKED_IN'"
+            [class.completed]="reservation.status === 'COMPLETED'"
+            [class.cancelled]="reservation.status === 'CANCELLED'"
+            [class.no-show]="reservation.status === 'NO_SHOW'"
+          >
+            {{ statusLabel(reservation.status) }}
+          </span>
+        </div>
+      </div>
+
+      @if (!canEdit()) {
+        <div class="warning-message">
+          Бронювання з таким статусом не можна редагувати.
+        </div>
+      }
+
+      <div class="content-grid">
+
+        <section class="card">
+          <div class="card-header">
+            <h2>Гість</h2>
+          </div>
+
+          <div class="form-group">
+            <label for="primaryGuest">
+              Основний гість
+            </label>
+
+            <select
+              id="primaryGuest"
+              [value]="editPrimaryGuestId()"
+              [disabled]="!canEdit() || loadingEditData()"
+              (change)="editPrimaryGuestId.set(+$any($event.target).value)"
+            >
+              @for (profile of profiles(); track profile.id) {
+                <option [value]="profile.id">
+                  {{ getProfileName(profile) }}
+                  — {{ profile.phoneNumber }}
+                </option>
+              }
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="guestIds">
+              Інші гості
+            </label>
+
+            <select
+              id="guestIds"
+              multiple
+              [disabled]="!canEdit() || loadingEditData()"
+              (change)="onGuestIdsChange($event)"
+            >
+              @for (profile of profiles(); track profile.id) {
+                <option
+                  [value]="profile.id"
+                  [selected]="editGuestIds().includes(profile.id)"
+                >
+                  {{ getProfileName(profile) }}
+                  — {{ profile.phoneNumber }}
+                </option>
+              }
+            </select>
+          </div>
+
+          <div class="guest-profile">
+            <div class="guest-avatar">
+              {{ reservation.primaryGuest.firstName.charAt(0) }}{{ reservation.primaryGuest.lastName.charAt(0) }}
+            </div>
+
+            <div>
+              <h3>
+                {{ getProfileName(reservation.primaryGuest) }}
+              </h3>
+
+              <p>
+                {{ reservation.primaryGuest.phoneNumber }}
+              </p>
+
+              <p>
+                {{ reservation.primaryGuest.email }}
+              </p>
+            </div>
+          </div>
+
+          <div class="details-list">
+            <div class="detail-row">
+              <span>Адреса</span>
+              <strong>
+                {{ reservation.primaryGuest.address || '—' }}
+              </strong>
+            </div>
+
+            <div class="detail-row">
+              <span>Стать</span>
+              <strong>
+                {{ genderLabel(reservation.primaryGuest.gender) }}
+              </strong>
+            </div>
+
+            <div class="detail-row">
+              <span>Документ</span>
+              <strong>
+                {{ getGuestDocument() }}
+              </strong>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-header">
+            <h2>Проживання</h2>
+          </div>
+
+          <div class="form-group">
+            <label for="room">
+              Номер
+            </label>
+
+            <select
+              id="room"
+              [value]="editRoomId()"
+              [disabled]="!canEdit() || loadingEditData()"
+              (change)="editRoomId.set(+$any($event.target).value)"
+            >
+              @for (room of rooms(); track room.id) {
+                <option [value]="room.id">
+                  Room {{ room.roomNumber }}
+                  — Floor {{ room.floor }}
+                </option>
+              }
+            </select>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="adults">
+              Дорослі
+              </label>
+
+              <input
+                id="adults"
+                type="number"
+                min="1"
+                [value]="editAdults()"
+                [disabled]="!canEdit()"
+                (input)="editAdults.set(+$any($event.target).value)"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="children">
+              Діти
+              </label>
+
+              <input
+                id="children"
+                type="number"
+                min="0"
+                [value]="editChildren()"
+                [disabled]="!canEdit()"
+                (input)="editChildren.set(+$any($event.target).value)"
+              />
+            </div>
+          </div>
+
+          <div class="details-list">
+            <div class="detail-row">
+              <span>Категорія номера</span>
+              <strong>
+                {{ reservation.room.categoryId }}
+              </strong>
+            </div>
+
+            <div class="detail-row">
+              <span>Поверх</span>
+              <strong>
+                {{ reservation.room.floor }}
+              </strong>
+            </div>
+
+            <div class="detail-row">
+              <span>Вид із вікна</span>
+              <strong>
+                {{ reservation.room.roomView }}
+              </strong>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-header">
+            <h2>Дати</h2>
+          </div>
+
+          <div class="form-group">
+            <label for="checkIn">
+              Заїзд
+            </label>
+
+            <input
+              id="checkIn"
+              type="datetime-local"
+              [value]="editCheckIn()"
+              [disabled]="!canEdit()"
+              (input)="editCheckIn.set($any($event.target).value)"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="checkOut">
+              Виїзд
+            </label>
+
+            <input
+              id="checkOut"
+              type="datetime-local"
+              [value]="editCheckOut()"
+              [disabled]="!canEdit()"
+              (input)="editCheckOut.set($any($event.target).value)"
+            />
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-header">
+            <h2>Тариф</h2>
+          </div>
+
+          <div class="form-group">
+            <label for="rate">
+              Тариф
+            </label>
+
+            <select
+              id="rate"
+              [value]="editRateId()"
+              [disabled]="!canEdit() || loadingEditData()"
+              (change)="editRateId.set(+$any($event.target).value)"
+            >
+              @for (rate of rates(); track rate.id) {
+                <option [value]="rate.id">
+                  {{ rate.name }}
+                  —
+                  {{ rate.price | number:'1.2-2' }}
+                  {{ rate.currency }}
+                </option>
+              }
+            </select>
+          </div>
+
+          <div class="details-list">
+            <div class="detail-row">
+              <span>Ціна</span>
+              <strong>
+                {{ reservation.rate.price | number:'1.2-2' }}
+                {{ reservation.rate.currency }}
+              </strong>
+            </div>
+
+            <div class="detail-row">
+              <span>Опис</span>
+              <strong>
+                {{ reservation.rate.description || '—' }}
+              </strong>
+            </div>
+
+            <div class="detail-row">
+              <span>Активний</span>
+              <strong>
+                {{ reservation.rate.active ? 'Yes' : 'No' }}
+              </strong>
+            </div>
+          </div>
+        </section>
+
+        <section class="card full-width">
+          <div class="card-header">
+            <h2>Статус</h2>
+          </div>
+
+          <div class="details-list">
+            <div class="detail-row">
+              <span>Статус</span>
+
+              <strong>
+                {{ statusLabel(reservation.status) }}
+              </strong>
+            </div>
+          </div>
+        </section>
+
+        <section class="card full-width">
+          <div class="card-header">
+            <h2>Коментарі</h2>
+          </div>
+
+          @if (reservation.comments.length) {
+            <div class="comments">
+              @for (comment of reservation.comments; track comment.id) {
+                <div class="comment">
+                  <p>{{ comment.text }}</p>
+
+                  <span>
+                    {{ comment.createdAt | date:'dd.MM.yyyy HH:mm' }}
+                  </span>
+                </div>
+              }
+            </div>
+          } @else {
+            <div class="empty-comments">
+        Коментарів немає
+            </div>
+          }
+        </section>
+
+        <section class="card full-width">
+          <div class="card-header">
+            <h2>Інформація про бронювання</h2>
+          </div>
+
+          <div class="details-list">
+            <div class="detail-row">
+              <span>Номер підтвердження</span>
+              <strong>
+                {{ reservation.confirmationNumber }}
+              </strong>
+            </div>
+
+            <div class="detail-row">
+              <span>ID бронювання</span>
+              <strong>
+                {{ reservation.id }}
+              </strong>
+            </div>
+
+            <div class="detail-row">
+              <span>ID рахунку</span>
+              <strong>
+                {{ reservation.folioId }}
+              </strong>
+            </div>
+
+            <div class="detail-row">
+              <span>Створено</span>
+              <strong>
+                {{ reservation.createdAt | date:'dd.MM.yyyy HH:mm' }}
+              </strong>
+            </div>
+          </div>
+        </section>
+
+      </div>
+
+      @if (saveError()) {
+        <div class="save-error">
+          {{ saveError() }}
+        </div>
+      }
+
+      @if (saved()) {
+        <div class="save-success">
+        Зміни збережено.
+        </div>
+      }
+
+      <div class="save-bar">
+        @if (reservation.status === 'RESERVED' || reservation.status === 'CONFIRMED') {
+          <button class="lifecycle-button" type="button" [disabled]="actionBusy()" (click)="markNoShow()">Не заїхав</button>
+          <button class="lifecycle-button cancel" type="button" [disabled]="actionBusy()" (click)="cancelReservation()">Скасувати бронювання</button>
+        }
+        <button
+          class="save-button"
+          type="button"
+          [disabled]="
+            saving() ||
+            loadingEditData() ||
+            !canEdit()
+          "
+          (click)="save()"
+        >
+          @if (saving()) {
+            Збереження…
+          } @else {
+            Зберегти
+          }
+        </button>
+      </div>
+
+    }
+  }
+
+</div>

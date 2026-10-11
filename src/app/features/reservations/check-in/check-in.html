@@ -1,0 +1,163 @@
+<div class="check-in-page">
+  <div class="page-header">
+    <div>
+      <h1>Заїзди</h1>
+      <p>Гості, які прибувають у вибрану дату</p>
+    </div>
+
+    <div class="date-selector">
+      <label for="check-in-date">Дата заїзду</label>
+
+      <input
+        id="check-in-date"
+        type="date"
+        [value]="selectedDate()"
+        (change)="onDateChange($event)"
+      >
+    </div>
+  </div>
+
+  @if (error()) {
+    <div class="error-message">
+      {{ error() }}
+    </div>
+  }
+
+  @if (loading()) {
+    <div class="state-message">
+      Завантаження заїздів…
+    </div>
+  } @else if (reservations().length === 0) {
+    <div class="empty-state">
+      <div class="empty-icon">✓</div>
+
+      <h2>Заїздів немає</h2>
+
+      <p>
+        На {{ selectedDate() }} не заплановано заїздів.
+      </p>
+    </div>
+  } @else {
+    <div class="summary">
+      <div class="summary-card">
+        <span class="summary-label">Заїзди</span>
+        <strong>{{ reservations().length }}</strong>
+      </div>
+
+      <div class="summary-card">
+        <span class="summary-label">Очікують</span>
+        <strong>{{ reservations().length }}</strong>
+      </div>
+    </div>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+        <tr>
+          <th>Номер</th>
+          <th>Гість</th>
+          <th>Підтвердження</th>
+          <th>Заїзд</th>
+          <th>Виїзд</th>
+          <th>Статус</th>
+          <th>Коментарі</th>
+          <th>Сума</th>
+          <th></th>
+        </tr>
+        </thead>
+
+        <tbody>
+          @for (reservation of reservations(); track reservation.id) {
+            <tr
+              class="reservation-row"
+              (click)="openReservation(reservation.id)"
+            >
+              <td>
+                <span class="room-number">
+                  {{ getRoomNumber(reservation.roomId) }}
+                </span>
+              </td>
+
+              <td>
+                {{ reservation.guestLastName }}
+                {{ reservation.guestFirstName }}
+
+                @if (reservation.guestMiddleName) {
+                  {{ reservation.guestMiddleName }}
+                }
+              </td>
+
+              <td>
+                <span class="confirmation">
+                  {{ reservation.confirmationNumber }}
+                </span>
+              </td>
+
+              <td>
+                <div class="date-cell">
+                  <strong>
+                    {{ reservation.checkIn | date:'dd.MM.yyyy' }}
+                  </strong>
+
+                  <span>
+                    {{ formatTime(reservation.checkIn) }}
+                  </span>
+                </div>
+              </td>
+
+              <td>
+                <div class="date-cell">
+                  <strong>
+                    {{ reservation.checkOut | date:'dd.MM.yyyy' }}
+                  </strong>
+
+                  <span>
+                    {{ formatTime(reservation.checkOut) }}
+                  </span>
+                </div>
+              </td>
+
+              <td>
+                <span
+                  class="status"
+                  [class.reserved]="reservation.status === 'RESERVED'"
+                  [class.confirmed]="reservation.status === 'CONFIRMED'"
+                  [class.checked-in]="reservation.status === 'CHECKED_IN'"
+                >
+                  {{ reservation.status }}
+                </span>
+              </td>
+
+              <td>
+                <span class="comments">
+                  {{ getCommentText(reservation) }}
+                </span>
+              </td>
+
+              <td>
+                <span class="amount">
+                  {{ reservation.totalAmount | number:'1.2-2' }} ₴
+                </span>
+              </td>
+
+              <td class="actions">
+                <button
+                  type="button"
+                  class="check-in-button"
+                  [disabled]="checkingInId() !== null"
+                  (click)="$event.stopPropagation(); checkIn(reservation)"
+                >
+                  @if (checkingInId() === reservation.id) {
+                    Реєстрація…
+                  } @else {
+                    Зареєструвати заїзд
+                  }
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>

@@ -20,9 +20,7 @@ export const routes: Routes = [
       {
         path: 'in-house-guests',
         loadComponent: () =>
-          import('./features/in-house-guests/in-house-guests').then(
-            m => m.InHouseGuests
-          )
+          import('./features/reservations/in-house/in-house').then(m => m.InHouseComponent)
       },
     ]
   },

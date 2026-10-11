@@ -5,6 +5,7 @@ import { Reservation } from '../models/reservation/reservation.model';
 import { ReservationRequest } from '../models/reservation/reservation-request.model';
 import { ReservationCheckIn } from '../models/reservation/reservation-check-in.model';
 import { ReservationCheckOut } from '../models/reservation/reservation-check-out.model';
+import { InHouse } from '../models/reservation/reservation-in-house.model';
 
 @Injectable({
   providedIn: 'root'
@@ -19,95 +20,101 @@ export class ReservationService {
 
   getById(id: number): Observable<Reservation> {
     return this.http.get<Reservation>(
-      `${this.apiUrl}/${id}`
+        `${this.apiUrl}/${id}`
     );
   }
 
   getByDateRange(
-    startDate: string,
-    endDate: string
+      startDate: string,
+      endDate: string
   ): Observable<Reservation[]> {
     return this.http.get<Reservation[]>(
-      `${this.apiUrl}/date-range`,
-      {
-        params: {
-          startDate,
-          endDate
+        `${this.apiUrl}/date-range`,
+        {
+          params: {
+            startDate,
+            endDate
+          }
         }
-      }
     );
   }
 
   getCheckIns(date: string): Observable<ReservationCheckIn[]> {
     return this.http.get<ReservationCheckIn[]>(
-      `${this.apiUrl}/check-in`,
-      {
-        params: {
-          date
+        `${this.apiUrl}/check-in`,
+        {
+          params: {
+            date
+          }
         }
-      }
     );
   }
 
   getCheckOuts(date: string): Observable<ReservationCheckOut[]> {
     return this.http.get<ReservationCheckOut[]>(
-      `${this.apiUrl}/check-out`,
-      {
-        params: {
-          date
+        `${this.apiUrl}/check-out`,
+        {
+          params: {
+            date
+          }
         }
-      }
+    );
+  }
+
+  getInHouse(): Observable<InHouse[]> {
+    return this.http.get<InHouse[]>(
+        `${this.apiUrl}/in-house`
     );
   }
 
   create(request: ReservationRequest): Observable<Reservation> {
     return this.http.post<Reservation>(
-      this.apiUrl,
-      request
+        this.apiUrl,
+        request
     );
   }
 
   update(
-    id: number,
-    request: ReservationRequest
+      id: number,
+      request: ReservationRequest
   ): Observable<Reservation> {
     return this.http.put<Reservation>(
-      `${this.apiUrl}/${id}`,
-      request
+        `${this.apiUrl}/${id}`,
+        request
     );
   }
 
   delete(id: number): Observable<void> {
     return this.http.delete<void>(
-      `${this.apiUrl}/${id}`
+        `${this.apiUrl}/${id}`
     );
   }
 
   cancel(id: number): Observable<void> {
     return this.http.patch<void>(
-      `${this.apiUrl}/${id}/cancel`,
-      {}
+        `${this.apiUrl}/${id}/cancel`,
+        {}
     );
   }
 
   checkIn(id: number): Observable<void> {
     return this.http.patch<void>(
-      `${this.apiUrl}/${id}/check-in`,
-      {}
+        `${this.apiUrl}/${id}/check-in`,
+        {}
     );
   }
 
   checkOut(id: number): Observable<void> {
     return this.http.patch<void>(
-      `${this.apiUrl}/${id}/check-out`,
-      {}
+        `${this.apiUrl}/${id}/check-out`,
+        {}
     );
   }
 
   noShow(id: number): Observable<void> {
     return this.http.patch<void>(
-      `${this.apiUrl}/${id}/no-show`,
-      {}
+        `${this.apiUrl}/${id}/no-show`,
+        {}
     );
   }
 }
