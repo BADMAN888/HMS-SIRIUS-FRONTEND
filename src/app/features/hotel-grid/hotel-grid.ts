@@ -8,7 +8,7 @@ import {
 } from '@angular/core';
 import { HotelGridService } from '../../core/services/hotel-grid.service';
 import { HotelGridRoom } from '../../core/models/hotel-grid-room.model';
-import { HotelGridReservation } from '../../core/models/hotel-grid/hotel-grid-reservation-response.model';
+import { HotelGridReservationResponse } from '../../core/models/hotel-grid/hotel-grid-reservation-response.model';
 
 @Component({
   selector: 'app-hotel-grid',
@@ -117,12 +117,12 @@ export class HotelGrid implements OnInit {
 
   getReservationsForRoom(
     room: HotelGridRoom
-  ): HotelGridReservation[] {
+  ): HotelGridReservationResponse[] {
     return room.reservations ?? [];
   }
 
   getReservationLeft(
-    reservation: HotelGridReservation
+    reservation: HotelGridReservationResponse
   ): number {
     const checkIn = this.parseDateTime(reservation.checkIn);
 
@@ -143,7 +143,7 @@ export class HotelGrid implements OnInit {
   }
 
   getReservationWidth(
-    reservation: HotelGridReservation
+    reservation: HotelGridReservationResponse
   ): number {
     const checkIn = this.parseDateTime(reservation.checkIn);
     const checkOut = this.parseDateTime(reservation.checkOut);
@@ -170,7 +170,7 @@ export class HotelGrid implements OnInit {
   }
 
   getReservationLabel(
-    reservation: HotelGridReservation
+    reservation: HotelGridReservationResponse
   ): string {
     return `${reservation.confirmationNumber} · ${reservation.status}`;
   }

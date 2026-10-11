@@ -1,4 +1,5 @@
-import { AccrualType } from './accrual-type.enum';
+import {AccrualType} from '../enums/accrual-type.enum';
+
 
 export interface Accrual {
   id: number;

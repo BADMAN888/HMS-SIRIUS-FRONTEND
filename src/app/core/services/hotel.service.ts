@@ -1,8 +1,9 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Hotel } from '../models/hotel/hotel-response.model';
+
 import { HotelRequest } from '../models/hotel/hotel-request.model';
+import {HotelResponse} from '../models/hotel/hotel-response.model';
 
 @Injectable({
   providedIn: 'root'
@@ -11,25 +12,25 @@ export class HotelService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = 'http://localhost:8080/api/hotels';
 
-  getAll(): Observable<Hotel[]> {
-    return this.http.get<Hotel[]>(this.apiUrl);
+  getAll(): Observable<HotelResponse[]> {
+    return this.http.get<HotelResponse[]>(this.apiUrl);
   }
 
-  getById(id: number): Observable<Hotel> {
-    return this.http.get<Hotel>(
+  getById(id: number): Observable<HotelResponse> {
+    return this.http.get<HotelResponse>(
       `${this.apiUrl}/${id}`
     );
   }
 
-  create(request: HotelRequest): Observable<Hotel> {
-    return this.http.post<Hotel>(
+  create(request: HotelRequest): Observable<HotelResponse> {
+    return this.http.post<HotelResponse>(
       this.apiUrl,
       request
     );
   }
 
-  update(id: number, request: HotelRequest): Observable<Hotel> {
-    return this.http.put<Hotel>(
+  update(id: number, request: HotelRequest): Observable<HotelResponse> {
+    return this.http.put<HotelResponse>(
       `${this.apiUrl}/${id}`,
       request
     );

@@ -2,10 +2,12 @@ import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { catchError, finalize, forkJoin, of } from 'rxjs';
-import { ReservationCheckOut } from '../../../core/models/reservation/reservation-check-out.model';
+
 import { ReservationService } from '../../../core/services/reservation.service';
 import { RoomService } from '../../../core/services/room.service';
-import { Room } from '../../../core/models/hotel/room-response.model';
+import {RoomResponse} from '../../../core/models/hotel/room-response.model';
+import {ReservationCheckOutResponse} from '../../../core/models/reservation/reservation-check-out-response.model';
+
 
 @Component({
   selector: 'app-check-out',
@@ -19,11 +21,11 @@ export class CheckOut implements OnInit {
   private readonly router = inject(Router);
   private readonly roomService = inject(RoomService);
 
-  readonly reservations = signal<ReservationCheckOut[]>([]);
+  readonly reservations = signal<ReservationCheckOutResponse[]>([]);
   readonly selectedDate = signal(this.formatDate(new Date()));
   readonly loading = signal(false);
   readonly error = signal('');
-  readonly rooms = signal<Room[]>([]);
+  readonly rooms = signal<RoomResponse[]>([]);
 
   readonly checkingOutId = signal<number | null>(null);
 
@@ -49,7 +51,7 @@ export class CheckOut implements OnInit {
 
     forkJoin({
       reservations: this.reservationService.getCheckOuts(this.selectedDate()),
-      rooms: this.roomService.getAll().pipe(catchError(() => of([] as Room[])))
+      rooms: this.roomService.getAll().pipe(catchError(() => of([] as RoomResponse[])))
     })
       .pipe(
         finalize(() => {
@@ -73,7 +75,7 @@ export class CheckOut implements OnInit {
       });
   }
 
-  checkOut(reservation: ReservationCheckOut): void {
+  checkOut(reservation: ReservationCheckOutResponse): void {
     if (this.checkingOutId() !== null) {
       return;
     }
@@ -109,7 +111,7 @@ export class CheckOut implements OnInit {
     });
   }
 
-  getCommentText(reservation: ReservationCheckOut): string {
+  getCommentText(reservation: ReservationCheckOutResponse): string {
     return reservation.comments?.map(comment => comment.text).join(', ') || '—';
   }
 

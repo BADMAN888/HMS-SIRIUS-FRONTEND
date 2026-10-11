@@ -3,9 +3,10 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { catchError, finalize, forkJoin, of } from 'rxjs';
 import { ReservationService } from '../../../core/services/reservation.service';
-import { ReservationCheckIn } from '../../../core/models/reservation/reservation-check-in.model';
+
 import { RoomService } from '../../../core/services/room.service';
-import { Room } from '../../../core/models/hotel/room-response.model';
+import { RoomResponse } from '../../../core/models/hotel/room-response.model';
+ import {ReservationCheckInResponse} from '../../../core/models/reservation/reservation-check-in-response.model';
 
 @Component({
   selector: 'app-check-in',
@@ -19,11 +20,11 @@ export class CheckIn implements OnInit {
   private readonly router = inject(Router);
   private readonly roomService = inject(RoomService);
 
-  readonly reservations = signal<ReservationCheckIn[]>([]);
+  readonly reservations = signal<ReservationCheckInResponse[]>([]);
   readonly selectedDate = signal(this.formatDate(new Date()));
   readonly loading = signal(false);
   readonly error = signal('');
-  readonly rooms = signal<Room[]>([]);
+  readonly rooms = signal<RoomResponse[]>([]);
 
   checkingInId = signal<number | null>(null);
 
@@ -49,7 +50,7 @@ export class CheckIn implements OnInit {
 
     forkJoin({
       reservations: this.reservationService.getCheckIns(this.selectedDate()),
-      rooms: this.roomService.getAll().pipe(catchError(() => of([] as Room[])))
+      rooms: this.roomService.getAll().pipe(catchError(() => of([] as RoomResponse[])))
     })
       .pipe(
         finalize(() => {
@@ -73,7 +74,7 @@ export class CheckIn implements OnInit {
       });
   }
 
-  checkIn(reservation: ReservationCheckIn): void {
+  checkIn(reservation: ReservationCheckInResponse): void {
     if (this.checkingInId() !== null) {
       return;
     }
@@ -109,7 +110,7 @@ export class CheckIn implements OnInit {
     });
   }
 
-  getCommentText(reservation: ReservationCheckIn): string {
+  getCommentText(reservation: ReservationCheckInResponse): string {
     return reservation.comments?.map(comment => comment.text).join(', ') || '—';
   }
 

@@ -1,5 +1,5 @@
-import { Rate } from '../billing/rate-response.model';
-import { Room } from '../hotel/room-response.model';
+import { RateResponse } from '../billing/rate-response.model';
+import { RoomResponse } from '../hotel/room-response.model';
 import { Profile } from './profile.model';
 import { ReservationComment } from './reservation-comment.model';
 import { ReservationStatus } from '../enums/reservation-status.enum';
@@ -7,8 +7,8 @@ import { ReservationStatus } from '../enums/reservation-status.enum';
 export interface Reservation {
   id: number;
   confirmationNumber: string;
-  room: Room;
-  rate: Rate;
+  room: RoomResponse;
+  rate: RateResponse;
   primaryGuest: Profile;
   guestIds: number[];
   checkIn: string;

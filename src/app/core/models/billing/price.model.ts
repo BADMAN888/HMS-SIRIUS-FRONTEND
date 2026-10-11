@@ -1,4 +1,5 @@
-import { PriceStatus } from './price-status.enum';
+import {PriceStatus} from '../enums/price-status.enum';
+
 
 export interface Price {
   id: number;
