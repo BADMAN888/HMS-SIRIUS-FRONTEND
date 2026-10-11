@@ -1,0 +1,39 @@
+<main class="content">
+  <div class="page-header">
+    <div><span class="eyebrow">ОГЛЯД ГОТЕЛЮ</span><h1>Доброго дня</h1><p>{{ todayLabel }}</p></div>
+    <a mat-flat-button class="grid-link" routerLink="/hotel-grid"><mat-icon>calendar_view_month</mat-icon> Відкрити шахматку</a>
+  </div>
+
+  @if (error()) { <div class="error-banner">{{ error() }}</div> }
+
+  <section class="stats">
+    <mat-card class="stat-card"><mat-card-content><div class="stat-icon"><mat-icon>meeting_room</mat-icon></div><div class="stat-info"><span class="stat-label">Вільні номери</span><strong>{{ loading() ? '—' : availableRooms() }}</strong><small>з {{ rooms().length }} номерів</small></div></mat-card-content></mat-card>
+    <mat-card class="stat-card"><mat-card-content><div class="stat-icon"><mat-icon>login</mat-icon></div><div class="stat-info"><span class="stat-label">Заїзди сьогодні</span><strong>{{ loading() ? '—' : arrivals().length }}</strong><small>прибуття гостей</small></div></mat-card-content></mat-card>
+    <mat-card class="stat-card"><mat-card-content><div class="stat-icon"><mat-icon>logout</mat-icon></div><div class="stat-info"><span class="stat-label">Виїзди сьогодні</span><strong>{{ loading() ? '—' : departures().length }}</strong><small>звільнення номерів</small></div></mat-card-content></mat-card>
+    <mat-card class="stat-card"><mat-card-content><div class="stat-icon"><mat-icon>donut_large</mat-icon></div><div class="stat-info"><span class="stat-label">Завантаженість</span><strong>{{ loading() ? '—' : occupancy() + '%' }}</strong><small>поточний стан готелю</small></div></mat-card-content></mat-card>
+  </section>
+
+  <section class="dashboard-grid">
+    <mat-card class="activity-card">
+      <mat-card-header><mat-card-title>Останні бронювання</mat-card-title><mat-card-subtitle>Нещодавно створені бронювання</mat-card-subtitle></mat-card-header>
+      <mat-card-content>
+        @if (loading()) { <div class="loading-state">Завантаження бронювань…</div> }
+        @else if (recentReservations().length) {
+          @for (reservation of recentReservations(); track reservation.id) {
+            <a class="reservation-row" [routerLink]="['/reservations', reservation.id]"><div class="guest-avatar">{{ reservation.primaryGuest.firstName.charAt(0) }}{{ reservation.primaryGuest.lastName.charAt(0) }}</div><div class="reservation-main"><strong>{{ guestName(reservation) }}</strong><span>№ {{ reservation.room.roomNumber }} · {{ reservation.confirmationNumber }}</span></div><div class="reservation-meta"><b>{{ reservation.checkIn | date:'dd.MM.yyyy' }}</b><mat-chip>{{ reservation.status }}</mat-chip></div></a>
+            @if (!$last) { <mat-divider></mat-divider> }
+          }
+        } @else { <div class="loading-state">Поки немає бронювань</div> }
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="activity-card quick-actions">
+      <mat-card-header><mat-card-title>Швидкі дії</mat-card-title><mat-card-subtitle>Щоденні операції рецепції</mat-card-subtitle></mat-card-header>
+      <mat-card-content>
+        <a routerLink="/reservations/check-in"><span class="action-icon"><mat-icon>login</mat-icon></span><span><strong>Список заїздів</strong><small>{{ arrivals().length }} гостей очікується сьогодні</small></span><mat-icon class="action-arrow">chevron_right</mat-icon></a>
+        <a routerLink="/reservations/check-out"><span class="action-icon"><mat-icon>logout</mat-icon></span><span><strong>Список виїздів</strong><small>{{ departures().length }} виїздів сьогодні</small></span><mat-icon class="action-arrow">chevron_right</mat-icon></a>
+        <a routerLink="/hotel-grid"><span class="action-icon"><mat-icon>calendar_month</mat-icon></span><span><strong>Доступність номерів</strong><small>Переглянути бронювання за період</small></span><mat-icon class="action-arrow">chevron_right</mat-icon></a>
+      </mat-card-content>
+    </mat-card>
+  </section>
+</main>
