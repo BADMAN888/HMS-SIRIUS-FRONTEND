@@ -1,8 +1,8 @@
-import { Rate } from '../billing/rate.model';
-import { Room } from '../hotel/room.model';
+import { Rate } from '../billing/rate-response.model';
+import { Room } from '../hotel/room-response.model';
 import { Profile } from './profile.model';
 import { ReservationComment } from './reservation-comment.model';
-import { ReservationStatus } from './reservation-status.enum';
+import { ReservationStatus } from '../enums/reservation-status.enum';
 
 export interface Reservation {
   id: number;

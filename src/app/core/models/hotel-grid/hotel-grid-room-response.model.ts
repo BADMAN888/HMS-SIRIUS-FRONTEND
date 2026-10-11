@@ -1,8 +1,8 @@
-import { HotelGridReservation } from './hotel-grid-reservation.model';
-import { RoomView } from '../hotel/room-view.enum';
 import { RoomStatus } from '../hotel/room-status.enum';
+import { RoomView } from '../hotel/room-view.enum';
+import { HotelGridReservationResponse } from './hotel-grid-reservation-response.model';
 
-export interface HotelGridRoom {
+export interface HotelGridRoomResponse {
   id: number;
   roomNumber: string;
   floor: number;
@@ -12,5 +12,5 @@ export interface HotelGridRoom {
   hotelName: string;
   categoryId: number;
   categoryName: string;
-  reservations: HotelGridReservation[];
+  reservations: HotelGridReservationResponse[];
 }

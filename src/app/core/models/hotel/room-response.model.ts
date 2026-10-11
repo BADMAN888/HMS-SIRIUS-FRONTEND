@@ -1,12 +1,12 @@
 import { RoomStatus } from './room-status.enum';
 import { RoomView } from './room-view.enum';
 
-export interface Room {
+export interface RoomResponse {
   id: number;
   roomNumber: string;
-  floor: number;
+  floor: number | null;
   status: RoomStatus;
   roomView: RoomView;
-  hotelId: number;
-  categoryId: number;
+  hotelId: number | null;
+  categoryId: number | null;
 }

@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Rate } from '../models/billing/rate.model';
+import { Rate } from '../models/billing/rate-response.model';
 import { RateRequest } from '../models/billing/rate-request.model';
 
 @Injectable({

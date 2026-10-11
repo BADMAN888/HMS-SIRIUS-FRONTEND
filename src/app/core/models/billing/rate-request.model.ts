@@ -1,6 +1,6 @@
 export interface RateRequest {
   name: string;
-  description?: string;
+  description: string | null;
   currency: string;
   categoryId: number;
   price: number;

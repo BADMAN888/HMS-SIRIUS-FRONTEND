@@ -1,7 +1,7 @@
-export interface Rate {
+export interface RateResponse {
   id: number;
   name: string;
-  description: string;
+  description: string | null;
   currency: string;
   categoryId: number;
   price: number;

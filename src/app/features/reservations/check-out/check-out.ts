@@ -5,7 +5,7 @@ import { catchError, finalize, forkJoin, of } from 'rxjs';
 import { ReservationCheckOut } from '../../../core/models/reservation/reservation-check-out.model';
 import { ReservationService } from '../../../core/services/reservation.service';
 import { RoomService } from '../../../core/services/room.service';
-import { Room } from '../../../core/models/hotel/room.model';
+import { Room } from '../../../core/models/hotel/room-response.model';
 
 @Component({
   selector: 'app-check-out',

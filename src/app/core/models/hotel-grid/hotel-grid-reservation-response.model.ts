@@ -1,6 +1,7 @@
-import { ReservationStatus } from '../reservation/reservation-status.enum';
+import {ReservationStatus} from '../enums/reservation-status.enum';
 
-export interface HotelGridReservation {
+
+export interface HotelGridReservationResponse {
   id: number;
   confirmationNumber: string;
   checkIn: string;

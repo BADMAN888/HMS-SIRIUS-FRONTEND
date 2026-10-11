@@ -7,8 +7,8 @@ import {
   inject
 } from '@angular/core';
 import { HotelGridService } from '../../core/services/hotel-grid.service';
-import { HotelGridRoom } from '../../core/models/hotel-grid/hotel-grid-room.model';
-import { HotelGridReservation } from '../../core/models/hotel-grid/hotel-grid-reservation.model';
+import { HotelGridRoom } from '../../core/models/hotel-grid-room.model';
+import { HotelGridReservation } from '../../core/models/hotel-grid/hotel-grid-reservation-response.model';
 
 @Component({
   selector: 'app-hotel-grid',

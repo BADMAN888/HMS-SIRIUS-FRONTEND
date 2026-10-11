@@ -1,4 +1,4 @@
-import { Gender } from './gender.enum';
+import { Gender } from '../enums/gender.enum';
 import { GuestDocumentRequest } from './guest-document-request.model';
 
 export interface ProfileRequest {

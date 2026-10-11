@@ -30,7 +30,7 @@ export const routes: Routes = [
           )
       },
       {
-        path: 'dashboard',
+        path: 'hotel-grid',
         loadComponent: () =>
           import('./features/hotel-grid/hotel-grid').then(
             m => m.HotelGrid
@@ -57,3 +57,4 @@ export const routes: Routes = [
     redirectTo: 'in-house'
   }
 ];
+

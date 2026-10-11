@@ -4,7 +4,7 @@ import {
   HttpParams
 } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { HotelGrid } from '../models/hotel-grid/hotel-grid.model';
+import { HotelGrid } from '../models/hotel-grid/hotel-grid-response.model';
 
 @Injectable({
   providedIn: 'root'
