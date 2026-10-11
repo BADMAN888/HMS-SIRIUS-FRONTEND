@@ -1,1 +1,29 @@
-/* You can add global styles to this file, and also import other style files */
+@use '@angular/material' as mat;
+
+$sirius-primary: mat.$blue-palette;
+$sirius-tertiary: mat.$azure-palette;
+
+html {
+  height: 100%;
+
+  @include mat.theme(
+      (
+        color: (
+          primary: $sirius-primary,
+          tertiary: $sirius-tertiary,
+        ),
+        typography: Roboto,
+        density: 0,
+      )
+  );
+}
+
+body {
+  color-scheme: light;
+
+  margin: 0;
+  height: 100%;
+
+  background-color: #ffffff;
+  color: #1f2937;
+}

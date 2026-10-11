@@ -1,0 +1,54 @@
+<div class="login-page">
+  <mat-card class="login-card">
+
+    <div class="logo">
+      <img src="Sirius-photo2.png" alt="Sirius">
+    </div>
+
+    <div class="login-content">
+      <h1>Вітаємо</h1>
+      <p class="subtitle">Увійдіть у систему, щоб продовжити</p>
+
+      <form [formGroup]="loginForm" (ngSubmit)="submit()">
+
+        <mat-form-field appearance="outline">
+          <mat-label>Електронна пошта</mat-label>
+          <input
+            matInput
+            type="email"
+            formControlName="email"
+            autocomplete="email"
+          />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Пароль</mat-label>
+          <input
+            matInput
+            type="password"
+            formControlName="password"
+            autocomplete="current-password"
+          />
+        </mat-form-field>
+
+        @if (errorMessage) {
+          <div class="error">
+            {{ errorMessage }}
+          </div>
+        }
+
+        <button
+          mat-flat-button
+          type="submit"
+          class="login-button"
+          [disabled]="isLoading"
+        >
+          {{ isLoading ? 'Вхід…' : 'Увійти' }}
+        </button>
+
+      </form>
+    </div>
+
+
+  </mat-card>
+</div>

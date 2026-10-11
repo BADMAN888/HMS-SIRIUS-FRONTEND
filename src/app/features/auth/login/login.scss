@@ -1,0 +1,146 @@
+$bg-color: #020817;
+$card-bg: #0f172a;
+$card-border: #1e293b;
+$title-color: #f8fafc;
+$subtitle-color: #94a3b8;
+$error-color: #f87171;
+$error-bg: rgba(239, 68, 68, 0.1);
+$btn-bg: #2563eb;
+$btn-color: #ffffff;
+$btn-hover-bg: #1d4ed8;
+
+$field-label-color: #94a3b8;
+$field-input-color: #f8fafc;
+$field-hover-color: #ffffff;
+$field-hover-border: #64748b;
+
+.login-page {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background-color: $bg-color;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 400px;
+  padding: 32px;
+  background-color: $card-bg;
+  border: 1px solid $card-border;
+  border-radius: 16px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+}
+
+.logo {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 24px;
+
+  img {
+    max-width: 120px;
+    height: auto;
+    object-fit: contain;
+  }
+}
+
+.login-content {
+  text-align: center;
+
+  h1 {
+    margin: 0 0 8px;
+    font-size: 24px;
+    font-weight: 600;
+    color: $title-color;
+  }
+
+  .subtitle {
+    margin: 0 0 24px;
+    font-size: 14px;
+    color: $subtitle-color;
+  }
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+
+  ::ng-deep mat-form-field {
+    width: 100%;
+
+    .mdc-floating-label,
+    .mat-mdc-floating-label {
+      color: $field-label-color !important;
+      transition: color 0.2s ease;
+    }
+
+    input.mat-mdc-input-element {
+      color: $field-input-color !important;
+      caret-color: $field-hover-color !important;
+    }
+
+    .mdc-notched-outline__leading,
+    .mdc-notched-outline__notch,
+    .mdc-notched-outline__trailing {
+      border-color: $card-border !important;
+      transition: border-color 0.2s ease;
+    }
+
+    &:hover {
+      .mdc-floating-label,
+      .mat-mdc-floating-label {
+        color: $field-hover-color !important;
+      }
+
+      .mdc-notched-outline__leading,
+      .mdc-notched-outline__notch,
+      .mdc-notched-outline__trailing {
+        border-color: $field-hover-border !important;
+      }
+    }
+
+    &.mat-focused {
+      .mdc-floating-label,
+      .mat-mdc-floating-label {
+        color: $field-hover-color !important;
+      }
+
+      .mdc-notched-outline__leading,
+      .mdc-notched-outline__notch,
+      .mdc-notched-outline__trailing {
+        border-color: $btn-bg !important;
+      }
+    }
+  }
+}
+
+.error {
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  color: $error-color;
+  background-color: $error-bg;
+  text-align: left;
+}
+
+.login-button {
+  width: 100%;
+  padding: 22px 0;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 500;
+  background-color: $btn-bg !important;
+  color: $btn-color !important;
+  transition: background-color 0.2s ease;
+
+  &:hover:not([disabled]) {
+    background-color: $btn-hover-bg !important;
+  }
+
+  &[disabled] {
+    opacity: 0.7;
+  }
+}
