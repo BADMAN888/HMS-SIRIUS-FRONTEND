@@ -1,428 +1,480 @@
 <div class="reservation-details-page">
-
   @if (loading()) {
     <div class="state-message">
-      Завантаження бронювання…
+      <mat-spinner diameter="40"></mat-spinner>
+      <p>Завантаження бронювання...</p>
     </div>
   } @else if (error()) {
-    <div class="error-message">
-      {{ error() }}
+    <div class="state-message error">
+      <mat-icon>error_outline</mat-icon>
+      <p>{{ error() }}</p>
+      <button mat-flat-button type="button" (click)="goBack()">
+        Назад
+      </button>
     </div>
-  } @else {
-    @if (reservation(); as reservation) {
-
-      <div class="page-header">
+  } @else if (reservation(); as reservation) {
+    <header class="page-header">
+      <div class="page-heading">
         <button
-          class="back-button"
+          mat-icon-button
           type="button"
+          aria-label="Назад"
           (click)="goBack()"
         >
-          ← Назад
+          <mat-icon>arrow_back</mat-icon>
         </button>
 
-        <div class="title-row">
-          <div>
-            <h1>Деталі бронювання</h1>
-            <p>
-              Підтвердження № {{ reservation.confirmationNumber }}
-            </p>
-          </div>
-
-          <span
-            class="status"
-            [class.reserved]="reservation.status === 'RESERVED'"
-            [class.confirmed]="reservation.status === 'CONFIRMED'"
-            [class.checked-in]="reservation.status === 'CHECKED_IN'"
-            [class.completed]="reservation.status === 'COMPLETED'"
-            [class.cancelled]="reservation.status === 'CANCELLED'"
-            [class.no-show]="reservation.status === 'NO_SHOW'"
-          >
-            {{ statusLabel(reservation.status) }}
-          </span>
+        <div>
+          <h1>Бронювання №{{ reservation.id }}</h1>
+          <p>{{ reservation.confirmationNumber }}</p>
         </div>
       </div>
 
-      @if (!canEdit()) {
-        <div class="warning-message">
-          Бронювання з таким статусом не можна редагувати.
-        </div>
-      }
+      <div class="header-actions">
+        @if (!isEditing()) {
+          <button
+            mat-stroked-button
+            type="button"
+            (click)="startEditing()"
+          >
+            <mat-icon>edit</mat-icon>
+            Редагувати
+          </button>
+        } @else {
+          <button
+            mat-stroked-button
+            type="button"
+            (click)="cancelEditing()"
+          >
+            Скасувати
+          </button>
 
-      <div class="content-grid">
+          <button
+            mat-flat-button
+            type="button"
+            [disabled]="saving()"
+            (click)="save()"
+          >
+            <mat-icon>save</mat-icon>
+            {{ saving() ? 'Збереження...' : 'Зберегти' }}
+          </button>
+        }
+      </div>
+    </header>
 
-        <section class="card">
-          <div class="card-header">
-            <h2>Гість</h2>
+    <section class="reservation-summary">
+      <div class="summary-item">
+        <span class="summary-label">Статус</span>
+        <span
+          class="status-badge"
+          [class.reserved]="reservation.status === 'RESERVED'"
+          [class.confirmed]="reservation.status === 'CONFIRMED'"
+          [class.in-house]="reservation.status === 'IN_HOUSE'"
+          [class.completed]="reservation.status === 'COMPLETED'"
+          [class.cancelled]="reservation.status === 'CANCELLED'"
+          [class.no-show]="reservation.status === 'NO_SHOW'"
+        >
+          {{ getStatusLabel(reservation.status) }}
+        </span>
+      </div>
+
+      <div class="summary-item">
+        <span class="summary-label">Номер</span>
+        <strong>{{ reservation.room.roomNumber }}</strong>
+      </div>
+
+      <div class="summary-item">
+        <span class="summary-label">Заїзд</span>
+        <strong>{{ reservation.checkIn | date:'dd.MM.yyyy' }}</strong>
+      </div>
+
+      <div class="summary-item">
+        <span class="summary-label">Виїзд</span>
+        <strong>{{ reservation.checkOut | date:'dd.MM.yyyy' }}</strong>
+      </div>
+
+      <div class="summary-item">
+        <span class="summary-label">Гості</span>
+        <strong>
+          {{ reservation.adults }} дорослих
+          @if (reservation.children > 0) {
+            , {{ reservation.children }} дітей
+          }
+        </strong>
+      </div>
+    </section>
+
+    <div class="details-layout">
+      <main class="details-main">
+        <section class="details-card">
+          <div class="card-heading">
+            <mat-icon>event</mat-icon>
+            <h2>Деталі бронювання</h2>
           </div>
 
-          <div class="form-group">
-            <label for="primaryGuest">
-              Основний гість
-            </label>
+          <div class="details-grid">
+            <div class="form-field">
+              <label for="confirmationNumber">Номер підтвердження</label>
+              <input
+                id="confirmationNumber"
+                type="text"
+                [value]="reservation.confirmationNumber"
+                readonly
+              />
+            </div>
 
-            <select
-              id="primaryGuest"
-              [value]="editPrimaryGuestId()"
-              [disabled]="!canEdit() || loadingEditData()"
-              (change)="editPrimaryGuestId.set(+$any($event.target).value)"
-            >
-              @for (profile of profiles(); track profile.id) {
-                <option [value]="profile.id">
-                  {{ getProfileName(profile) }}
-                  — {{ profile.phoneNumber }}
-                </option>
-              }
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label for="guestIds">
-              Інші гості
-            </label>
-
-            <select
-              id="guestIds"
-              multiple
-              [disabled]="!canEdit() || loadingEditData()"
-              (change)="onGuestIdsChange($event)"
-            >
-              @for (profile of profiles(); track profile.id) {
-                <option
-                  [value]="profile.id"
-                  [selected]="editGuestIds().includes(profile.id)"
+            <div class="form-field">
+              <label for="status">Статус</label>
+              @if (isEditing()) {
+                <select
+                  id="status"
+                  [value]="editForm().status"
+                  (change)="updateEditField('status', $any($event.target).value)"
                 >
-                  {{ getProfileName(profile) }}
-                  — {{ profile.phoneNumber }}
-                </option>
+                  @for (status of availableStatuses; track status) {
+                    <option [value]="status">
+                      {{ getStatusLabel(status) }}
+                    </option>
+                  }
+                </select>
+              } @else {
+                <input
+                  id="status"
+                  type="text"
+                  [value]="getStatusLabel(reservation.status)"
+                  readonly
+                />
               }
-            </select>
-          </div>
-
-          <div class="guest-profile">
-            <div class="guest-avatar">
-              {{ reservation.primaryGuest.firstName.charAt(0) }}{{ reservation.primaryGuest.lastName.charAt(0) }}
             </div>
 
-            <div>
-              <h3>
-                {{ getProfileName(reservation.primaryGuest) }}
-              </h3>
-
-              <p>
-                {{ reservation.primaryGuest.phoneNumber }}
-              </p>
-
-              <p>
-                {{ reservation.primaryGuest.email }}
-              </p>
-            </div>
-          </div>
-
-          <div class="details-list">
-            <div class="detail-row">
-              <span>Адреса</span>
-              <strong>
-                {{ reservation.primaryGuest.address || '—' }}
-              </strong>
+            <div class="form-field">
+              <label for="checkIn">Дата заїзду</label>
+              <input
+                id="checkIn"
+                type="date"
+                [value]="isEditing() ? editForm().checkIn : reservation.checkIn.substring(0, 10)"
+                [readonly]="!isEditing()"
+                (change)="updateEditField('checkIn', $any($event.target).value)"
+              />
             </div>
 
-            <div class="detail-row">
-              <span>Стать</span>
-              <strong>
-                {{ genderLabel(reservation.primaryGuest.gender) }}
-              </strong>
+            <div class="form-field">
+              <label for="checkOut">Дата виїзду</label>
+              <input
+                id="checkOut"
+                type="date"
+                [value]="isEditing() ? editForm().checkOut : reservation.checkOut.substring(0, 10)"
+                [readonly]="!isEditing()"
+                (change)="updateEditField('checkOut', $any($event.target).value)"
+              />
             </div>
 
-            <div class="detail-row">
-              <span>Документ</span>
-              <strong>
-                {{ getGuestDocument() }}
-              </strong>
-            </div>
-          </div>
-        </section>
-
-        <section class="card">
-          <div class="card-header">
-            <h2>Проживання</h2>
-          </div>
-
-          <div class="form-group">
-            <label for="room">
-              Номер
-            </label>
-
-            <select
-              id="room"
-              [value]="editRoomId()"
-              [disabled]="!canEdit() || loadingEditData()"
-              (change)="editRoomId.set(+$any($event.target).value)"
-            >
-              @for (room of rooms(); track room.id) {
-                <option [value]="room.id">
-                  Room {{ room.roomNumber }}
-                  — Floor {{ room.floor }}
-                </option>
-              }
-            </select>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label for="adults">
-              Дорослі
-              </label>
-
+            <div class="form-field">
+              <label for="adults">Дорослі</label>
               <input
                 id="adults"
                 type="number"
                 min="1"
-                [value]="editAdults()"
-                [disabled]="!canEdit()"
-                (input)="editAdults.set(+$any($event.target).value)"
+                [value]="isEditing() ? editForm().adults : reservation.adults"
+                [readonly]="!isEditing()"
+                (change)="updateEditField('adults', +$any($event.target).value)"
               />
             </div>
 
-            <div class="form-group">
-              <label for="children">
-              Діти
-              </label>
-
+            <div class="form-field">
+              <label for="children">Діти</label>
               <input
                 id="children"
                 type="number"
                 min="0"
-                [value]="editChildren()"
-                [disabled]="!canEdit()"
-                (input)="editChildren.set(+$any($event.target).value)"
+                [value]="isEditing() ? editForm().children : reservation.children"
+                [readonly]="!isEditing()"
+                (change)="updateEditField('children', +$any($event.target).value)"
+              />
+            </div>
+
+            <div class="form-field">
+              <label for="room">Номер кімнати</label>
+              @if (isEditing()) {
+                <select
+                  id="room"
+                  [value]="editForm().roomId"
+                  (change)="updateEditField('roomId', +$any($event.target).value)"
+                >
+                  @for (room of rooms(); track room.id) {
+                    <option [value]="room.id">
+                      {{ room.roomNumber }} — {{ room.categoryName }}
+                    </option>
+                  }
+                </select>
+              } @else {
+                <input
+                  id="room"
+                  type="text"
+                  [value]="reservation.room.roomNumber"
+                  readonly
+                />
+              }
+            </div>
+
+            <div class="form-field">
+              <label for="rate">Тариф</label>
+              @if (isEditing()) {
+                <select
+                  id="rate"
+                  [value]="editForm().rateId"
+                  (change)="updateEditField('rateId', +$any($event.target).value)"
+                >
+                  @for (rate of rates(); track rate.id) {
+                    <option [value]="rate.id">
+                      {{ rate.name }}
+                    </option>
+                  }
+                </select>
+              } @else {
+                <input
+                  id="rate"
+                  type="text"
+                  [value]="reservation.rate.name"
+                  readonly
+                />
+              }
+            </div>
+          </div>
+        </section>
+
+        <section class="details-card">
+          <div class="card-heading">
+            <mat-icon>person</mat-icon>
+            <h2>Основний гість</h2>
+          </div>
+
+          <div class="details-grid">
+            <div class="form-field">
+              <label for="guestLastName">Прізвище</label>
+              <input
+                id="guestLastName"
+                type="text"
+                [value]="reservation.primaryGuest.lastName"
+                readonly
+              />
+            </div>
+
+            <div class="form-field">
+              <label for="guestFirstName">Ім'я</label>
+              <input
+                id="guestFirstName"
+                type="text"
+                [value]="reservation.primaryGuest.firstName"
+                readonly
+              />
+            </div>
+
+            <div class="form-field">
+              <label for="guestMiddleName">По батькові</label>
+              <input
+                id="guestMiddleName"
+                type="text"
+                [value]="reservation.primaryGuest.middleName || '—'"
+                readonly
+              />
+            </div>
+
+            <div class="form-field">
+              <label for="guestPhone">Телефон</label>
+              <input
+                id="guestPhone"
+                type="text"
+                [value]="reservation.primaryGuest.phone"
+                readonly
+              />
+            </div>
+
+            <div class="form-field">
+              <label for="guestEmail">Email</label>
+              <input
+                id="guestEmail"
+                type="email"
+                [value]="reservation.primaryGuest.email || '—'"
+                readonly
+              />
+            </div>
+
+            <div class="form-field">
+              <label for="guestGender">Стать</label>
+              <input
+                id="guestGender"
+                type="text"
+                [value]="getGenderLabel(reservation.primaryGuest.gender)"
+                readonly
               />
             </div>
           </div>
-
-          <div class="details-list">
-            <div class="detail-row">
-              <span>Категорія номера</span>
-              <strong>
-                {{ reservation.room.categoryId }}
-              </strong>
-            </div>
-
-            <div class="detail-row">
-              <span>Поверх</span>
-              <strong>
-                {{ reservation.room.floor }}
-              </strong>
-            </div>
-
-            <div class="detail-row">
-              <span>Вид із вікна</span>
-              <strong>
-                {{ reservation.room.roomView }}
-              </strong>
-            </div>
-          </div>
         </section>
 
-        <section class="card">
-          <div class="card-header">
-            <h2>Дати</h2>
+        <section class="details-card">
+          <div class="card-heading">
+            <mat-icon>group</mat-icon>
+            <h2>Додаткові гості</h2>
           </div>
 
-          <div class="form-group">
-            <label for="checkIn">
-              Заїзд
-            </label>
-
-            <input
-              id="checkIn"
-              type="datetime-local"
-              [value]="editCheckIn()"
-              [disabled]="!canEdit()"
-              (input)="editCheckIn.set($any($event.target).value)"
-            />
-          </div>
-
-          <div class="form-group">
-            <label for="checkOut">
-              Виїзд
-            </label>
-
-            <input
-              id="checkOut"
-              type="datetime-local"
-              [value]="editCheckOut()"
-              [disabled]="!canEdit()"
-              (input)="editCheckOut.set($any($event.target).value)"
-            />
-          </div>
-        </section>
-
-        <section class="card">
-          <div class="card-header">
-            <h2>Тариф</h2>
-          </div>
-
-          <div class="form-group">
-            <label for="rate">
-              Тариф
-            </label>
-
-            <select
-              id="rate"
-              [value]="editRateId()"
-              [disabled]="!canEdit() || loadingEditData()"
-              (change)="editRateId.set(+$any($event.target).value)"
-            >
-              @for (rate of rates(); track rate.id) {
-                <option [value]="rate.id">
-                  {{ rate.name }}
-                  —
-                  {{ rate.price | number:'1.2-2' }}
-                  {{ rate.currency }}
-                </option>
-              }
-            </select>
-          </div>
-
-          <div class="details-list">
-            <div class="detail-row">
-              <span>Ціна</span>
-              <strong>
-                {{ reservation.rate.price | number:'1.2-2' }}
-                {{ reservation.rate.currency }}
-              </strong>
+          @if (isEditing()) {
+            <div class="form-field">
+              <label for="guestIds">ID додаткових гостей</label>
+              <input
+                id="guestIds"
+                type="text"
+                [value]="editForm().guestIds.join(', ')"
+                placeholder="Наприклад: 12, 15"
+                (change)="onGuestIdsChange($any($event.target).value)"
+              />
+              <small>Введіть ID через кому.</small>
             </div>
+          }
 
-            <div class="detail-row">
-              <span>Опис</span>
-              <strong>
-                {{ reservation.rate.description || '—' }}
-              </strong>
-            </div>
-
-            <div class="detail-row">
-              <span>Активний</span>
-              <strong>
-                {{ reservation.rate.active ? 'Yes' : 'No' }}
-              </strong>
-            </div>
-          </div>
-        </section>
-
-        <section class="card full-width">
-          <div class="card-header">
-            <h2>Статус</h2>
-          </div>
-
-          <div class="details-list">
-            <div class="detail-row">
-              <span>Статус</span>
-
-              <strong>
-                {{ statusLabel(reservation.status) }}
-              </strong>
-            </div>
-          </div>
-        </section>
-
-        <section class="card full-width">
-          <div class="card-header">
-            <h2>Коментарі</h2>
-          </div>
-
-          @if (reservation.comments.length) {
-            <div class="comments">
-              @for (comment of reservation.comments; track comment.id) {
-                <div class="comment">
-                  <p>{{ comment.text }}</p>
-
-                  <span>
-                    {{ comment.createdAt | date:'dd.MM.yyyy HH:mm' }}
-                  </span>
+          @if (reservation.guestIds.length > 0) {
+            <div class="guest-list">
+              @for (guestId of reservation.guestIds; track guestId) {
+                <div class="guest-item">
+                  <mat-icon>person_outline</mat-icon>
+                  <span>Гість №{{ guestId }}</span>
                 </div>
               }
             </div>
           } @else {
-            <div class="empty-comments">
-        Коментарів немає
-            </div>
+            <p class="empty-message">Додаткових гостей немає.</p>
           }
         </section>
 
-        <section class="card full-width">
-          <div class="card-header">
-            <h2>Інформація про бронювання</h2>
+        <section class="details-card">
+          <div class="card-heading">
+            <mat-icon>chat</mat-icon>
+            <h2>Коментарі</h2>
           </div>
 
-          <div class="details-list">
-            <div class="detail-row">
-              <span>Номер підтвердження</span>
-              <strong>
-                {{ reservation.confirmationNumber }}
-              </strong>
+          @if (reservation.comments.length > 0) {
+            <div class="comments-list">
+              @for (comment of reservation.comments; track comment.id) {
+                <article class="comment-item">
+                  <div class="comment-meta">
+                    <span>Коментар №{{ comment.id }}</span>
+                    <time>{{ comment.createdAt | date:'dd.MM.yyyy HH:mm' }}</time>
+                  </div>
+                  <p>{{ comment.text }}</p>
+                </article>
+              }
             </div>
-
-            <div class="detail-row">
-              <span>ID бронювання</span>
-              <strong>
-                {{ reservation.id }}
-              </strong>
-            </div>
-
-            <div class="detail-row">
-              <span>ID рахунку</span>
-              <strong>
-                {{ reservation.folioId }}
-              </strong>
-            </div>
-
-            <div class="detail-row">
-              <span>Створено</span>
-              <strong>
-                {{ reservation.createdAt | date:'dd.MM.yyyy HH:mm' }}
-              </strong>
-            </div>
-          </div>
-        </section>
-
-      </div>
-
-      @if (saveError()) {
-        <div class="save-error">
-          {{ saveError() }}
-        </div>
-      }
-
-      @if (saved()) {
-        <div class="save-success">
-        Зміни збережено.
-        </div>
-      }
-
-      <div class="save-bar">
-        @if (reservation.status === 'RESERVED' || reservation.status === 'CONFIRMED') {
-          <button class="lifecycle-button" type="button" [disabled]="actionBusy()" (click)="markNoShow()">Не заїхав</button>
-          <button class="lifecycle-button cancel" type="button" [disabled]="actionBusy()" (click)="cancelReservation()">Скасувати бронювання</button>
-        }
-        <button
-          class="save-button"
-          type="button"
-          [disabled]="
-            saving() ||
-            loadingEditData() ||
-            !canEdit()
-          "
-          (click)="save()"
-        >
-          @if (saving()) {
-            Збереження…
           } @else {
-            Зберегти
+            <p class="empty-message">Коментарів поки немає.</p>
           }
-        </button>
-      </div>
 
-    }
+          <div class="add-comment">
+            <label for="newComment">Новий коментар</label>
+            <textarea
+              id="newComment"
+              rows="3"
+              [value]="newComment()"
+              placeholder="Введіть коментар..."
+              (input)="newComment.set($any($event.target).value)"
+            ></textarea>
+
+            <button
+              mat-flat-button
+              type="button"
+              [disabled]="!newComment().trim() || addingComment()"
+              (click)="addComment()"
+            >
+              <mat-icon>send</mat-icon>
+              {{ addingComment() ? 'Додавання...' : 'Додати коментар' }}
+            </button>
+          </div>
+        </section>
+      </main>
+
+      <aside class="details-sidebar">
+        <section class="details-card">
+          <div class="card-heading">
+            <mat-icon>receipt_long</mat-icon>
+            <h2>Фінанси</h2>
+          </div>
+
+          <div class="sidebar-info">
+            <span>Тариф</span>
+            <strong>{{ reservation.rate.name }}</strong>
+          </div>
+
+          <div class="sidebar-info">
+            <span>Фоліо</span>
+            <strong>
+              @if (reservation.folioId) {
+                №{{ reservation.folioId }}
+              } @else {
+                Не створено
+              }
+            </strong>
+          </div>
+
+          <div class="sidebar-info">
+            <span>Створено</span>
+            <strong>{{ reservation.createdAt | date:'dd.MM.yyyy HH:mm' }}</strong>
+          </div>
+        </section>
+
+        <section class="details-card">
+          <div class="card-heading">
+            <mat-icon>manage_accounts</mat-icon>
+            <h2>Дії</h2>
+          </div>
+
+          @if (reservation.status === 'RESERVED' || reservation.status === 'CONFIRMED') {
+            <button
+              mat-stroked-button
+              type="button"
+              class="action-button"
+              [disabled]="actionLoading()"
+              (click)="cancelReservation()"
+            >
+              <mat-icon>event_busy</mat-icon>
+              Скасувати бронювання
+            </button>
+
+            <button
+              mat-stroked-button
+              type="button"
+              class="action-button"
+              [disabled]="actionLoading()"
+              (click)="markNoShow()"
+            >
+              <mat-icon>person_off</mat-icon>
+              Не заїхав
+            </button>
+          }
+
+          @if (reservation.status === 'IN_HOUSE') {
+            <p class="action-note">
+              Гість уже проживає в готелі.
+            </p>
+          }
+
+          @if (reservation.status === 'COMPLETED') {
+            <p class="action-note">
+              Проживання завершено.
+            </p>
+          }
+
+          @if (reservation.status === 'CANCELLED') {
+            <p class="action-note">
+              Бронювання скасовано.
+            </p>
+          }
+
+          @if (reservation.status === 'NO_SHOW') {
+            <p class="action-note">
+              Заїзд не відбувся.
+            </p>
+          }
+        </section>
+      </aside>
+    </div>
   }
-
 </div>

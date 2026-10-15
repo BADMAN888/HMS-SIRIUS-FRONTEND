@@ -27,6 +27,10 @@
     <div class="state-message">
       Завантаження виїздів…
     </div>
+  } @else if (error()) {
+    <div class="state-message">
+      Не вдалося завантажити дані. Спробуйте повторити запит.
+    </div>
   } @else if (reservations().length === 0) {
     <div class="empty-state">
       <div class="empty-icon">✓</div>
@@ -40,13 +44,13 @@
   } @else {
     <div class="summary">
       <div class="summary-card">
-        <span class="summary-label">Виїзди</span>
+        <span class="summary-label">Усього виїздів</span>
         <strong>{{ reservations().length }}</strong>
       </div>
 
       <div class="summary-card">
-        <span class="summary-label">Очікують</span>
-        <strong>{{ reservations().length }}</strong>
+        <span class="summary-label">Очікують виїзду</span>
+        <strong>{{ pendingCheckOuts() }}</strong>
       </div>
     </div>
 
@@ -98,10 +102,7 @@
                   <strong>
                     {{ reservation.checkIn | date:'dd.MM.yyyy' }}
                   </strong>
-
-                  <span>
-                    {{ formatTime(reservation.checkIn) }}
-                  </span>
+                  <span>{{ formatTime(reservation.checkIn) }}</span>
                 </div>
               </td>
 
@@ -110,10 +111,7 @@
                   <strong>
                     {{ reservation.checkOut | date:'dd.MM.yyyy' }}
                   </strong>
-
-                  <span>
-                    {{ formatTime(reservation.checkOut) }}
-                  </span>
+                  <span>{{ formatTime(reservation.checkOut) }}</span>
                 </div>
               </td>
 
@@ -122,7 +120,8 @@
                   class="status"
                   [class.reserved]="reservation.status === 'RESERVED'"
                   [class.confirmed]="reservation.status === 'CONFIRMED'"
-                  [class.checked-in]="reservation.status === 'CHECKED_IN'"
+                  [class.checked-in]="reservation.status === 'IN_HOUSE'"
+                  [class.completed]="reservation.status === 'COMPLETED'"
                 >
                   {{ reservation.status }}
                 </span>
@@ -144,11 +143,18 @@
                 <button
                   type="button"
                   class="check-out-button"
-                  [disabled]="checkingOutId() !== null"
+                  [disabled]="
+                    checkingOutId() !== null ||
+                    reservation.status !== 'IN_HOUSE'
+                  "
                   (click)="$event.stopPropagation(); checkOut(reservation)"
                 >
                   @if (checkingOutId() === reservation.id) {
                     Оформлення виїзду…
+                  } @else if (reservation.status === 'COMPLETED') {
+                    Виїзд оформлено
+                  } @else if (reservation.status !== 'IN_HOUSE') {
+                    Не заселений
                   } @else {
                     Зареєструвати виїзд
                   }

@@ -1,3 +1,4 @@
+```html
 <div class="hotel-grid-page">
 
   <div class="grid-header">
@@ -21,7 +22,12 @@
 
     <div class="period-controls">
       <button type="button" (click)="changeMonth(-1)" aria-label="Попередній місяць">‹</button>
-      <input aria-label="Обрати місяць" type="month" [value]="periodMonth" (change)="setSelectedMonth($any($event.target).value)">
+      <input
+        aria-label="Обрати місяць"
+        type="month"
+        [value]="periodMonth"
+        (change)="setSelectedMonth($any($event.target).value)"
+      >
       <button type="button" (click)="changeMonth(1)" aria-label="Наступний місяць">›</button>
       <button type="button" class="today-button" (click)="goToCurrentMonth()">Сьогодні</button>
       <a class="new-booking-button" routerLink="/reservations">＋ Нове бронювання</a>
@@ -93,13 +99,13 @@
               </div>
 
               <div class="room-info">
-  <span>
-    Floor {{ room.floor }}
-  </span>
+                <span>
+                  Floor {{ room.floor }}
+                </span>
 
                 <span>
-    {{ room.categoryName }}
-  </span>
+                  {{ room.categoryName }}
+                </span>
               </div>
 
             </div>
@@ -115,8 +121,7 @@
 
               }
 
-              @for (reservation of getReservationsForRoom(room);
-                track reservation.id) {
+              @for (reservation of getReservationsForRoom(room); track reservation.id) {
 
                 <div
                   class="reservation"
@@ -125,17 +130,12 @@
                   tabindex="0"
                   [class.reserved]="reservation.status === 'RESERVED'"
                   [class.confirmed]="reservation.status === 'CONFIRMED'"
-                  [class.checked-in]="reservation.status === 'CHECKED_IN'"
+                  [class.in-house]="reservation.status === 'IN_HOUSE'"
                   [class.completed]="reservation.status === 'COMPLETED'"
                   [class.cancelled]="reservation.status === 'CANCELLED'"
                   [class.no-show]="reservation.status === 'NO_SHOW'"
-                  [style.left.px]="
-                    getReservationLeft(reservation) -
-                    roomColumnWidth
-                  "
-                  [style.width.px]="
-                    getReservationWidth(reservation)
-                  "
+                  [style.left.px]="getReservationLeft(reservation) - roomColumnWidth"
+                  [style.width.px]="getReservationWidth(reservation)"
                   [attr.title]="getReservationLabel(reservation)"
                 >
 
@@ -187,3 +187,4 @@
   }
 
 </div>
+```

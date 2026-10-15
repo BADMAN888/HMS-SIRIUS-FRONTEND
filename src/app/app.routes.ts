@@ -49,6 +49,13 @@ export const routes: Routes = [
           import('./features/reservations/check-out/check-out').then(
             m => m.CheckOut
           )
+      },
+      {
+        path: 'reservations/:id',
+        loadComponent: () =>
+          import('./features/reservations/reservation-details/reservation-details').then(
+            m => m.ReservationDetails
+          )
       }
     ]
   },
@@ -57,4 +64,3 @@ export const routes: Routes = [
     redirectTo: 'in-house'
   }
 ];
-

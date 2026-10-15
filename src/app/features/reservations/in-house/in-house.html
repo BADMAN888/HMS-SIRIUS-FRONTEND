@@ -28,7 +28,11 @@
           <mat-icon>error_outline</mat-icon>
           <p>{{ error() }}</p>
 
-          <button mat-stroked-button type="button" (click)="loadGuests()">
+          <button
+            mat-stroked-button
+            type="button"
+            (click)="loadGuests()"
+          >
             Спробувати ще раз
           </button>
         </div>
@@ -36,23 +40,27 @@
         <div class="state-container">
           <mat-icon>hotel</mat-icon>
           <h2>Немає заселених гостей</h2>
-          <p>Зараз у готелі немає гостей зі статусом проживання.</p>
+          <p>Зараз у готелі немає гостей зі статусом IN_HOUSE.</p>
         </div>
       } @else {
         <div class="table-wrapper">
           <table mat-table [dataSource]="guests()" class="guests-table">
             <ng-container matColumnDef="guest">
               <th mat-header-cell *matHeaderCellDef>Гість</th>
-              <td mat-cell *matCellDef="let guest">
+
+              <td mat-cell *matCellDef="let reservation">
                 <div class="guest-cell">
                   <span class="guest-avatar">
                     <mat-icon>person</mat-icon>
                   </span>
 
                   <div class="guest-info">
-                    <span class="guest-name">{{ getGuestName(guest) }}</span>
+                    <span class="guest-name">
+                      {{ getGuestName(reservation) }}
+                    </span>
+
                     <span class="guest-confirmation">
-                      {{ guest.confirmationNumber }}
+                      {{ reservation.primaryGuest?.phoneNumber || '—' }}
                     </span>
                   </div>
                 </div>
@@ -61,48 +69,66 @@
 
             <ng-container matColumnDef="roomNumber">
               <th mat-header-cell *matHeaderCellDef>Номер</th>
-              <td mat-cell *matCellDef="let guest">
+
+              <td mat-cell *matCellDef="let reservation">
                 <span class="room-badge">
                   <mat-icon>meeting_room</mat-icon>
-                  {{ guest.roomNumber }}
+                  {{ reservation.room.roomNumber }}
+                </span>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="confirmationNumber">
+              <th mat-header-cell *matHeaderCellDef>Підтвердження</th>
+
+              <td mat-cell *matCellDef="let reservation">
+                <span class="guest-confirmation">
+                  {{ reservation.confirmationNumber }}
                 </span>
               </td>
             </ng-container>
 
             <ng-container matColumnDef="checkIn">
               <th mat-header-cell *matHeaderCellDef>Заїзд</th>
-              <td mat-cell *matCellDef="let guest">
-                {{ guest.checkIn | date: 'dd.MM.yyyy HH:mm' }}
+
+              <td mat-cell *matCellDef="let reservation">
+                {{ reservation.checkIn | date:'dd.MM.yyyy HH:mm' }}
               </td>
             </ng-container>
 
             <ng-container matColumnDef="checkOut">
               <th mat-header-cell *matHeaderCellDef>Виїзд</th>
-              <td mat-cell *matCellDef="let guest">
-                {{ guest.checkOut | date: 'dd.MM.yyyy HH:mm' }}
+
+              <td mat-cell *matCellDef="let reservation">
+                {{ reservation.checkOut | date:'dd.MM.yyyy HH:mm' }}
               </td>
             </ng-container>
 
-            <ng-container matColumnDef="totalAmount">
-              <th mat-header-cell *matHeaderCellDef>Сума</th>
-              <td mat-cell *matCellDef="let guest">
-                <span class="amount">
-                  {{ guest.totalAmount | number: '1.2-2' }} ₴
+            <ng-container matColumnDef="status">
+              <th mat-header-cell *matHeaderCellDef>Статус</th>
+
+              <td mat-cell *matCellDef="let reservation">
+                <span class="status-badge">
+                  {{ reservation.status }}
                 </span>
               </td>
             </ng-container>
 
             <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+
             <tr
               mat-row
               *matRowDef="let row; columns: displayedColumns"
+              class="guest-row"
+              (click)="openReservation(row.id)"
             ></tr>
           </table>
         </div>
 
         <div class="table-footer">
           <span>
-            Усього гостей: <strong>{{ guests().length }}</strong>
+            Усього гостей:
+            <strong>{{ guests().length }}</strong>
           </span>
         </div>
       }

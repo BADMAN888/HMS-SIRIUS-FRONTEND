@@ -1,11 +1,7 @@
 import { DatePipe } from '@angular/common';
+import { Component, OnInit, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import {
-  ChangeDetectorRef,
-  Component,
-  OnInit,
-  inject
-} from '@angular/core';
+import { catchError, finalize, of } from 'rxjs';
 import { HotelGridService } from '../../core/services/hotel-grid.service';
 import { HotelGridRoom } from '../../core/models/hotel-grid-room.model';
 import { HotelGridReservationResponse } from '../../core/models/hotel-grid/hotel-grid-reservation-response.model';
@@ -19,7 +15,6 @@ import { HotelGridReservationResponse } from '../../core/models/hotel-grid/hotel
 })
 export class HotelGrid implements OnInit {
   private readonly hotelGridService = inject(HotelGridService);
-  private readonly changeDetectorRef = inject(ChangeDetectorRef);
 
   readonly dayWidth = 92;
   readonly roomColumnWidth = 150;
@@ -29,7 +24,7 @@ export class HotelGrid implements OnInit {
   rooms: HotelGridRoom[] = [];
   periodMonth = '';
 
-  loading = true;
+  loading = false;
   error = '';
 
   private gridStart!: Date;
@@ -42,9 +37,59 @@ export class HotelGrid implements OnInit {
 
   private initializeDays(): void {
     const today = new Date();
-    this.gridStart = new Date(today.getFullYear(), today.getMonth(), 1);
-    this.periodMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
 
+    this.gridStart = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      1
+    );
+
+    this.periodMonth = `${today.getFullYear()}-${String(
+  today.getMonth() + 1
+).padStart(2, '0')}`;
+
+    this.updateDays();
+  }
+
+  changeMonth(offset: number): void {
+    const [year, month] = this.periodMonth.split('-').map(Number);
+    const next = new Date(year, month - 1 + offset, 1);
+
+    this.setMonth(next.getFullYear(), next.getMonth());
+  }
+
+  setSelectedMonth(value: string): void {
+    if (!value) {
+      return;
+    }
+
+    const [year, month] = value.split('-').map(Number);
+
+    if (!year || !month || month < 1 || month > 12) {
+      return;
+    }
+
+    this.setMonth(year, month - 1);
+  }
+
+  goToCurrentMonth(): void {
+    const today = new Date();
+
+    this.setMonth(today.getFullYear(), today.getMonth());
+  }
+
+  private setMonth(year: number, month: number): void {
+    this.gridStart = new Date(year, month, 1);
+
+    this.periodMonth = `${this.gridStart.getFullYear()}-${String(
+  this.gridStart.getMonth() + 1
+).padStart(2, '0')}`;
+
+    this.updateDays();
+    this.loadGrid();
+  }
+
+  private updateDays(): void {
     this.gridEnd = this.addDays(
       this.gridStart,
       this.numberOfDays
@@ -52,39 +97,9 @@ export class HotelGrid implements OnInit {
 
     this.days = Array.from(
       { length: this.numberOfDays },
-      (_, index) =>
-        this.addDays(
-          this.gridStart,
-          index
-        )
+      (_, index) => this.addDays(this.gridStart, index)
     );
   }
-
-  changeMonth(offset: number): void {
-    const [year, month] = this.periodMonth.split('-').map(Number);
-    const next = new Date(year, month - 1 + offset, 1);
-    this.setMonth(next.getFullYear(), next.getMonth());
-  }
-
-  setSelectedMonth(value: string): void {
-    if (!value) return;
-    const [year, month] = value.split('-').map(Number);
-    this.setMonth(year, month - 1);
-  }
-
-  goToCurrentMonth(): void {
-    const today = new Date();
-    this.setMonth(today.getFullYear(), today.getMonth());
-  }
-
-  private setMonth(year: number, month: number): void {
-    this.gridStart = new Date(year, month, 1);
-    this.gridEnd = this.addDays(this.gridStart, this.numberOfDays);
-    this.periodMonth = `${year}-${String(month + 1).padStart(2, '0')}`;
-    this.days = Array.from({ length: this.numberOfDays }, (_, index) => this.addDays(this.gridStart, index));
-    this.loadGrid();
-  }
-
 
   private loadGrid(): void {
     this.loading = true;
@@ -95,22 +110,24 @@ export class HotelGrid implements OnInit {
 
     this.hotelGridService
       .getGrid(startDate, endDate)
-      .subscribe({
-        next: response => {
-          this.rooms = response.rooms ?? [];
-          this.loading = false;
-          this.changeDetectorRef.detectChanges();
-        },
-        error: error => {
+      .pipe(
+        catchError(error => {
           this.rooms = [];
 
           this.error =
             error?.error?.message ||
             error?.message ||
-            `Failed to load hotel grid. HTTP ${error?.status || ''}`;
+            `Не вдалося завантажити шахматку. HTTP ${error?.status || ''}`;
 
+          return of(null);
+        }),
+        finalize(() => {
           this.loading = false;
-          this.changeDetectorRef.detectChanges();
+        })
+      )
+      .subscribe(response => {
+        if (response) {
+          this.rooms = response.rooms ?? [];
         }
       });
   }
@@ -136,10 +153,7 @@ export class HotelGrid implements OnInit {
       visibleStart
     );
 
-    return (
-      this.roomColumnWidth +
-      offset * this.dayWidth
-    );
+    return this.roomColumnWidth + offset * this.dayWidth;
   }
 
   getReservationWidth(
@@ -175,9 +189,7 @@ export class HotelGrid implements OnInit {
     return `${reservation.confirmationNumber} · ${reservation.status}`;
   }
 
-  formatReservationDate(
-    value: string
-  ): string {
+  formatReservationDate(value: string): string {
     const date = this.parseDateTime(value);
 
     const day = String(date.getDate()).padStart(2, '0');
@@ -189,29 +201,18 @@ export class HotelGrid implements OnInit {
   }
 
   isToday(day: Date): boolean {
-    return (
-      this.formatDate(day) ===
-      this.formatDate(new Date())
-    );
+    return this.formatDate(day) === this.formatDate(new Date());
   }
 
-  private addDays(
-    date: Date,
-    days: number
-  ): Date {
+  private addDays(date: Date, days: number): Date {
     const result = new Date(date);
 
-    result.setDate(
-      result.getDate() + days
-    );
+    result.setDate(result.getDate() + days);
 
     return result;
   }
 
-  private getDaysBetween(
-    start: Date,
-    end: Date
-  ): number {
+  private getDaysBetween(start: Date, end: Date): number {
     const startUtc = Date.UTC(
       start.getFullYear(),
       start.getMonth(),
@@ -225,32 +226,15 @@ export class HotelGrid implements OnInit {
     );
 
     return Math.round(
-      (endUtc - startUtc) /
-      (1000 * 60 * 60 * 24)
+      (endUtc - startUtc) / (1000 * 60 * 60 * 24)
     );
   }
 
-  private parseDateTime(
-    value: string
-  ): Date {
-    const [
-      datePart,
-      timePart = '00:00:00'
-    ] = value.split('T');
+  private parseDateTime(value: string): Date {
+    const [datePart, timePart = '00:00:00'] = value.split('T');
 
-    const [
-      year,
-      month,
-      day
-    ] = datePart
-      .split('-')
-      .map(Number);
-
-    const [
-      hours,
-      minutes,
-      seconds
-    ] = timePart
+    const [year, month, day] = datePart.split('-').map(Number);
+    const [hours = 0, minutes = 0, seconds = 0] = timePart
       .split(':')
       .map(Number);
 
@@ -264,19 +248,12 @@ export class HotelGrid implements OnInit {
     );
   }
 
-  private formatDate(
-    date: Date
-  ): string {
+  private formatDate(date: Date): string {
     const year = date.getFullYear();
-
-    const month = String(
-      date.getMonth() + 1
-    ).padStart(2, '0');
-
-    const day = String(
-      date.getDate()
-    ).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
 
     return `${year}-${month}-${day}`;
   }
 }
+

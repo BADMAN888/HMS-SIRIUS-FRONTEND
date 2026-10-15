@@ -1,12 +1,12 @@
- import { DatePipe, DecimalPipe } from '@angular/common';
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { DatePipe, DecimalPipe } from '@angular/common';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { catchError, finalize, forkJoin, of } from 'rxjs';
 import { ReservationService } from '../../../core/services/reservation.service';
-
 import { RoomService } from '../../../core/services/room.service';
 import { RoomResponse } from '../../../core/models/hotel/room-response.model';
- import {ReservationCheckInResponse} from '../../../core/models/reservation/reservation-check-in-response.model';
+import { ReservationCheckInResponse } from '../../../core/models/reservation/reservation-check-in-response.model';
+import { ReservationStatus } from '../../../core/models/enums/reservation-status.enum';
 
 @Component({
   selector: 'app-check-in',
@@ -25,8 +25,15 @@ export class CheckIn implements OnInit {
   readonly loading = signal(false);
   readonly error = signal('');
   readonly rooms = signal<RoomResponse[]>([]);
+  readonly checkingInId = signal<number | null>(null);
 
-  checkingInId = signal<number | null>(null);
+  readonly pendingCheckIns = computed(() =>
+    this.reservations().filter(
+      reservation =>
+        reservation.status === ReservationStatus.RESERVED ||
+        reservation.status === ReservationStatus.CONFIRMED
+    ).length
+  );
 
   ngOnInit(): void {
     this.loadCheckIns();
@@ -35,8 +42,11 @@ export class CheckIn implements OnInit {
   onDateChange(event: Event): void {
     const input = event.target as HTMLInputElement;
 
-    this.selectedDate.set(input.value);
+    if (!input.value) {
+      return;
+    }
 
+    this.selectedDate.set(input.value);
     this.loadCheckIns();
   }
 
@@ -49,13 +59,15 @@ export class CheckIn implements OnInit {
     this.error.set('');
 
     forkJoin({
-      reservations: this.reservationService.getCheckIns(this.selectedDate()),
-      rooms: this.roomService.getAll().pipe(catchError(() => of([] as RoomResponse[])))
+      reservations: this.reservationService.getByCheckInDate(
+        this.selectedDate()
+      ),
+      rooms: this.roomService.getAll().pipe(
+        catchError(() => of([] as RoomResponse[]))
+      )
     })
       .pipe(
-        finalize(() => {
-          this.loading.set(false);
-        })
+        finalize(() => this.loading.set(false))
       )
       .subscribe({
         next: data => {
@@ -85,14 +97,10 @@ export class CheckIn implements OnInit {
     this.reservationService
       .checkIn(reservation.id)
       .pipe(
-        finalize(() => {
-          this.checkingInId.set(null);
-        })
+        finalize(() => this.checkingInId.set(null))
       )
       .subscribe({
-        next: () => {
-          this.loadCheckIns();
-        },
+        next: () => this.loadCheckIns(),
         error: error => {
           this.error.set(
             error?.error?.message ||
