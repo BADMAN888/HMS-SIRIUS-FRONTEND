@@ -1,5 +1,5 @@
-import { RoomStatus } from './room-status.enum';
-import { RoomView } from './room-view.enum';
+import { RoomStatus } from '../enums/room-status.enum';
+import { RoomView } from '../enums/room-view.enum';
 
 export interface RoomResponse {
   id: number;

@@ -1,5 +1,5 @@
-import { RoomStatus } from '../hotel/room-status.enum';
-import { RoomView } from '../hotel/room-view.enum';
+import { RoomStatus } from '../enums/room-status.enum';
+import { RoomView } from '../enums/room-view.enum';
 import { HotelGridReservationResponse } from './hotel-grid-reservation-response.model';
 
 export interface HotelGridRoomResponse {

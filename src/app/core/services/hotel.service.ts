@@ -1,9 +1,9 @@
-import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
 
+import { inject, Injectable } from '@angular/core';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { Observable } from 'rxjs';
 import { HotelRequest } from '../models/hotel/hotel-request.model';
-import {HotelResponse} from '../models/hotel/hotel-response.model';
+import { HotelResponse } from '../models/hotel/hotel-response.model';
 
 @Injectable({
   providedIn: 'root'
@@ -12,33 +12,29 @@ export class HotelService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = 'http://localhost:8080/api/hotels';
 
-  getAll(): Observable<HotelResponse[]> {
-    return this.http.get<HotelResponse[]>(this.apiUrl);
+  getHotelById(id: number): Observable<HotelResponse> {
+    return this.http.get<HotelResponse>(`${this.apiUrl}/${id}`);
   }
 
-  getById(id: number): Observable<HotelResponse> {
-    return this.http.get<HotelResponse>(
-      `${this.apiUrl}/${id}`
-    );
+  getHotelByName(name: string): Observable<HotelResponse> {
+    const params = new HttpParams().set('name', name);
+
+    return this.http.get<HotelResponse>(`${this.apiUrl}/by-name`, {
+      params
+    });
   }
 
-  create(request: HotelRequest): Observable<HotelResponse> {
-    return this.http.post<HotelResponse>(
-      this.apiUrl,
-      request
-    );
+  createHotel(request: HotelRequest): Observable<HotelResponse> {
+    return this.http.post<HotelResponse>(this.apiUrl, request);
   }
 
-  update(id: number, request: HotelRequest): Observable<HotelResponse> {
-    return this.http.put<HotelResponse>(
-      `${this.apiUrl}/${id}`,
-      request
-    );
+  updateHotel(id: number, request: HotelRequest): Observable<HotelResponse> {
+    return this.http.put<HotelResponse>(`${this.apiUrl}/${id}`, request);
   }
 
-  delete(id: number): Observable<void> {
-    return this.http.delete<void>(
-      `${this.apiUrl}/${id}`
-    );
+  deleteHotel(id: number): Observable<string> {
+    return this.http.delete(`${this.apiUrl}/${id}`, {
+      responseType: 'text'
+    });
   }
 }

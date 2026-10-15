@@ -4,4 +4,3 @@ export enum RoomView {
   STREET = 'STREET',
   PANORAMIC = 'PANORAMIC'
 }
-

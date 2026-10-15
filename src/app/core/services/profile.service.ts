@@ -1,8 +1,9 @@
-import { Injectable, inject } from '@angular/core';
+
+import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Profile } from '../models/reservation/profile.model';
-import { ProfileRequest } from '../models/reservation/profile-request.model';
+import { ProfileRequest } from '../models/profile/profile-request.model';
+import { ProfileResponse } from '../models/profile/profile-response.model';
 
 @Injectable({
   providedIn: 'root'
@@ -11,33 +12,25 @@ export class ProfileService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = 'http://localhost:8080/api/profiles';
 
-  getAll(): Observable<Profile[]> {
-    return this.http.get<Profile[]>(this.apiUrl);
+  getById(id: number): Observable<ProfileResponse> {
+    return this.http.get<ProfileResponse>(`${this.apiUrl}/${id}`);
   }
 
-  getById(id: number): Observable<Profile> {
-    return this.http.get<Profile>(
-      `${this.apiUrl}/${id}`
-    );
+  getAll(): Observable<ProfileResponse[]> {
+    return this.http.get<ProfileResponse[]>(this.apiUrl);
   }
 
-  create(request: ProfileRequest): Observable<Profile> {
-    return this.http.post<Profile>(
-      this.apiUrl,
-      request
-    );
+  create(request: ProfileRequest): Observable<ProfileResponse> {
+    return this.http.post<ProfileResponse>(this.apiUrl, request);
   }
 
-  update(id: number, request: ProfileRequest): Observable<Profile> {
-    return this.http.put<Profile>(
-      `${this.apiUrl}/${id}`,
-      request
-    );
+  update(id: number, request: ProfileRequest): Observable<ProfileResponse> {
+    return this.http.put<ProfileResponse>(`${this.apiUrl}/${id}`, request);
   }
 
-  delete(id: number): Observable<void> {
-    return this.http.delete<void>(
-      `${this.apiUrl}/${id}`
-    );
+  delete(id: number): Observable<string> {
+    return this.http.delete(`${this.apiUrl}/${id}`, {
+      responseType: 'text'
+    });
   }
 }
