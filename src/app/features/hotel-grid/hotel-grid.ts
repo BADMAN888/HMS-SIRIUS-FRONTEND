@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { catchError, finalize, of } from 'rxjs';
 import { HotelGridService } from '../../core/services/hotel-grid.service';
@@ -15,14 +15,17 @@ import { HotelGridReservationResponse } from '../../core/models/hotel-grid/hotel
 })
 export class HotelGrid implements OnInit {
   private readonly hotelGridService = inject(HotelGridService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   readonly dayWidth = 92;
   readonly roomColumnWidth = 150;
-  readonly numberOfDays = 31;
+  readonly shiftDays = 10;
 
   days: Date[] = [];
   rooms: HotelGridRoom[] = [];
-  periodMonth = '';
+
+  startDateValue = '';
+  endDateValue = '';
 
   loading = false;
   error = '';
@@ -30,73 +33,75 @@ export class HotelGrid implements OnInit {
   private gridStart!: Date;
   private gridEnd!: Date;
 
+  get numberOfDays(): number {
+    return this.days.length;
+  }
+
   ngOnInit(): void {
-    this.initializeDays();
+    const today = this.startOfDay(new Date());
+
+    this.gridStart = today;
+    this.gridEnd = this.addDays(today, 31);
+
+    this.syncDateInputs();
+    this.updateDays();
     this.loadGrid();
   }
 
-  private initializeDays(): void {
-    const today = new Date();
+  movePeriod(offset: number): void {
+    this.gridStart = this.addDays(this.gridStart, offset);
+    this.gridEnd = this.addDays(this.gridEnd, offset);
 
-    this.gridStart = new Date(
-      today.getFullYear(),
-      today.getMonth(),
-      1
-    );
-
-    this.periodMonth = `${today.getFullYear()}-${String(
-  today.getMonth() + 1
-).padStart(2, '0')}`;
-
+    this.syncDateInputs();
     this.updateDays();
+    this.loadGrid();
   }
 
-  changeMonth(offset: number): void {
-    const [year, month] = this.periodMonth.split('-').map(Number);
-    const next = new Date(year, month - 1 + offset, 1);
+  goToToday(): void {
+    this.gridStart = this.startOfDay(new Date());
+    this.gridEnd = this.addDays(this.gridStart, 31);
 
-    this.setMonth(next.getFullYear(), next.getMonth());
+    this.syncDateInputs();
+    this.updateDays();
+    this.loadGrid();
   }
 
-  setSelectedMonth(value: string): void {
-    if (!value) {
+  applyDateRange(): void {
+    if (!this.startDateValue || !this.endDateValue) {
+      this.error = 'Вибери початкову та кінцеву дату.';
       return;
     }
 
-    const [year, month] = value.split('-').map(Number);
+    const start = this.parseInputDate(this.startDateValue);
+    const end = this.parseInputDate(this.endDateValue);
 
-    if (!year || !month || month < 1 || month > 12) {
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      this.error = 'Вкажи коректний діапазон дат.';
       return;
     }
 
-    this.setMonth(year, month - 1);
-  }
+    if (end <= start) {
+      this.error = 'Кінцева дата має бути пізніше початкової.';
+      return;
+    }
 
-  goToCurrentMonth(): void {
-    const today = new Date();
-
-    this.setMonth(today.getFullYear(), today.getMonth());
-  }
-
-  private setMonth(year: number, month: number): void {
-    this.gridStart = new Date(year, month, 1);
-
-    this.periodMonth = `${this.gridStart.getFullYear()}-${String(
-  this.gridStart.getMonth() + 1
-).padStart(2, '0')}`;
+    this.gridStart = start;
+    this.gridEnd = end;
 
     this.updateDays();
     this.loadGrid();
+  }
+
+  private syncDateInputs(): void {
+    this.startDateValue = this.formatDate(this.gridStart);
+    this.endDateValue = this.formatDate(this.gridEnd);
   }
 
   private updateDays(): void {
-    this.gridEnd = this.addDays(
-      this.gridStart,
-      this.numberOfDays
-    );
+    const count = this.getDaysBetween(this.gridStart, this.gridEnd);
 
     this.days = Array.from(
-      { length: this.numberOfDays },
+      { length: count },
       (_, index) => this.addDays(this.gridStart, index)
     );
   }
@@ -104,6 +109,7 @@ export class HotelGrid implements OnInit {
   private loadGrid(): void {
     this.loading = true;
     this.error = '';
+    this.cdr.detectChanges();
 
     const startDate = this.formatDate(this.gridStart);
     const endDate = this.formatDate(this.gridEnd);
@@ -123,12 +129,15 @@ export class HotelGrid implements OnInit {
         }),
         finalize(() => {
           this.loading = false;
+          this.cdr.detectChanges();
         })
       )
       .subscribe(response => {
         if (response) {
           this.rooms = response.rooms ?? [];
         }
+
+        this.cdr.detectChanges();
       });
   }
 
@@ -142,18 +151,10 @@ export class HotelGrid implements OnInit {
     reservation: HotelGridReservationResponse
   ): number {
     const checkIn = this.parseDateTime(reservation.checkIn);
+    const visibleStart = checkIn < this.gridStart ? this.gridStart : checkIn;
 
-    const visibleStart =
-      checkIn < this.gridStart
-        ? this.gridStart
-        : checkIn;
-
-    const offset = this.getDaysBetween(
-      this.gridStart,
-      visibleStart
-    );
-
-    return this.roomColumnWidth + offset * this.dayWidth;
+    return this.roomColumnWidth +
+      this.getDaysBetween(this.gridStart, visibleStart) * this.dayWidth;
   }
 
   getReservationWidth(
@@ -162,25 +163,12 @@ export class HotelGrid implements OnInit {
     const checkIn = this.parseDateTime(reservation.checkIn);
     const checkOut = this.parseDateTime(reservation.checkOut);
 
-    const visibleStart =
-      checkIn < this.gridStart
-        ? this.gridStart
-        : checkIn;
+    const visibleStart = checkIn < this.gridStart ? this.gridStart : checkIn;
+    const visibleEnd = checkOut > this.gridEnd ? this.gridEnd : checkOut;
 
-    const visibleEnd =
-      checkOut > this.gridEnd
-        ? this.gridEnd
-        : checkOut;
+    const visibleNights = this.getDaysBetween(visibleStart, visibleEnd);
 
-    const visibleNights = this.getDaysBetween(
-      visibleStart,
-      visibleEnd
-    );
-
-    return Math.max(
-      this.dayWidth - 6,
-      visibleNights * this.dayWidth - 6
-    );
+    return Math.max(this.dayWidth - 6, visibleNights * this.dayWidth - 6);
   }
 
   getReservationLabel(
@@ -204,11 +192,13 @@ export class HotelGrid implements OnInit {
     return this.formatDate(day) === this.formatDate(new Date());
   }
 
+  private startOfDay(date: Date): Date {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  }
+
   private addDays(date: Date, days: number): Date {
     const result = new Date(date);
-
     result.setDate(result.getDate() + days);
-
     return result;
   }
 
@@ -225,27 +215,22 @@ export class HotelGrid implements OnInit {
       end.getDate()
     );
 
-    return Math.round(
-      (endUtc - startUtc) / (1000 * 60 * 60 * 24)
-    );
+    return Math.round((endUtc - startUtc) / (1000 * 60 * 60 * 24));
+  }
+
+  private parseInputDate(value: string): Date {
+    const [year, month, day] = value.split('-').map(Number);
+    return new Date(year, month - 1, day);
   }
 
   private parseDateTime(value: string): Date {
     const [datePart, timePart = '00:00:00'] = value.split('T');
-
     const [year, month, day] = datePart.split('-').map(Number);
     const [hours = 0, minutes = 0, seconds = 0] = timePart
       .split(':')
       .map(Number);
 
-    return new Date(
-      year,
-      month - 1,
-      day,
-      hours,
-      minutes,
-      seconds || 0
-    );
+    return new Date(year, month - 1, day, hours, minutes, seconds || 0);
   }
 
   private formatDate(date: Date): string {
@@ -256,4 +241,3 @@ export class HotelGrid implements OnInit {
     return `${year}-${month}-${day}`;
   }
 }
-

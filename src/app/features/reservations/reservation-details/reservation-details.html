@@ -4,532 +4,138 @@
       <mat-spinner diameter="40"></mat-spinner>
       <p>Завантаження бронювання...</p>
     </div>
-  } @else {
-    @if (reservation(); as res) {
-      <header class="page-header">
-        <div class="page-heading">
+  } @else if (error() && !reservation()) {
+    <div class="state-message error">
+      <mat-icon>error_outline</mat-icon>
+      <p>{{ error() }}</p>
+      <button mat-flat-button type="button" (click)="goBack()">
+        <mat-icon>arrow_back</mat-icon>
+        До шахматки
+      </button>
+    </div>
+  } @else if (reservation(); as item) {
+    <div class="page-header">
+      <div class="header-title">
+        <button
+          mat-icon-button
+          type="button"
+          class="back-button"
+          aria-label="Повернутися до шахматки"
+          (click)="goBack()"
+        >
+          <mat-icon>arrow_back</mat-icon>
+        </button>
+
+        <div>
+          <span class="eyebrow">HMS SIRIUS / БРОНЮВАННЯ</span>
+          <h1>Бронювання #{{ item.id }}</h1>
+          <p class="subtitle">
+            Перегляд та керування інформацією про бронювання
+          </p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        @if (!isEditing()) {
           <button
-            mat-icon-button
+            mat-flat-button
             type="button"
-            aria-label="Назад"
-            (click)="goBack()"
+            class="primary-button"
+            [disabled]="actionLoading()"
+            (click)="startEditing()"
           >
-            <mat-icon>arrow_back</mat-icon>
+            <mat-icon>edit</mat-icon>
+            Редагувати
+          </button>
+        } @else {
+          <button
+            mat-stroked-button
+            type="button"
+            class="secondary-button"
+            [disabled]="saving()"
+            (click)="cancelEditing()"
+          >
+            Скасувати зміни
           </button>
 
-          <div>
-            <h1>Бронювання №{{ res.id }}</h1>
-            <p>{{ res.confirmationNumber }}</p>
-          </div>
-        </div>
-
-        <div class="header-actions">
-          @if (!isEditing()) {
-            <button
-              mat-stroked-button
-              type="button"
-              [disabled]="actionLoading() || saving()"
-              (click)="startEditing()"
-            >
-              <mat-icon>edit</mat-icon>
-              Редагувати
-            </button>
-          } @else {
-            <button
-              mat-stroked-button
-              type="button"
-              [disabled]="saving()"
-              (click)="cancelEditing()"
-            >
-              Скасувати
-            </button>
-
-            <button
-              mat-flat-button
-              type="button"
-              [disabled]="saving()"
-              (click)="save()"
-            >
-              <mat-icon>save</mat-icon>
-              {{ saving() ? 'Збереження...' : 'Зберегти' }}
-            </button>
-          }
-        </div>
-      </header>
-
-      @if (error()) {
-        <div class="state-message error">
-          <mat-icon>error_outline</mat-icon>
-          <p>{{ error() }}</p>
-        </div>
-      }
-
-      <section class="reservation-summary">
-        <div class="summary-item">
-          <span class="summary-label">Статус</span>
-          <span
-            class="status-badge"
-            [class.reserved]="res.status === 'RESERVED'"
-            [class.confirmed]="res.status === 'CONFIRMED'"
-            [class.in-house]="res.status === 'IN_HOUSE'"
-            [class.completed]="res.status === 'COMPLETED'"
-            [class.cancelled]="res.status === 'CANCELLED'"
-            [class.no-show]="res.status === 'NO_SHOW'"
+          <button
+            mat-flat-button
+            type="button"
+            class="primary-button"
+            [disabled]="saving()"
+            (click)="save()"
           >
-            {{ getStatusLabel(res.status) }}
-          </span>
-        </div>
+            @if (saving()) {
+              <mat-spinner diameter="18"></mat-spinner>
+            } @else {
+              <mat-icon>save</mat-icon>
+            }
+            Зберегти
+          </button>
+        }
+      </div>
+    </div>
 
-        <div class="summary-item">
+    @if (error()) {
+      <div class="alert alert-error">
+        <mat-icon>error_outline</mat-icon>
+        <span>{{ error() }}</span>
+      </div>
+    }
+
+    <section class="summary-grid">
+      <article class="summary-card">
+        <div class="summary-icon">
+          <mat-icon>meeting_room</mat-icon>
+        </div>
+        <div class="summary-content">
           <span class="summary-label">Номер кімнати</span>
-          <strong>{{ res.room.roomNumber }}</strong>
-        </div>
-
-        <div class="summary-item">
-          <span class="summary-label">Заїзд</span>
-          <strong>{{ res.checkIn | date:'dd.MM.yyyy' }}</strong>
-        </div>
-
-        <div class="summary-item">
-          <span class="summary-label">Виїзд</span>
-          <strong>{{ res.checkOut | date:'dd.MM.yyyy' }}</strong>
-        </div>
-
-        <div class="summary-item">
-          <span class="summary-label">Гості</span>
           <strong>
-            {{ res.adults }} дорослих
-            @if (res.children > 0) {
-              , {{ res.children }} дітей
+            @if (isEditing()) {
+              @if (rooms().length) {
+                {{ rooms().find(r => r.id === editForm().roomId)?.roomNumber ?? '№ ' + editForm().roomId }}
+              } @else {
+                № {{ editForm().roomId }}
+              }
+            } @else {
+              № {{ item.room.roomNumber }}
             }
           </strong>
         </div>
-      </section>
+      </article>
 
-      <div class="details-layout">
-        <main class="details-main">
-          <section class="details-card">
-            <div class="card-heading">
-              <mat-icon>event</mat-icon>
-              <h2>Деталі бронювання</h2>
-            </div>
+      <article class="summary-card">
+        <div class="summary-icon">
+          <mat-icon>person</mat-icon>
+        </div>
+        <div class="summary-content">
+          <span class="summary-label">Основний гість</span>
+          <strong>
+            {{ item.primaryGuest.firstName }}
+            {{ item.primaryGuest.lastName }}
+          </strong>
+        </div>
+      </article>
 
-            <div class="details-grid">
-              <div class="form-field">
-                <label for="confirmationNumber">Номер підтвердження</label>
-                <input
-                  id="confirmationNumber"
-                  type="text"
-                  [value]="res.confirmationNumber"
-                  readonly
-                />
-              </div>
+      <article class="summary-card">
+        <div class="summary-icon">
+          <mat-icon>calendar_month</mat-icon>
+        </div>
+        <div class="summary-content">
+          <span class="summary-label">Період проживання</span>
+          <strong>
+            {{ item.checkIn | date:'dd.MM.yyyy' }}
+            —
+            {{ item.checkOut | date:'dd.MM.yyyy' }}
+          </strong>
+        </div>
+      </article>
 
-              <div class="form-field">
-                <label for="status">Статус</label>
-                <input
-                  id="status"
-                  type="text"
-                  [value]="getStatusLabel(res.status)"
-                  readonly
-                />
-              </div>
-
-              <div class="form-field">
-                <label for="checkIn">Дата заїзду</label>
-                <input
-                  id="checkIn"
-                  type="date"
-                  [value]="isEditing() ? editForm().checkIn : res.checkIn.substring(0, 10)"
-                  [readOnly]="!isEditing()"
-                  (change)="updateEditField('checkIn', $any($event.target).value)"
-                />
-              </div>
-
-              <div class="form-field">
-                <label for="checkOut">Дата виїзду</label>
-                <input
-                  id="checkOut"
-                  type="date"
-                  [value]="isEditing() ? editForm().checkOut : res.checkOut.substring(0, 10)"
-                  [readOnly]="!isEditing()"
-                  (change)="updateEditField('checkOut', $any($event.target).value)"
-                />
-              </div>
-
-              <div class="form-field">
-                <label for="adults">Дорослі</label>
-                <input
-                  id="adults"
-                  type="number"
-                  min="1"
-                  [value]="isEditing() ? editForm().adults : res.adults"
-                  [readOnly]="!isEditing()"
-                  (change)="updateEditField('adults', +$any($event.target).value)"
-                />
-              </div>
-
-              <div class="form-field">
-                <label for="children">Діти</label>
-                <input
-                  id="children"
-                  type="number"
-                  min="0"
-                  [value]="isEditing() ? editForm().children : res.children"
-                  [readOnly]="!isEditing()"
-                  (change)="updateEditField('children', +$any($event.target).value)"
-                />
-              </div>
-
-              <div class="form-field">
-                @if (isEditing()) {
-                  <label for="editRoomSelect">Номер кімнати</label>
-                  <select
-                    id="editRoomSelect"
-                    [value]="editForm().roomId"
-                    (change)="updateEditField('roomId', +$any($event.target).value)"
-                  >
-                    @for (room of rooms(); track room.id) {
-                      <option [value]="room.id">
-                        {{ room.roomNumber }}
-                        @if (room.categoryId !== null) {
-                          — категорія {{ room.categoryId }}
-                        }
-                      </option>
-                    }
-                  </select>
-                } @else {
-                  <label for="roomView">Номер кімнати</label>
-                  <input
-                    id="roomView"
-                    type="text"
-                    [value]="res.room.roomNumber"
-                    readonly
-                  />
-                }
-              </div>
-
-              <div class="form-field">
-                @if (isEditing()) {
-                  <label for="editRateSelect">Тариф</label>
-                  <select
-                    id="editRateSelect"
-                    [value]="editForm().rateId"
-                    (change)="updateEditField('rateId', +$any($event.target).value)"
-                  >
-                    @for (rate of rates(); track rate.id) {
-                      <option [value]="rate.id">
-                        {{ rate.name }} —
-                        {{ rate.price | number:'1.2-2' }}
-                        {{ rate.currency }}
-                      </option>
-                    }
-                  </select>
-                } @else {
-                  <label for="rateView">Тариф</label>
-                  <input
-                    id="rateView"
-                    type="text"
-                    [value]="res.rate.name"
-                    readonly
-                  />
-                }
-              </div>
-            </div>
-          </section>
-
-          <section class="details-card">
-            <div class="card-heading">
-              <mat-icon>person</mat-icon>
-              <h2>Основний гість</h2>
-            </div>
-
-            <div class="details-grid">
-              @if (isEditing()) {
-                <div class="form-field full-width">
-                  <label for="primaryGuest">Змінити основного гостя</label>
-                  <select
-                    id="primaryGuest"
-                    [value]="editForm().primaryGuestId"
-                    (change)="updateEditField('primaryGuestId', +$any($event.target).value)"
-                  >
-                    @for (profile of profiles(); track profile.id) {
-                      <option [value]="profile.id">
-                        {{ profile.lastName }} {{ profile.firstName }}
-                        @if (profile.middleName) {
-                          {{ profile.middleName }}
-                        }
-                        — {{ profile.phoneNumber || 'Без телефону' }}
-                      </option>
-                    }
-                  </select>
-                </div>
-              }
-
-              <div class="form-field">
-                <label for="guestLastName">Прізвище</label>
-                <input
-                  id="guestLastName"
-                  type="text"
-                  [value]="res.primaryGuest.lastName"
-                  readonly
-                />
-              </div>
-
-              <div class="form-field">
-                <label for="guestFirstName">Ім'я</label>
-                <input
-                  id="guestFirstName"
-                  type="text"
-                  [value]="res.primaryGuest.firstName"
-                  readonly
-                />
-              </div>
-
-              <div class="form-field">
-                <label for="guestMiddleName">По батькові</label>
-                <input
-                  id="guestMiddleName"
-                  type="text"
-                  [value]="res.primaryGuest.middleName || '—'"
-                  readonly
-                />
-              </div>
-
-              <div class="form-field">
-                <label for="guestPhone">Телефон</label>
-                <input
-                  id="guestPhone"
-                  type="tel"
-                  [value]="res.primaryGuest.phoneNumber || '—'"
-                  readonly
-                />
-              </div>
-
-              <div class="form-field">
-                <label for="guestEmail">Email</label>
-                <input
-                  id="guestEmail"
-                  type="email"
-                  [value]="res.primaryGuest.email || '—'"
-                  readonly
-                />
-              </div>
-
-              <div class="form-field">
-                <label for="guestGender">Стать</label>
-                <input
-                  id="guestGender"
-                  type="text"
-                  [value]="getGenderLabel(res.primaryGuest.gender)"
-                  readonly
-                />
-              </div>
-
-              <div class="form-field full-width">
-                <label for="guestAddress">Адреса</label>
-                <input
-                  id="guestAddress"
-                  type="text"
-                  [value]="res.primaryGuest.address || '—'"
-                  readonly
-                />
-              </div>
-            </div>
-          </section>
-
-          <section class="details-card">
-            <div class="card-heading">
-              <mat-icon>group</mat-icon>
-              <h2>Додаткові гості</h2>
-            </div>
-
-            @if (isEditing()) {
-              <div class="form-field">
-                <label for="guestIds">ID додаткових гостей</label>
-                <input
-                  id="guestIds"
-                  type="text"
-                  [value]="editForm().guestIds.join(', ')"
-                  placeholder="Наприклад: 12, 15"
-                  (change)="onGuestIdsChange($any($event.target).value)"
-                />
-                <small>Введіть ID гостей через кому. ID основного гостя додавати не потрібно.</small>
-              </div>
-            }
-
-            @if (res.guestIds.length > 0) {
-              <div class="guest-list">
-                @for (guestId of res.guestIds; track guestId) {
-                  <div class="guest-item">
-                    <mat-icon>person_outline</mat-icon>
-                    <span>Гість №{{ guestId }}</span>
-                  </div>
-                }
-              </div>
-            } @else {
-              <p class="empty-message">Додаткових гостей немає.</p>
-            }
-          </section>
-
-          <section class="details-card">
-            <div class="card-heading">
-              <mat-icon>chat</mat-icon>
-              <h2>Коментарі</h2>
-              <span class="comment-count">{{ res.comments.length }}</span>
-            </div>
-
-            @if (res.comments.length > 0) {
-              <div class="comments-list">
-                @for (comment of res.comments; track comment.id) {
-                  <article class="comment-item">
-                    <div class="comment-meta">
-                      <span>Коментар №{{ comment.id }}</span>
-                      <time>
-                        {{ comment.createdAt | date:'dd.MM.yyyy HH:mm' }}
-                      </time>
-                    </div>
-                    <p>{{ comment.text }}</p>
-                  </article>
-                }
-              </div>
-            } @else {
-              <p class="empty-message">Коментарів поки немає.</p>
-            }
-
-            <div class="add-comment">
-              <label for="newComment">Новий коментар</label>
-              <textarea
-                id="newComment"
-                rows="3"
-                [value]="newComment()"
-                placeholder="Введіть коментар..."
-                (input)="newComment.set($any($event.target).value)"
-              ></textarea>
-
-              <button
-                mat-flat-button
-                type="button"
-                [disabled]="!newComment().trim() || addingComment()"
-                (click)="addComment()"
-              >
-                <mat-icon>send</mat-icon>
-                {{ addingComment() ? 'Додавання...' : 'Додати коментар' }}
-              </button>
-            </div>
-          </section>
-        </main>
-
-        <aside class="details-sidebar">
-          <section class="details-card">
-            <div class="card-heading">
-              <mat-icon>receipt_long</mat-icon>
-              <h2>Інформація</h2>
-            </div>
-
-            <div class="sidebar-info">
-              <span>Тариф</span>
-              <strong>{{ res.rate.name }}</strong>
-            </div>
-
-            <div class="sidebar-info">
-              <span>Вартість тарифу за одиницю</span>
-              <strong>
-                {{ res.rate.price | number:'1.2-2' }}
-                {{ res.rate.currency }}
-              </strong>
-            </div>
-
-            <div class="sidebar-info">
-              <span>Фоліо</span>
-              <strong>
-                @if (res.folioId) {
-                  №{{ res.folioId }}
-                } @else {
-                  Не створено
-                }
-              </strong>
-            </div>
-
-            <div class="sidebar-info">
-              <span>Створено</span>
-              <strong>
-                {{ res.createdAt | date:'dd.MM.yyyy HH:mm' }}
-              </strong>
-            </div>
-          </section>
-
-          <section class="details-card">
-            <div class="card-heading">
-              <mat-icon>manage_accounts</mat-icon>
-              <h2>Дії з бронюванням</h2>
-            </div>
-
-            @if (
-              res.status === 'RESERVED' ||
-              res.status === 'CONFIRMED'
-              ) {
-              <button
-                mat-stroked-button
-                type="button"
-                class="action-button"
-                [disabled]="actionLoading() || isEditing()"
-                (click)="cancelReservation()"
-              >
-                <mat-icon>event_busy</mat-icon>
-                Скасувати бронювання
-              </button>
-
-              <button
-                mat-stroked-button
-                type="button"
-                class="action-button"
-                [disabled]="actionLoading() || isEditing()"
-                (click)="markNoShow()"
-              >
-                <mat-icon>person_off</mat-icon>
-                Не заїхав
-              </button>
-            }
-
-            @if (res.status === 'IN_HOUSE') {
-              <p class="action-note">
-                Гість зараз проживає в готелі.
-              </p>
-            }
-
-            @if (res.status === 'COMPLETED') {
-              <p class="action-note">
-                Проживання завершено.
-              </p>
-            }
-
-            @if (res.status === 'CANCELLED') {
-              <p class="action-note">
-                Бронювання скасовано.
-              </p>
-            }
-
-            @if (res.status === 'NO_SHOW') {
-              <p class="action-note">
-                Гість не заїхав.
-              </p>
-            }
-
-            @if (actionLoading()) {
-              <mat-spinner diameter="24"></mat-spinner>
-            }
-          </section>
-        </aside>
-      </div>
-    } @else {
-      <div class="state-message error">
-        <mat-icon>error_outline</mat-icon>
-        <p>{{ error() || 'Бронювання не знайдено.' }}</p>
-        <button mat-flat-button type="button" (click)="goBack()">
-          Назад
-        </button>
-      </div>
-    }
-  }
-</div>
+      <article class="summary-card">
+        <div class="summary-icon">
+          <mat-icon>groups</mat-icon>
+        </div>
+        <div class="summary-content">
+          <span class="summary-label">Гості</span>
+          <strong>
+            {{ item

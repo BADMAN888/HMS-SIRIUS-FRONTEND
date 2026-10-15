@@ -15,7 +15,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 24px;
+  flex-wrap: wrap;
+  gap: 20px;
   margin-bottom: 20px;
 }
 
@@ -35,6 +36,7 @@
 .grid-period {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 10px;
   padding: 10px 16px;
   border: 1px solid #1b304b;
@@ -45,14 +47,106 @@
   white-space: nowrap;
 }
 
-.period-controls { display: flex; align-items: center; gap: 6px; }
-.period-controls button, .period-controls input { height: 38px; border: 1px solid #1b304b; border-radius: 7px; background: #0c1d32; color: #dce8f6; }
-.period-controls button { min-width: 38px; font-size: 20px; cursor: pointer; }
-.period-controls .today-button { padding: 0 12px; font-size: 12px; }
-.period-controls input { width: 145px; padding: 0 8px; color-scheme: dark; }
-.period-controls button:hover { border-color: #3586c7; background: #123150; }
-.new-booking-button { height: 38px; display: inline-flex; align-items: center; padding: 0 12px; border: 1px solid #2684c4; border-radius: 7px; background: #176b9f; color: #f2f8ff; text-decoration: none; font-size: 11px; font-weight: 600; white-space: nowrap; }
-.new-booking-button:hover { background: #2082bd; }
+.period-controls {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.period-controls button,
+.period-controls input {
+  height: 38px;
+  box-sizing: border-box;
+  border: 1px solid #1b304b;
+  border-radius: 7px;
+  background: #0c1d32;
+  color: #dce8f6;
+}
+
+.period-controls button {
+  min-width: 38px;
+  padding: 0 10px;
+  font-size: 18px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.period-controls button:hover {
+  border-color: #3586c7;
+  background: #123150;
+}
+
+.period-controls button:focus-visible,
+.period-controls input:focus-visible,
+.new-booking-button:focus-visible {
+  outline: 2px solid #4ba3e8;
+  outline-offset: 2px;
+}
+
+.period-controls .today-button,
+.period-controls .apply-button {
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.period-controls .apply-button {
+  border-color: #2684c4;
+  background: #176b9f;
+  color: #f2f8ff;
+}
+
+.period-controls .apply-button:hover {
+  background: #2082bd;
+}
+
+.period-controls .today-button {
+  background: #102943;
+}
+
+.date-input {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.date-input label {
+  color: #8295ad;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.date-input input {
+  width: 145px;
+  padding: 0 8px;
+  color-scheme: dark;
+  font-family: inherit;
+  font-size: 12px;
+}
+
+.new-booking-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 38px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  border: 1px solid #2684c4;
+  border-radius: 7px;
+  background: #176b9f;
+  color: #f2f8ff;
+  text-decoration: none;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background 0.15s ease;
+}
+
+.new-booking-button:hover {
+  background: #2082bd;
+}
 
 .grid-wrapper {
   width: 100%;
@@ -64,17 +158,12 @@
 }
 
 .hotel-grid {
-  min-width: calc(
-    var(--room-column-width) +
-    var(--day-width) * 31
-  );
+  min-width: calc(var(--room-column-width) + var(--day-width) * var(--number-of-days));
 }
 
 .grid-header-row {
   display: grid;
-  grid-template-columns:
-    var(--room-column-width)
-    repeat(31, var(--day-width));
+  grid-template-columns: var(--room-column-width) repeat(var(--number-of-days), var(--day-width));
   height: 70px;
   background: #0d223b;
   border-bottom: 1px solid #203852;
@@ -87,6 +176,7 @@
   display: flex;
   align-items: center;
   padding: 0 16px;
+  box-sizing: border-box;
   background: #102943;
   border-right: 1px solid #263f5b;
   color: #8fa5bd;
@@ -102,9 +192,10 @@
   align-items: center;
   justify-content: center;
   gap: 2px;
+  box-sizing: border-box;
   border-right: 1px solid #1a3048;
-  color: #7f94ad;
   background: #0d223b;
+  color: #7f94ad;
 }
 
 .day-header.today {
@@ -132,9 +223,7 @@
 
 .room-row {
   display: grid;
-  grid-template-columns:
-    var(--room-column-width)
-    calc(var(--day-width) * 31);
+  grid-template-columns: var(--room-column-width) calc(var(--day-width) * var(--number-of-days));
   min-height: 78px;
   border-bottom: 1px solid #162b43;
 }
@@ -152,6 +241,7 @@
   justify-content: center;
   gap: 5px;
   padding: 10px 14px;
+  box-sizing: border-box;
   background: #0b1d32;
   border-right: 1px solid #263f5b;
 }
@@ -173,13 +263,14 @@
 .room-days {
   position: relative;
   display: grid;
-  grid-template-columns:
-    repeat(31, var(--day-width));
+  grid-template-columns: repeat(var(--number-of-days), var(--day-width));
   min-height: 78px;
 }
 
 .room-day {
+  min-width: 0;
   min-height: 78px;
+  box-sizing: border-box;
   border-right: 1px solid #162b43;
   background: #0a1a2d;
 }
@@ -190,36 +281,29 @@
 
 .room-day.today {
   background: #102b47;
-  box-shadow:
-    inset 2px 0 0 rgba(75, 163, 232, 0.55),
-    inset -2px 0 0 rgba(75, 163, 232, 0.2);
+  box-shadow: inset 2px 0 0 rgba(75, 163, 232, 0.55), inset -2px 0 0 rgba(75, 163, 232, 0.2);
 }
 
 .reservation {
   position: absolute;
   top: 9px;
   height: 60px;
-  min-width: 86px;
+  min-width: 60px;
   box-sizing: border-box;
   overflow: hidden;
-  border-radius: 7px;
   border: 1px solid #2875a8;
+  border-radius: 7px;
   background: #17527b;
-  box-shadow:
-    0 3px 8px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.25);
   cursor: pointer;
-  transition:
-    transform 0.12s ease,
-    filter 0.12s ease,
-    box-shadow 0.12s ease;
+  transition: transform 0.12s ease, filter 0.12s ease, box-shadow 0.12s ease;
 }
 
 .reservation:hover {
   z-index: 10;
   transform: translateY(-1px);
   filter: brightness(1.12);
-  box-shadow:
-    0 6px 14px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.35);
 }
 
 .reservation.reserved {
@@ -232,7 +316,7 @@
   border-color: #2e8bc0;
 }
 
-.reservation.checked-in {
+.reservation.in-house {
   background: #126b68;
   border-color: #24a39d;
 }
@@ -256,35 +340,63 @@
 .reservation-content {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  justify-content: center;
   height: 100%;
-  padding: 8px 10px;
+  padding: 4px 6px;
   box-sizing: border-box;
+  overflow: hidden;
 }
 
-.reservation-confirmation {
+.reservation-guest {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  width: 100%;
   overflow: hidden;
+}
+
+.reservation-guest-name,
+.reservation-name {
+  font-size: 11px;
+  font-weight: 600;
   color: #ffffff;
-  font-size: 12px;
-  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.reservation-phone {
+  overflow: hidden;
+  color: #c5d9eb;
+  font-size: 9px;
+  line-height: 1.1;
   text-overflow: ellipsis;
   white-space: nowrap;
+  opacity: 0.85;
 }
 
 .reservation-dates {
   overflow: hidden;
   color: #c5d9eb;
-  font-size: 9px;
+  font-size: 8px;
+  line-height: 1.1;
   text-overflow: ellipsis;
   white-space: nowrap;
+  opacity: 0.75;
 }
 
 .reservation-status {
   margin-top: auto;
+  overflow: hidden;
   color: #d8e8f5;
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 600;
+  line-height: 1;
+  text-overflow: ellipsis;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .state-message {
@@ -292,11 +404,14 @@
   align-items: center;
   justify-content: center;
   min-height: 300px;
+  padding: 24px;
+  box-sizing: border-box;
   border: 1px solid #1a304b;
   border-radius: 10px;
   background: #0a1a2d;
   color: #8da2ba;
   font-size: 14px;
+  text-align: center;
 }
 
 .state-message.error {
@@ -305,19 +420,29 @@
 
 .empty-state {
   padding: 60px 20px;
-  text-align: center;
-  color: #7288a0;
   background: #0a1a2d;
+  color: #7288a0;
+  text-align: center;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1200px) {
+  .grid-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .period-controls {
+    width: 100%;
+  }
+}
+
+@media (max-width: 700px) {
   .hotel-grid-page {
     padding: 14px;
   }
 
-  .grid-header {
-    align-items: flex-start;
-    flex-direction: column;
+  .grid-header h1 {
+    font-size: 21px;
   }
 
   .grid-period {
@@ -326,6 +451,26 @@
     justify-content: center;
   }
 
-  .period-controls { width: 100%; flex-wrap: wrap; }
-  .period-controls input { flex: 1; }
+  .period-controls {
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .date-input {
+    flex: 1 1 130px;
+    min-width: 0;
+  }
+
+  .date-input input {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .period-controls > button {
+    align-self: flex-end;
+  }
+
+  .new-booking-button {
+    flex: 1 1 100%;
+  }
 }
