@@ -1,4 +1,3 @@
-
 <div class="reservation-page">
   @if (loading()) {
     <div class="state-message">
@@ -17,7 +16,7 @@
   } @else {
     @if (reservation(); as item) {
       <header class="page-header">
-        <div class="header-main">
+        <div class="header-title">
           <button
             mat-icon-button
             type="button"
@@ -28,7 +27,7 @@
             <mat-icon>arrow_back</mat-icon>
           </button>
 
-          <div class="header-copy">
+          <div>
             <div class="breadcrumbs">
               <span>HMS SIRIUS</span>
               <mat-icon>chevron_right</mat-icon>
@@ -39,13 +38,13 @@
 
             <h1>Картка бронювання</h1>
 
-            <p>
+            <p class="guest-subtitle">
               {{ item.primaryGuest.lastName }}
               {{ item.primaryGuest.firstName }}
               @if (item.primaryGuest.middleName) {
                 {{ item.primaryGuest.middleName }}
               }
-              <span class="header-separator">·</span>
+              <span class="separator">·</span>
               Кімната № {{ item.room.roomNumber }}
             </p>
           </div>
@@ -74,38 +73,56 @@
 
       @if (loadingReferenceData()) {
         <div class="reference-loading">
-          <mat-spinner diameter="22"></mat-spinner>
+          <mat-spinner diameter="20"></mat-spinner>
           <span>Завантаження кімнат, тарифів і профілів...</span>
         </div>
       }
 
+      <nav class="detail-tabs" aria-label="Розділи бронювання">
+        <button type="button" class="detail-tab active">
+          <mat-icon>description</mat-icon>
+          Reservation
+        </button>
+        <button type="button" class="detail-tab" disabled>
+          <mat-icon>payments</mat-icon>
+          Accrual
+        </button>
+        <button type="button" class="detail-tab" disabled>
+          <mat-icon>assignment_ind</mat-icon>
+          Registration Form
+        </button>
+        <button type="button" class="detail-tab" disabled>
+          <mat-icon>mail_outline</mat-icon>
+          Confirmation
+        </button>
+        <button type="button" class="detail-tab" disabled>
+          <mat-icon>key</mat-icon>
+          Key Cards
+        </button>
+      </nav>
+
       <section class="booking-overview">
-        <div class="overview-main">
+        <div class="overview-room">
           <div class="overview-icon">
             <mat-icon>hotel</mat-icon>
           </div>
-
-          <div class="overview-room">
+          <div>
             <span class="field-label">Номер кімнати</span>
             <strong>№ {{ item.room.roomNumber }}</strong>
             <span class="muted-text">{{ item.rate.name }}</span>
           </div>
+        </div>
 
-          <div class="overview-divider"></div>
+        <div class="overview-date">
+          <span class="field-label">Заїзд</span>
+          <strong>{{ editForm().checkIn | date:'dd.MM.yyyy' }}</strong>
+        </div>
 
-          <div class="overview-date">
-            <span class="field-label">Заїзд</span>
-            <strong>{{ item.checkIn | date:'dd.MM.yyyy' }}</strong>
-          </div>
+        <mat-icon class="date-arrow">arrow_forward</mat-icon>
 
-          <div class="date-arrow">
-            <mat-icon>arrow_forward</mat-icon>
-          </div>
-
-          <div class="overview-date">
-            <span class="field-label">Виїзд</span>
-            <strong>{{ item.checkOut | date:'dd.MM.yyyy' }}</strong>
-          </div>
+        <div class="overview-date">
+          <span class="field-label">Виїзд</span>
+          <strong>{{ editForm().checkOut | date:'dd.MM.yyyy' }}</strong>
         </div>
 
         <div class="overview-price">
@@ -117,27 +134,26 @@
         </div>
       </section>
 
-      <div class="reservation-layout">
-        <main class="main-column">
+      <main class="reservation-content">
+        <div class="main-column">
           <section class="panel">
             <div class="panel-header">
               <div class="section-heading">
                 <div class="section-icon">
-                  <mat-icon>description</mat-icon>
+                  <mat-icon>event</mat-icon>
                 </div>
                 <div>
-                  <h2>Дані бронювання</h2>
-                  <p>Основні параметри розміщення</p>
+                  <h2>Основні дані бронювання</h2>
+                  <p>Номер, тариф, дати та кількість гостей</p>
                 </div>
               </div>
-
               <span class="reference-number">#{{ item.id }}</span>
             </div>
 
             <div class="panel-body">
               <div class="form-grid">
                 <div class="form-field">
-                  <label for="roomId">Номер кімнати</label>
+                  <label for="roomId">Категорія / номер кімнати</label>
                   <select
                     id="roomId"
                     [value]="editForm().roomId"
@@ -196,7 +212,7 @@
                 </div>
 
                 <div class="form-field">
-                  <label for="adults">Кількість дорослих</label>
+                  <label for="adults">Дорослих</label>
                   <input
                     id="adults"
                     type="number"
@@ -210,7 +226,7 @@
                 </div>
 
                 <div class="form-field">
-                  <label for="children">Кількість дітей</label>
+                  <label for="children">Дітей</label>
                   <input
                     id="children"
                     type="number"
@@ -232,8 +248,7 @@
                   >
                     @for (profile of profiles(); track profile.id) {
                       <option [value]="profile.id">
-                        {{ profile.lastName }}
-                        {{ profile.firstName }}
+                        {{ profile.lastName }} {{ profile.firstName }}
                         @if (profile.middleName) {
                           {{ profile.middleName }}
                         }
@@ -256,18 +271,82 @@
                     (input)="onGuestIdsChange($any($event.target).value)"
                   />
                   <span class="field-hint">
-                    Введіть ID додаткових гостей через кому.
-                    Основного гостя вказувати тут не потрібно.
+                    Введіть ID додаткових гостей через кому. Основного гостя
+                    вказувати тут не потрібно.
                   </span>
                 </div>
               </div>
+            </div>
+          </section>
 
-              <div class="edit-notice">
-                <mat-icon>info_outline</mat-icon>
-                <span>
-                  Зміни застосовуються після натискання кнопки
-                  «Зберегти зміни» внизу сторінки.
-                </span>
+          <section class="panel">
+            <div class="panel-header">
+              <div class="section-heading">
+                <div class="section-icon">
+                  <mat-icon>confirmation_number</mat-icon>
+                </div>
+                <div>
+                  <h2>Джерело та зовнішнє бронювання</h2>
+                  <p>Інформація для ідентифікації та обліку бронювання</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="panel-body">
+              <div class="form-grid">
+                <div class="form-field">
+                  <label for="externalBookingNumber">
+                    Номер зовнішнього бронювання
+                  </label>
+                  <input
+                    id="externalBookingNumber"
+                    type="text"
+                    maxlength="100"
+                    [value]="editForm().externalBookingNumber"
+                    [disabled]="saving()"
+                    placeholder="Введіть зовнішній номер"
+                    (input)="updateEditField('externalBookingNumber', $any($event.target).value)"
+                  />
+                </div>
+
+                <div class="form-field">
+                  <label for="bookingSource">Джерело бронювання</label>
+                  <input
+                    id="bookingSource"
+                    type="text"
+                    maxlength="100"
+                    [value]="editForm().bookingSource"
+                    [disabled]="saving()"
+                    placeholder="Наприклад, Booking.com"
+                    (input)="updateEditField('bookingSource', $any($event.target).value)"
+                  />
+                </div>
+
+                <div class="form-field">
+                  <label for="company">Компанія</label>
+                  <input
+                    id="company"
+                    type="text"
+                    maxlength="150"
+                    [value]="editForm().company"
+                    [disabled]="saving()"
+                    placeholder="Назва компанії"
+                    (input)="updateEditField('company', $any($event.target).value)"
+                  />
+                </div>
+
+                <div class="form-field">
+                  <label for="operatorCompany">Компанія-оператор</label>
+                  <input
+                    id="operatorCompany"
+                    type="text"
+                    maxlength="150"
+                    [value]="editForm().operatorCompany"
+                    [disabled]="saving()"
+                    placeholder="Назва компанії-оператора"
+                    (input)="updateEditField('operatorCompany', $any($event.target).value)"
+                  />
+                </div>
               </div>
             </div>
           </section>
@@ -299,46 +378,35 @@
                       {{ item.primaryGuest.middleName }}
                     }
                   </h3>
-
-                  <span class="guest-id">
-                    Профіль гостя № {{ item.primaryGuest.id }}
-                  </span>
+                  <span>Профіль гостя № {{ item.primaryGuest.id }}</span>
                 </div>
               </div>
 
-              <div class="details-grid guest-details">
+              <div class="details-grid">
                 <div class="detail-item">
                   <span>Контактний телефон</span>
-                  <strong>
-                    {{ item.primaryGuest.phoneNumber || 'Не вказано' }}
-                  </strong>
+                  <strong>{{ item.primaryGuest.phoneNumber || 'Не вказано' }}</strong>
                 </div>
 
                 <div class="detail-item">
                   <span>Електронна пошта</span>
-                  <strong>
-                    {{ item.primaryGuest.email || 'Не вказано' }}
-                  </strong>
+                  <strong>{{ item.primaryGuest.email || 'Не вказано' }}</strong>
                 </div>
 
                 <div class="detail-item">
                   <span>Стать</span>
-                  <strong>
-                    {{ getGenderLabel(item.primaryGuest.gender) }}
-                  </strong>
+                  <strong>{{ getGenderLabel(item.primaryGuest.gender) }}</strong>
                 </div>
 
                 <div class="detail-item">
                   <span>Адреса</span>
-                  <strong>
-                    {{ item.primaryGuest.address || 'Не вказано' }}
-                  </strong>
+                  <strong>{{ item.primaryGuest.address || 'Не вказано' }}</strong>
                 </div>
               </div>
 
               <p class="form-hint">
-                Контактні дані редагуються в профілі гостя.
-                Тут можна змінити основного гостя у формі бронювання вище.
+                Контактні дані змінюються в профілі гостя.
+                Основного гостя можна змінити у формі бронювання.
               </p>
             </div>
           </section>
@@ -350,18 +418,17 @@
                   <mat-icon>forum</mat-icon>
                 </div>
                 <div>
-                  <h2>Примітки та коментарі</h2>
-                  <p>Внутрішні нотатки щодо бронювання</p>
+                  <h2>Коментарі</h2>
+                  <p>Внутрішні примітки щодо бронювання</p>
                 </div>
               </div>
 
-              <span class="count-badge">{{ item.comments.length }}</span>
+              <span class="reference-number">{{ item.comments.length }}</span>
             </div>
 
             <div class="panel-body">
               <div class="comment-form">
                 <label for="newComment">Нова примітка</label>
-
                 <textarea
                   id="newComment"
                   rows="3"
@@ -372,10 +439,7 @@
                 ></textarea>
 
                 <div class="comment-form-footer">
-                  <span>
-                    Примітка буде збережена в історії бронювання.
-                  </span>
-
+                  <span>Примітка збережеться в історії бронювання.</span>
                   <button
                     mat-flat-button
                     type="button"
@@ -388,7 +452,7 @@
                     } @else {
                       <mat-icon>add</mat-icon>
                     }
-                    Додати
+                    Додати коментар
                   </button>
                 </div>
               </div>
@@ -397,11 +461,8 @@
                 <div class="comments-list">
                   @for (comment of item.comments; track comment.id) {
                     <article class="comment-item">
-                      <div class="comment-icon">
-                        <mat-icon>chat_bubble_outline</mat-icon>
-                      </div>
-
-                      <div class="comment-content">
+                      <mat-icon>chat_bubble_outline</mat-icon>
+                      <div>
                         <p>{{ comment.text }}</p>
                         <span>
                           {{ comment.createdAt | date:'dd.MM.yyyy HH:mm' }}
@@ -413,15 +474,15 @@
               } @else {
                 <div class="empty-comments">
                   <mat-icon>chat_bubble_outline</mat-icon>
-                  <span>Приміток поки немає</span>
+                  <span>Коментарів поки немає</span>
                 </div>
               }
             </div>
           </section>
-        </main>
+        </div>
 
         <aside class="side-column">
-          <section class="panel finance-panel">
+          <section class="panel">
             <div class="panel-header">
               <div class="section-heading">
                 <div class="section-icon">
@@ -449,32 +510,27 @@
               </div>
 
               <div class="finance-row">
-                <span>Дата заїзду</span>
+                <span>Заїзд</span>
                 <strong>{{ editForm().checkIn | date:'dd.MM.yyyy' }}</strong>
               </div>
 
               <div class="finance-row">
-                <span>Дата виїзду</span>
+                <span>Виїзд</span>
                 <strong>{{ editForm().checkOut | date:'dd.MM.yyyy' }}</strong>
               </div>
 
               <div class="finance-row">
-                <span>Гості</span>
-                <strong>
-                  {{ editForm().adults + editForm().children }}
-                </strong>
+                <span>Кількість гостей</span>
+                <strong>{{ editForm().adults + editForm().children }}</strong>
               </div>
 
               <div class="finance-note">
-                <mat-icon>info_outline</mat-icon>
-                <span>
-                  Це вартість тарифу за добу, а не фактичний баланс рахунку.
-                </span>
+                Це тариф за добу, а не фактичний баланс рахунку.
               </div>
             </div>
           </section>
 
-          <section class="panel actions-panel">
+          <section class="panel">
             <div class="panel-header">
               <div class="section-heading">
                 <div class="section-icon">
@@ -532,25 +588,24 @@
             </div>
           </section>
 
-          <section class="info-card">
-            <mat-icon>verified_user</mat-icon>
+          <div class="info-card">
+            <mat-icon>info_outline</mat-icon>
             <div>
-              <strong>Інформація про бронювання</strong>
+              <strong>Збереження змін</strong>
               <p>
-                Статус змінюється через окремі операції життєвого циклу.
-                Зміни форми потрібно зберегти кнопкою внизу сторінки.
+                Зміни полів форми застосовуються після натискання
+                кнопки «Зберегти зміни».
               </p>
             </div>
-          </section>
+          </div>
         </aside>
-      </div>
+      </main>
 
       <footer class="page-footer">
         <div class="footer-info">
           <mat-icon>info_outline</mat-icon>
           <span>
-            Бронювання #{{ item.id }} ·
-            {{ getStatusLabel(item.status) }}
+            Бронювання #{{ item.id }} · {{ getStatusLabel(item.status) }}
           </span>
         </div>
 

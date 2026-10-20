@@ -1,4 +1,3 @@
-
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -17,7 +16,6 @@ import { Reservation } from '../../../core/models/reservation/reservation.model'
 import { ReservationRequest } from '../../../core/models/reservation/reservation-request.model';
 import { ReservationComment } from '../../../core/models/reservation/reservation-comment.model';
 import { ReservationCommentResponse } from '../../../core/models/reservation/reservation-comment-response.model';
-import { ReservationStatus } from '../../../core/models/enums/reservation-status.enum';
 import { RoomResponse } from '../../../core/models/hotel/room-response.model';
 import { RateResponse } from '../../../core/models/billing/rate-response.model';
 import { ProfileResponse } from '../../../core/models/profile/profile-response.model';
@@ -31,6 +29,10 @@ interface ReservationEditForm {
   checkOut: string;
   adults: number;
   children: number;
+  externalBookingNumber: string;
+  bookingSource: string;
+  company: string;
+  operatorCompany: string;
 }
 
 type ReservationDetailsData = Omit<Reservation, 'comments'> & {
@@ -82,10 +84,12 @@ export class ReservationDetailsComponent implements OnInit {
     checkIn: '',
     checkOut: '',
     adults: 1,
-    children: 0
+    children: 0,
+    externalBookingNumber: '',
+    bookingSource: '',
+    company: '',
+    operatorCompany: ''
   });
-
-  private reservationId: number | null = null;
 
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));
@@ -96,8 +100,6 @@ export class ReservationDetailsComponent implements OnInit {
       this.loadingReferenceData.set(false);
       return;
     }
-
-    this.reservationId = id;
 
     this.loadReferenceData();
     this.loadReservation(id);
@@ -175,7 +177,11 @@ export class ReservationDetailsComponent implements OnInit {
       checkIn: reservation.checkIn.substring(0, 10),
       checkOut: reservation.checkOut.substring(0, 10),
       adults: reservation.adults,
-      children: reservation.children
+      children: reservation.children,
+      externalBookingNumber: reservation.externalBookingNumber ?? '',
+      bookingSource: reservation.bookingSource ?? '',
+      company: reservation.company ?? '',
+      operatorCompany: reservation.operatorCompany ?? ''
     });
   }
 
@@ -239,7 +245,11 @@ export class ReservationDetailsComponent implements OnInit {
       checkIn: form.checkIn,
       checkOut: form.checkOut,
       adults: form.adults,
-      children: form.children
+      children: form.children,
+      externalBookingNumber: form.externalBookingNumber.trim() || null,
+      bookingSource: form.bookingSource.trim() || null,
+      company: form.company.trim() || null,
+      operatorCompany: form.operatorCompany.trim() || null
     };
 
     this.saving.set(true);
@@ -249,16 +259,13 @@ export class ReservationDetailsComponent implements OnInit {
       .pipe(finalize(() => this.saving.set(false)))
       .subscribe({
         next: updatedReservation => {
-          this.reservation.set({
+          const details: ReservationDetailsData = {
             ...updatedReservation,
             comments: this.reservation()?.comments ?? []
-          });
+          };
 
-          this.initializeEditForm({
-            ...updatedReservation,
-            comments: this.reservation()?.comments ?? []
-          });
-
+          this.reservation.set(details);
+          this.initializeEditForm(details);
           this.error.set(null);
         },
         error: () => {
@@ -288,9 +295,9 @@ export class ReservationDetailsComponent implements OnInit {
           this.reservation.update(current =>
             current
               ? {
-                ...current,
-                comments: [...current.comments, comment]
-              }
+                  ...current,
+                  comments: [...current.comments, comment]
+                }
               : current
           );
 
@@ -384,3 +391,4 @@ export class ReservationDetailsComponent implements OnInit {
     return labels[gender] ?? gender;
   }
 }
+
