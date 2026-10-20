@@ -1,3 +1,4 @@
+
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
@@ -52,28 +53,28 @@ export class ReservationService {
   cancel(id: number): Observable<void> {
     return this.http.patch<void>(
       `${this.apiUrl}/${id}/cancel`,
-      {}
+      null
     );
   }
 
   checkIn(id: number): Observable<void> {
     return this.http.patch<void>(
       `${this.apiUrl}/${id}/check-in`,
-      {}
+      null
     );
   }
 
   checkOut(id: number): Observable<void> {
     return this.http.patch<void>(
       `${this.apiUrl}/${id}/check-out`,
-      {}
+      null
     );
   }
 
   noShow(id: number): Observable<void> {
     return this.http.patch<void>(
       `${this.apiUrl}/${id}/no-show`,
-      {}
+      null
     );
   }
 
