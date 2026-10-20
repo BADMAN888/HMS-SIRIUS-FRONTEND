@@ -1,10 +1,10 @@
+
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { finalize, forkJoin } from 'rxjs';
 
 import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
@@ -31,7 +31,6 @@ interface ReservationEditForm {
   checkOut: string;
   adults: number;
   children: number;
-  status: ReservationStatus;
 }
 
 type ReservationDetailsData = Omit<Reservation, 'comments'> & {
@@ -45,7 +44,6 @@ type ReservationDetailsData = Omit<Reservation, 'comments'> & {
     DatePipe,
     DecimalPipe,
     MatButtonModule,
-    MatCardModule,
     MatIconModule,
     MatProgressSpinnerModule
   ],
@@ -55,6 +53,7 @@ type ReservationDetailsData = Omit<Reservation, 'comments'> & {
 export class ReservationDetailsComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+
   private readonly reservationService = inject(ReservationService);
   private readonly roomService = inject(RoomService);
   private readonly rateService = inject(RateService);
@@ -67,14 +66,13 @@ export class ReservationDetailsComponent implements OnInit {
   readonly profiles = signal<ProfileResponse[]>([]);
 
   readonly loading = signal(true);
+  readonly loadingReferenceData = signal(true);
   readonly saving = signal(false);
-  readonly error = signal<string | null>(null);
-  readonly isEditing = signal(false);
   readonly addingComment = signal(false);
   readonly actionLoading = signal(false);
-  readonly newComment = signal('');
 
-  readonly availableStatuses = Object.values(ReservationStatus);
+  readonly error = signal<string | null>(null);
+  readonly newComment = signal('');
 
   readonly editForm = signal<ReservationEditForm>({
     roomId: 0,
@@ -84,8 +82,7 @@ export class ReservationDetailsComponent implements OnInit {
     checkIn: '',
     checkOut: '',
     adults: 1,
-    children: 0,
-    status: ReservationStatus.RESERVED
+    children: 0
   });
 
   private reservationId: number | null = null;
@@ -96,16 +93,41 @@ export class ReservationDetailsComponent implements OnInit {
     if (!Number.isInteger(id) || id <= 0) {
       this.error.set('Некоректний ID бронювання.');
       this.loading.set(false);
+      this.loadingReferenceData.set(false);
       return;
     }
 
     this.reservationId = id;
+
+    this.loadReferenceData();
     this.loadReservation(id);
+  }
+
+  private loadReferenceData(): void {
+    this.loadingReferenceData.set(true);
+
+    forkJoin({
+      rooms: this.roomService.getAll(),
+      rates: this.rateService.getAll(),
+      profiles: this.profileService.getAll()
+    })
+      .pipe(finalize(() => this.loadingReferenceData.set(false)))
+      .subscribe({
+        next: result => {
+          this.rooms.set(result.rooms);
+          this.rates.set(result.rates);
+          this.profiles.set(result.profiles);
+        },
+        error: () => {
+          this.error.set(
+            'Не вдалося завантажити кімнати, тарифи або профілі гостей.'
+          );
+        }
+      });
   }
 
   private loadReservation(id: number): void {
     this.loading.set(true);
-    this.error.set(null);
 
     this.reservationService.getById(id)
       .pipe(finalize(() => this.loading.set(false)))
@@ -153,53 +175,13 @@ export class ReservationDetailsComponent implements OnInit {
       checkIn: reservation.checkIn.substring(0, 10),
       checkOut: reservation.checkOut.substring(0, 10),
       adults: reservation.adults,
-      children: reservation.children,
-      status: reservation.status
+      children: reservation.children
     });
-  }
-
-  startEditing(): void {
-    const reservation = this.reservation();
-
-    if (!reservation || this.actionLoading() || this.saving()) {
-      return;
-    }
-
-    this.initializeEditForm(reservation);
-    this.error.set(null);
-    this.isEditing.set(true);
-
-    forkJoin({
-      rooms: this.roomService.getAll(),
-      rates: this.rateService.getAll(),
-      profiles: this.profileService.getAll()
-    }).subscribe({
-      next: result => {
-        this.rooms.set(result.rooms);
-        this.rates.set(result.rates);
-        this.profiles.set(result.profiles);
-      },
-      error: () => {
-        this.error.set('Не вдалося завантажити дані для редагування.');
-        this.isEditing.set(false);
-      }
-    });
-  }
-
-  cancelEditing(): void {
-    const reservation = this.reservation();
-
-    if (reservation) {
-      this.initializeEditForm(reservation);
-    }
-
-    this.isEditing.set(false);
-    this.error.set(null);
   }
 
   updateEditField(
     field: keyof ReservationEditForm,
-    value: string | number | ReservationStatus
+    value: string | number
   ): void {
     this.editForm.update(form => ({
       ...form,
@@ -227,7 +209,7 @@ export class ReservationDetailsComponent implements OnInit {
     const reservation = this.reservation();
     const form = this.editForm();
 
-    if (!reservation || this.saving()) {
+    if (!reservation || this.saving() || this.loadingReferenceData()) {
       return;
     }
 
@@ -238,10 +220,14 @@ export class ReservationDetailsComponent implements OnInit {
       !form.checkIn ||
       !form.checkOut ||
       form.checkIn >= form.checkOut ||
+      !Number.isInteger(form.adults) ||
       form.adults < 1 ||
+      !Number.isInteger(form.children) ||
       form.children < 0
     ) {
-      this.error.set('Перевірте правильність заповнення полів.');
+      this.error.set(
+        'Перевірте поля: кімнату, тариф, гостя, дати та кількість гостей.'
+      );
       return;
     }
 
@@ -262,12 +248,23 @@ export class ReservationDetailsComponent implements OnInit {
     this.reservationService.update(reservation.id, request)
       .pipe(finalize(() => this.saving.set(false)))
       .subscribe({
-        next: () => {
-          this.isEditing.set(false);
-          this.loadReservation(reservation.id);
+        next: updatedReservation => {
+          this.reservation.set({
+            ...updatedReservation,
+            comments: this.reservation()?.comments ?? []
+          });
+
+          this.initializeEditForm({
+            ...updatedReservation,
+            comments: this.reservation()?.comments ?? []
+          });
+
+          this.error.set(null);
         },
         error: () => {
-          this.error.set('Не вдалося зберегти зміни бронювання.');
+          this.error.set(
+            'Не вдалося зберегти зміни. Перевірте дані та спробуйте ще раз.'
+          );
         }
       });
   }
@@ -312,7 +309,7 @@ export class ReservationDetailsComponent implements OnInit {
     if (
       !reservation ||
       this.actionLoading() ||
-      this.isEditing() ||
+      this.saving() ||
       !confirm('Ви впевнені, що хочете скасувати це бронювання?')
     ) {
       return;
@@ -337,7 +334,7 @@ export class ReservationDetailsComponent implements OnInit {
     if (
       !reservation ||
       this.actionLoading() ||
-      this.isEditing() ||
+      this.saving() ||
       !confirm('Позначити бронювання як «Не заїхав»?')
     ) {
       return;
@@ -375,7 +372,7 @@ export class ReservationDetailsComponent implements OnInit {
 
   getGenderLabel(gender: string | null | undefined): string {
     if (!gender) {
-      return '—';
+      return 'Не вказано';
     }
 
     const labels: Record<string, string> = {

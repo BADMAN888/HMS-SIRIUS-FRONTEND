@@ -1,11 +1,12 @@
-<div class="reservation-details-page">
+
+<div class="reservation-page">
   @if (loading()) {
     <div class="state-message">
       <mat-spinner diameter="40"></mat-spinner>
-      <p>Завантаження бронювання...</p>
+      <p>Завантаження картки бронювання...</p>
     </div>
   } @else if (error() && !reservation()) {
-    <div class="state-message">
+    <div class="state-message error-state">
       <mat-icon>error_outline</mat-icon>
       <p>{{ error() }}</p>
       <button mat-flat-button type="button" (click)="goBack()">
@@ -16,64 +17,51 @@
   } @else {
     @if (reservation(); as item) {
       <header class="page-header">
-        <div class="header-title">
+        <div class="header-main">
           <button
             mat-icon-button
             type="button"
             class="back-button"
-            aria-label="Назад"
+            aria-label="Назад до шахматки"
             (click)="goBack()"
           >
             <mat-icon>arrow_back</mat-icon>
           </button>
 
-          <div>
-            <span class="eyebrow">HMS SIRIUS / RESERVATIONS</span>
-            <h1>Бронювання #{{ item.id }}</h1>
-            <p class="subtitle">
-              Детальна інформація про бронювання
+          <div class="header-copy">
+            <div class="breadcrumbs">
+              <span>HMS SIRIUS</span>
+              <mat-icon>chevron_right</mat-icon>
+              <span>Бронювання</span>
+              <mat-icon>chevron_right</mat-icon>
+              <span class="current">#{{ item.id }}</span>
+            </div>
+
+            <h1>Картка бронювання</h1>
+
+            <p>
+              {{ item.primaryGuest.lastName }}
+              {{ item.primaryGuest.firstName }}
+              @if (item.primaryGuest.middleName) {
+                {{ item.primaryGuest.middleName }}
+              }
+              <span class="header-separator">·</span>
+              Кімната № {{ item.room.roomNumber }}
             </p>
           </div>
         </div>
 
-        <div class="header-actions">
-          @if (isEditing()) {
-            <button
-              mat-stroked-button
-              type="button"
-              class="secondary-button"
-              [disabled]="saving()"
-              (click)="cancelEditing()"
-            >
-              Скасувати
-            </button>
-
-            <button
-              mat-flat-button
-              type="button"
-              class="primary-button"
-              [disabled]="saving()"
-              (click)="save()"
-            >
-              @if (saving()) {
-                <mat-spinner diameter="18"></mat-spinner>
-              } @else {
-                <mat-icon>save</mat-icon>
-              }
-              Зберегти
-            </button>
-          } @else {
-            <button
-              mat-flat-button
-              type="button"
-              class="primary-button"
-              [disabled]="actionLoading()"
-              (click)="startEditing()"
-            >
-              <mat-icon>edit</mat-icon>
-              Редагувати
-            </button>
-          }
+        <div
+          class="status-badge"
+          [class.status-reserved]="item.status === 'RESERVED'"
+          [class.status-confirmed]="item.status === 'CONFIRMED'"
+          [class.status-in-house]="item.status === 'IN_HOUSE'"
+          [class.status-completed]="item.status === 'COMPLETED'"
+          [class.status-cancelled]="item.status === 'CANCELLED'"
+          [class.status-no-show]="item.status === 'NO_SHOW'"
+        >
+          <span class="status-dot"></span>
+          {{ getStatusLabel(item.status) }}
         </div>
       </header>
 
@@ -84,267 +72,215 @@
         </div>
       }
 
-      <section class="summary-grid">
-        <article class="summary-card">
-          <div class="summary-icon">
-            <mat-icon>meeting_room</mat-icon>
+      @if (loadingReferenceData()) {
+        <div class="reference-loading">
+          <mat-spinner diameter="22"></mat-spinner>
+          <span>Завантаження кімнат, тарифів і профілів...</span>
+        </div>
+      }
+
+      <section class="booking-overview">
+        <div class="overview-main">
+          <div class="overview-icon">
+            <mat-icon>hotel</mat-icon>
           </div>
-          <div>
-            <span class="summary-label">Номер кімнати</span>
+
+          <div class="overview-room">
+            <span class="field-label">Номер кімнати</span>
             <strong>№ {{ item.room.roomNumber }}</strong>
+            <span class="muted-text">{{ item.rate.name }}</span>
           </div>
-        </article>
 
-        <article class="summary-card">
-          <div class="summary-icon">
-            <mat-icon>person</mat-icon>
-          </div>
-          <div>
-            <span class="summary-label">Основний гість</span>
-            <strong>
-              {{ item.primaryGuest.firstName }}
-              {{ item.primaryGuest.lastName }}
-            </strong>
-          </div>
-        </article>
+          <div class="overview-divider"></div>
 
-        <article class="summary-card">
-          <div class="summary-icon">
-            <mat-icon>calendar_month</mat-icon>
+          <div class="overview-date">
+            <span class="field-label">Заїзд</span>
+            <strong>{{ item.checkIn | date:'dd.MM.yyyy' }}</strong>
           </div>
-          <div>
-            <span class="summary-label">Період проживання</span>
-            <strong>
-              {{ item.checkIn | date:'dd.MM.yyyy' }}
-              — {{ item.checkOut | date:'dd.MM.yyyy' }}
-            </strong>
-          </div>
-        </article>
 
-        <article class="summary-card">
-          <div class="summary-icon">
-            <mat-icon>payments</mat-icon>
+          <div class="date-arrow">
+            <mat-icon>arrow_forward</mat-icon>
           </div>
-          <div>
-            <span class="summary-label">Вартість тарифу за добу</span>
-            <strong>
-              {{ item.rate.price | number:'1.2-2' }}
-              {{ item.rate.currency }}
-            </strong>
+
+          <div class="overview-date">
+            <span class="field-label">Виїзд</span>
+            <strong>{{ item.checkOut | date:'dd.MM.yyyy' }}</strong>
           </div>
-        </article>
+        </div>
+
+        <div class="overview-price">
+          <span class="field-label">Тариф за добу</span>
+          <strong>
+            {{ item.rate.price | number:'1.2-2' }}
+            <small>{{ item.rate.currency }}</small>
+          </strong>
+        </div>
       </section>
 
-      <div class="content-grid">
+      <div class="reservation-layout">
         <main class="main-column">
           <section class="panel">
             <div class="panel-header">
-              <div class="panel-heading">
-                <div class="panel-icon">
+              <div class="section-heading">
+                <div class="section-icon">
                   <mat-icon>description</mat-icon>
                 </div>
                 <div>
                   <h2>Дані бронювання</h2>
-                  <p>Основні параметри резервування</p>
+                  <p>Основні параметри розміщення</p>
                 </div>
               </div>
 
-              <span
-                class="status-badge"
-                [class.status-reserved]="item.status === 'RESERVED'"
-                [class.status-confirmed]="item.status === 'CONFIRMED'"
-                [class.status-in-house]="item.status === 'IN_HOUSE'"
-                [class.status-completed]="item.status === 'COMPLETED'"
-                [class.status-cancelled]="item.status === 'CANCELLED'"
-                [class.status-no-show]="item.status === 'NO_SHOW'"
-              >
-                {{ getStatusLabel(item.status) }}
-              </span>
+              <span class="reference-number">#{{ item.id }}</span>
             </div>
 
             <div class="panel-body">
-              @if (isEditing()) {
-                <div class="form-grid">
-                  <div class="form-field">
-                    <label for="roomId">Номер кімнати</label>
-                    <select
-                      id="roomId"
-                      [value]="editForm().roomId"
-                      (change)="updateEditField('roomId', +$any($event.target).value)"
-                    >
-                      @for (room of rooms(); track room.id) {
-                        <option [value]="room.id">
-                          № {{ room.roomNumber }}
-                        </option>
-                      }
-                    </select>
-                  </div>
-
-                  <div class="form-field">
-                    <label for="rateId">Тариф</label>
-                    <select
-                      id="rateId"
-                      [value]="editForm().rateId"
-                      (change)="updateEditField('rateId', +$any($event.target).value)"
-                    >
-                      @for (rate of rates(); track rate.id) {
-                        <option [value]="rate.id">
-                          {{ rate.name }} —
-                          {{ rate.price | number:'1.2-2' }}
-                          {{ rate.currency }}
-                        </option>
-                      }
-                    </select>
-                  </div>
-
-                  <div class="form-field">
-                    <label for="checkIn">Дата заїзду</label>
-                    <input
-                      id="checkIn"
-                      type="date"
-                      [value]="editForm().checkIn"
-                      (input)="updateEditField('checkIn', $any($event.target).value)"
-                      required
-                    />
-                  </div>
-
-                  <div class="form-field">
-                    <label for="checkOut">Дата виїзду</label>
-                    <input
-                      id="checkOut"
-                      type="date"
-                      [value]="editForm().checkOut"
-                      [min]="editForm().checkIn"
-                      (input)="updateEditField('checkOut', $any($event.target).value)"
-                      required
-                    />
-                  </div>
-
-                  <div class="form-field">
-                    <label for="adults">Дорослі</label>
-                    <input
-                      id="adults"
-                      type="number"
-                      min="1"
-                      [value]="editForm().adults"
-                      (input)="updateEditField('adults', +$any($event.target).value)"
-                    />
-                  </div>
-
-                  <div class="form-field">
-                    <label for="children">Діти</label>
-                    <input
-                      id="children"
-                      type="number"
-                      min="0"
-                      [value]="editForm().children"
-                      (input)="updateEditField('children', +$any($event.target).value)"
-                    />
-                  </div>
-
-                  <div class="form-field full-width">
-                    <label for="primaryGuestId">Основний гість</label>
-                    <select
-                      id="primaryGuestId"
-                      [value]="editForm().primaryGuestId"
-                      (change)="updateEditField('primaryGuestId', +$any($event.target).value)"
-                    >
-                      @for (profile of profiles(); track profile.id) {
-                        <option [value]="profile.id">
-                          {{ profile.firstName }}
-                          {{ profile.lastName }}
-                          @if (profile.phoneNumber) {
-                            — {{ profile.phoneNumber }}
-                          }
-                        </option>
-                      }
-                    </select>
-                  </div>
-
-                  <div class="form-field full-width">
-                    <label for="guestIds">Додаткові гості (ID)</label>
-                    <input
-                      id="guestIds"
-                      type="text"
-                      [value]="editForm().guestIds.join(', ')"
-                      (input)="onGuestIdsChange($any($event.target).value)"
-                      placeholder="ID через кому"
-                    />
-                  </div>
+              <div class="form-grid">
+                <div class="form-field">
+                  <label for="roomId">Номер кімнати</label>
+                  <select
+                    id="roomId"
+                    [value]="editForm().roomId"
+                    [disabled]="loadingReferenceData() || saving()"
+                    (change)="updateEditField('roomId', +$any($event.target).value)"
+                  >
+                    @for (room of rooms(); track room.id) {
+                      <option [value]="room.id">
+                        № {{ room.roomNumber }}
+                      </option>
+                    }
+                  </select>
                 </div>
 
-                <p class="form-hint">
-                  Статус бронювання змінюється через окремі операції
-                  життєвого циклу.
-                </p>
-              } @else {
-                <div class="details-grid">
-                  <div class="detail-item">
-                    <span>Номер бронювання</span>
-                    <strong>#{{ item.id }}</strong>
-                  </div>
-
-                  <div class="detail-item">
-                    <span>Номер підтвердження</span>
-                    <strong>{{ item.confirmationNumber || '—' }}</strong>
-                  </div>
-
-                  <div class="detail-item">
-                    <span>Номер кімнати</span>
-                    <strong>№ {{ item.room.roomNumber }}</strong>
-                  </div>
-
-                  <div class="detail-item">
-                    <span>Тариф</span>
-                    <strong>{{ item.rate.name }}</strong>
-                  </div>
-
-                  <div class="detail-item">
-                    <span>Вартість за добу</span>
-                    <strong>
-                      {{ item.rate.price | number:'1.2-2' }}
-                      {{ item.rate.currency }}
-                    </strong>
-                  </div>
-
-                  <div class="detail-item">
-                    <span>Дата заїзду</span>
-                    <strong>{{ item.checkIn | date:'dd.MM.yyyy' }}</strong>
-                  </div>
-
-                  <div class="detail-item">
-                    <span>Дата виїзду</span>
-                    <strong>{{ item.checkOut | date:'dd.MM.yyyy' }}</strong>
-                  </div>
-
-                  <div class="detail-item">
-                    <span>Дорослі</span>
-                    <strong>{{ item.adults }}</strong>
-                  </div>
-
-                  <div class="detail-item">
-                    <span>Діти</span>
-                    <strong>{{ item.children }}</strong>
-                  </div>
-
-                  <div class="detail-item">
-                    <span>Додаткові гості</span>
-                    <strong>{{ item.guestIds.length }}</strong>
-                  </div>
+                <div class="form-field">
+                  <label for="rateId">Тариф</label>
+                  <select
+                    id="rateId"
+                    [value]="editForm().rateId"
+                    [disabled]="loadingReferenceData() || saving()"
+                    (change)="updateEditField('rateId', +$any($event.target).value)"
+                  >
+                    @for (rate of rates(); track rate.id) {
+                      <option [value]="rate.id">
+                        {{ rate.name }} —
+                        {{ rate.price | number:'1.2-2' }}
+                        {{ rate.currency }}
+                      </option>
+                    }
+                  </select>
                 </div>
-              }
+
+                <div class="form-field">
+                  <label for="checkIn">Дата заїзду</label>
+                  <input
+                    id="checkIn"
+                    type="date"
+                    [value]="editForm().checkIn"
+                    [disabled]="saving()"
+                    required
+                    (input)="updateEditField('checkIn', $any($event.target).value)"
+                  />
+                </div>
+
+                <div class="form-field">
+                  <label for="checkOut">Дата виїзду</label>
+                  <input
+                    id="checkOut"
+                    type="date"
+                    [value]="editForm().checkOut"
+                    [min]="editForm().checkIn"
+                    [disabled]="saving()"
+                    required
+                    (input)="updateEditField('checkOut', $any($event.target).value)"
+                  />
+                </div>
+
+                <div class="form-field">
+                  <label for="adults">Кількість дорослих</label>
+                  <input
+                    id="adults"
+                    type="number"
+                    min="1"
+                    step="1"
+                    [value]="editForm().adults"
+                    [disabled]="saving()"
+                    required
+                    (input)="updateEditField('adults', +$any($event.target).value)"
+                  />
+                </div>
+
+                <div class="form-field">
+                  <label for="children">Кількість дітей</label>
+                  <input
+                    id="children"
+                    type="number"
+                    min="0"
+                    step="1"
+                    [value]="editForm().children"
+                    [disabled]="saving()"
+                    (input)="updateEditField('children', +$any($event.target).value)"
+                  />
+                </div>
+
+                <div class="form-field full-width">
+                  <label for="primaryGuestId">Основний гість</label>
+                  <select
+                    id="primaryGuestId"
+                    [value]="editForm().primaryGuestId"
+                    [disabled]="loadingReferenceData() || saving()"
+                    (change)="updateEditField('primaryGuestId', +$any($event.target).value)"
+                  >
+                    @for (profile of profiles(); track profile.id) {
+                      <option [value]="profile.id">
+                        {{ profile.lastName }}
+                        {{ profile.firstName }}
+                        @if (profile.middleName) {
+                          {{ profile.middleName }}
+                        }
+                        @if (profile.phoneNumber) {
+                          — {{ profile.phoneNumber }}
+                        }
+                      </option>
+                    }
+                  </select>
+                </div>
+
+                <div class="form-field full-width">
+                  <label for="guestIds">Додаткові гості (ID профілів)</label>
+                  <input
+                    id="guestIds"
+                    type="text"
+                    [value]="editForm().guestIds.join(', ')"
+                    [disabled]="saving()"
+                    placeholder="Наприклад: 12, 15"
+                    (input)="onGuestIdsChange($any($event.target).value)"
+                  />
+                  <span class="field-hint">
+                    Введіть ID додаткових гостей через кому.
+                    Основного гостя вказувати тут не потрібно.
+                  </span>
+                </div>
+              </div>
+
+              <div class="edit-notice">
+                <mat-icon>info_outline</mat-icon>
+                <span>
+                  Зміни застосовуються після натискання кнопки
+                  «Зберегти зміни» внизу сторінки.
+                </span>
+              </div>
             </div>
           </section>
 
           <section class="panel">
             <div class="panel-header">
-              <div class="panel-heading">
-                <div class="panel-icon">
+              <div class="section-heading">
+                <div class="section-icon">
                   <mat-icon>person</mat-icon>
                 </div>
                 <div>
-                  <h2>Основний гість</h2>
-                  <p>Контактна інформація</p>
+                  <h2>Картка гостя</h2>
+                  <p>Контактна інформація основного гостя</p>
                 </div>
               </div>
             </div>
@@ -357,56 +293,65 @@
 
                 <div class="guest-information">
                   <h3>
-                    {{ item.primaryGuest.firstName }}
                     {{ item.primaryGuest.lastName }}
+                    {{ item.primaryGuest.firstName }}
+                    @if (item.primaryGuest.middleName) {
+                      {{ item.primaryGuest.middleName }}
+                    }
                   </h3>
 
-                  @if (item.primaryGuest.middleName) {
-                    <p>{{ item.primaryGuest.middleName }}</p>
-                  }
-
-                  <div class="guest-contact">
-                    <span>
-                      <mat-icon>call</mat-icon>
-                      {{ item.primaryGuest.phoneNumber || 'Телефон не вказано' }}
-                    </span>
-
-                    <span>
-                      <mat-icon>mail</mat-icon>
-                      {{ item.primaryGuest.email || 'Email не вказано' }}
-                    </span>
-
-                    <span>
-                      <mat-icon>location_on</mat-icon>
-                      {{ item.primaryGuest.address || 'Адресу не вказано' }}
-                    </span>
-                  </div>
+                  <span class="guest-id">
+                    Профіль гостя № {{ item.primaryGuest.id }}
+                  </span>
                 </div>
               </div>
 
               <div class="details-grid guest-details">
                 <div class="detail-item">
-                  <span>ID профілю</span>
-                  <strong>{{ item.primaryGuest.id }}</strong>
+                  <span>Контактний телефон</span>
+                  <strong>
+                    {{ item.primaryGuest.phoneNumber || 'Не вказано' }}
+                  </strong>
+                </div>
+
+                <div class="detail-item">
+                  <span>Електронна пошта</span>
+                  <strong>
+                    {{ item.primaryGuest.email || 'Не вказано' }}
+                  </strong>
                 </div>
 
                 <div class="detail-item">
                   <span>Стать</span>
-                  <strong>{{ getGenderLabel(item.primaryGuest.gender) }}</strong>
+                  <strong>
+                    {{ getGenderLabel(item.primaryGuest.gender) }}
+                  </strong>
+                </div>
+
+                <div class="detail-item">
+                  <span>Адреса</span>
+                  <strong>
+                    {{ item.primaryGuest.address || 'Не вказано' }}
+                  </strong>
                 </div>
               </div>
+
+              <p class="form-hint">
+                Контактні дані редагуються в профілі гостя.
+                Тут можна змінити основного гостя у формі бронювання вище.
+              </p>
             </div>
           </section>
 
           <section class="panel">
             <div class="panel-header">
-              <div class="panel-heading">
-                <div class="panel-icon">
-                  <mat-icon>chat</mat-icon>
+              <div class="section-heading">
+                <div class="section-icon">
+                  <mat-icon>forum</mat-icon>
                 </div>
                 <div>
-                  <h2>Коментарі</h2>
-                  <p>Нотатки щодо бронювання</p>
+                  <h2>Примітки та коментарі</h2>
+                  <p>Внутрішні нотатки щодо бронювання</p>
                 </div>
               </div>
 
@@ -415,18 +360,21 @@
 
             <div class="panel-body">
               <div class="comment-form">
-                <label for="newComment">Новий коментар</label>
+                <label for="newComment">Нова примітка</label>
 
                 <textarea
                   id="newComment"
                   rows="3"
                   [value]="newComment()"
+                  [disabled]="addingComment()"
+                  placeholder="Напишіть примітку для персоналу..."
                   (input)="newComment.set($any($event.target).value)"
-                  placeholder="Введіть коментар..."
                 ></textarea>
 
                 <div class="comment-form-footer">
-                  <span>Коментар буде додано до історії бронювання.</span>
+                  <span>
+                    Примітка буде збережена в історії бронювання.
+                  </span>
 
                   <button
                     mat-flat-button
@@ -438,105 +386,142 @@
                     @if (addingComment()) {
                       <mat-spinner diameter="18"></mat-spinner>
                     } @else {
-                      <mat-icon>send</mat-icon>
+                      <mat-icon>add</mat-icon>
                     }
                     Додати
                   </button>
                 </div>
               </div>
 
-              <div class="comments-list">
-                @if (item.comments.length === 0) {
-                  <div class="empty-state">
-                    <mat-icon>chat_bubble_outline</mat-icon>
-                    <p>Коментарів поки немає</p>
-                  </div>
-                } @else {
+              @if (item.comments.length > 0) {
+                <div class="comments-list">
                   @for (comment of item.comments; track comment.id) {
                     <article class="comment-item">
-                      <div class="comment-avatar">
-                        <mat-icon>person</mat-icon>
+                      <div class="comment-icon">
+                        <mat-icon>chat_bubble_outline</mat-icon>
                       </div>
 
                       <div class="comment-content">
-                        <div class="comment-meta">
-                          <strong>Коментар #{{ comment.id }}</strong>
-                          <time>
-                            {{ comment.createdAt | date:'dd.MM.yyyy HH:mm' }}
-                          </time>
-                        </div>
-
                         <p>{{ comment.text }}</p>
+                        <span>
+                          {{ comment.createdAt | date:'dd.MM.yyyy HH:mm' }}
+                        </span>
                       </div>
                     </article>
                   }
-                }
-              </div>
+                </div>
+              } @else {
+                <div class="empty-comments">
+                  <mat-icon>chat_bubble_outline</mat-icon>
+                  <span>Приміток поки немає</span>
+                </div>
+              }
             </div>
           </section>
         </main>
 
-        <aside class="sidebar">
-          <section class="panel">
+        <aside class="side-column">
+          <section class="panel finance-panel">
             <div class="panel-header">
-              <div class="panel-heading">
-                <div class="panel-icon">
-                  <mat-icon>settings</mat-icon>
+              <div class="section-heading">
+                <div class="section-icon">
+                  <mat-icon>payments</mat-icon>
                 </div>
                 <div>
-                  <h2>Дії</h2>
-                  <p>Керування бронюванням</p>
+                  <h2>Вартість</h2>
+                  <p>Інформація про тариф</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="panel-body">
+              <div class="price-block">
+                <span>Тариф за добу</span>
+                <strong>
+                  {{ item.rate.price | number:'1.2-2' }}
+                  <small>{{ item.rate.currency }}</small>
+                </strong>
+              </div>
+
+              <div class="finance-row">
+                <span>Тариф</span>
+                <strong>{{ item.rate.name }}</strong>
+              </div>
+
+              <div class="finance-row">
+                <span>Дата заїзду</span>
+                <strong>{{ editForm().checkIn | date:'dd.MM.yyyy' }}</strong>
+              </div>
+
+              <div class="finance-row">
+                <span>Дата виїзду</span>
+                <strong>{{ editForm().checkOut | date:'dd.MM.yyyy' }}</strong>
+              </div>
+
+              <div class="finance-row">
+                <span>Гості</span>
+                <strong>
+                  {{ editForm().adults + editForm().children }}
+                </strong>
+              </div>
+
+              <div class="finance-note">
+                <mat-icon>info_outline</mat-icon>
+                <span>
+                  Це вартість тарифу за добу, а не фактичний баланс рахунку.
+                </span>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel actions-panel">
+            <div class="panel-header">
+              <div class="section-heading">
+                <div class="section-icon">
+                  <mat-icon>bolt</mat-icon>
+                </div>
+                <div>
+                  <h2>Операції</h2>
+                  <p>Дії з бронюванням</p>
                 </div>
               </div>
             </div>
 
             <div class="panel-body action-list">
-              @if (!isEditing()) {
-                <button
-                  mat-stroked-button
-                  type="button"
-                  class="action-button"
-                  [disabled]="actionLoading()"
-                  (click)="startEditing()"
-                >
-                  <mat-icon>edit</mat-icon>
-                  <span>Редагувати</span>
-                </button>
-              }
+              <button
+                mat-stroked-button
+                type="button"
+                class="action-button"
+                [disabled]="saving() || actionLoading()"
+                (click)="goBack()"
+              >
+                <mat-icon>calendar_view_month</mat-icon>
+                До шахматки
+              </button>
 
               @if (item.status === 'RESERVED' || item.status === 'CONFIRMED') {
                 <button
                   mat-stroked-button
                   type="button"
                   class="action-button danger-action"
-                  [disabled]="actionLoading() || isEditing()"
+                  [disabled]="saving() || actionLoading()"
                   (click)="cancelReservation()"
                 >
                   <mat-icon>event_busy</mat-icon>
-                  <span>Скасувати бронювання</span>
+                  Скасувати бронювання
                 </button>
 
                 <button
                   mat-stroked-button
                   type="button"
                   class="action-button warning-action"
-                  [disabled]="actionLoading() || isEditing()"
+                  [disabled]="saving() || actionLoading()"
                   (click)="markNoShow()"
                 >
                   <mat-icon>person_off</mat-icon>
-                  <span>Гість не заїхав</span>
+                  Позначити «Не заїхав»
                 </button>
               }
-
-              <button
-                mat-stroked-button
-                type="button"
-                class="action-button"
-                (click)="goBack()"
-              >
-                <mat-icon>calendar_view_month</mat-icon>
-                <span>До шахматки</span>
-              </button>
 
               @if (actionLoading()) {
                 <div class="action-loading">
@@ -547,86 +532,56 @@
             </div>
           </section>
 
-          <section class="panel">
-            <div class="panel-header">
-              <div class="panel-heading">
-                <div class="panel-icon">
-                  <mat-icon>info</mat-icon>
-                </div>
-                <div>
-                  <h2>Статус</h2>
-                  <p>Поточний стан бронювання</p>
-                </div>
-              </div>
-            </div>
-
-            <div class="panel-body">
-              <div class="status-overview">
-                <span
-                  class="status-indicator"
-                  [class.status-reserved]="item.status === 'RESERVED'"
-                  [class.status-confirmed]="item.status === 'CONFIRMED'"
-                  [class.status-in-house]="item.status === 'IN_HOUSE'"
-                  [class.status-completed]="item.status === 'COMPLETED'"
-                  [class.status-cancelled]="item.status === 'CANCELLED'"
-                  [class.status-no-show]="item.status === 'NO_SHOW'"
-                ></span>
-
-                <div>
-                  <strong>{{ getStatusLabel(item.status) }}</strong>
-                  <p>Бронювання #{{ item.id }}</p>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section class="panel">
-            <div class="panel-header">
-              <div class="panel-heading">
-                <div class="panel-icon">
-                  <mat-icon>database</mat-icon>
-                </div>
-                <div>
-                  <h2>Службова інформація</h2>
-                  <p>Технічні дані</p>
-                </div>
-              </div>
-            </div>
-
-            <div class="panel-body metadata-list">
-              <div class="metadata-item">
-                <span>ID бронювання</span>
-                <strong>#{{ item.id }}</strong>
-              </div>
-
-              <div class="metadata-item">
-                <span>ID кімнати</span>
-                <strong>{{ item.room.id }}</strong>
-              </div>
-
-              <div class="metadata-item">
-                <span>ID тарифу</span>
-                <strong>{{ item.rate.id }}</strong>
-              </div>
-
-              <div class="metadata-item">
-                <span>ID основного гостя</span>
-                <strong>{{ item.primaryGuest.id }}</strong>
-              </div>
-
-              <div class="metadata-item">
-                <span>ID рахунку</span>
-                <strong>{{ item.folioId ?? '—' }}</strong>
-              </div>
-
-              <div class="metadata-item">
-                <span>Створено</span>
-                <strong>{{ item.createdAt | date:'dd.MM.yyyy HH:mm' }}</strong>
-              </div>
+          <section class="info-card">
+            <mat-icon>verified_user</mat-icon>
+            <div>
+              <strong>Інформація про бронювання</strong>
+              <p>
+                Статус змінюється через окремі операції життєвого циклу.
+                Зміни форми потрібно зберегти кнопкою внизу сторінки.
+              </p>
             </div>
           </section>
         </aside>
       </div>
+
+      <footer class="page-footer">
+        <div class="footer-info">
+          <mat-icon>info_outline</mat-icon>
+          <span>
+            Бронювання #{{ item.id }} ·
+            {{ getStatusLabel(item.status) }}
+          </span>
+        </div>
+
+        <div class="footer-actions">
+          <button
+            mat-stroked-button
+            type="button"
+            class="secondary-button"
+            [disabled]="saving() || actionLoading()"
+            (click)="goBack()"
+          >
+            Назад
+          </button>
+
+          <button
+            mat-flat-button
+            type="button"
+            class="primary-button save-button"
+            [disabled]="saving() || loadingReferenceData() || actionLoading()"
+            (click)="save()"
+          >
+            @if (saving()) {
+              <mat-spinner diameter="18"></mat-spinner>
+              Збереження...
+            } @else {
+              <mat-icon>save</mat-icon>
+              Зберегти зміни
+            }
+          </button>
+        </div>
+      </footer>
     }
   }
 </div>
