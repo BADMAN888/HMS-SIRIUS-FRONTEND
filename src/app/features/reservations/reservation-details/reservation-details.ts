@@ -1,217 +1,364 @@
-
-import { Component, inject, OnInit, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { ActivatedRoute, Router } from '@angular/router';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
+import { DatePipe, DecimalPipe, Location } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { forkJoin } from 'rxjs';
+
+import { MatButtonModule } from '@angular/material/button';
+import { MatCardModule } from '@angular/material/card';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSelectModule } from '@angular/material/select';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
+
 import { ReservationService } from '../../../core/services/reservation.service';
-import { ReservationResponse } from '../../../core/models/reservation/reservation-response.model';
-import { ReservationCommentResponse } from '../../../core/models/reservation/reservation-comment-response.model';
+import { ProfileService } from '../../../core/services/profile.service';
+import { RoomService } from '../../../core/services/room.service';
+import { RateService } from '../../../core/services/rate.service';
+
+import { Reservation } from '../../../core/models/reservation/reservation.model';
 import { ReservationStatus } from '../../../core/models/enums/reservation-status.enum';
+
 import { ReservationComment } from '../../../core/models/reservation/reservation-comment.model';
+import { ReservationCommentResponse } from '../../../core/models/reservation/reservation-comment-response.model';
+import {Profile} from '../../../core/models/reservation/profile.model';
 
 @Component({
   selector: 'app-reservation-details',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [
+    DatePipe,
+    DecimalPipe,
+    FormsModule,
+    MatButtonModule,
+    MatCardModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatInputModule,
+    MatProgressSpinnerModule,
+    MatSelectModule,
+    MatAutocompleteModule,
+  ],
   templateUrl: './reservation-details.html',
-  styleUrl: './reservation-details.scss'
+  styleUrl: './reservation-details.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ReservationDetailsComponent implements OnInit {
-  private readonly route = inject(ActivatedRoute);
-  private readonly router = inject(Router);
+export class ReservationDetailsComponent {
   private readonly reservationService = inject(ReservationService);
+  private readonly profileService = inject(ProfileService);
+  private readonly roomService = inject(RoomService);
+  private readonly rateService = inject(RateService);
+  private readonly location = inject(Location);
 
-  readonly reservation = signal<ReservationResponse | null>(null);
-  readonly comments = signal<ReservationCommentResponse[]>([]);
-  readonly isLoading = signal(true);
-  readonly isActionPending = signal(false);
-  readonly isCommentPending = signal(false);
+  readonly loading = signal(true);
+  readonly saving = signal(false);
+  readonly addingComment = signal(false);
   readonly errorMessage = signal<string | null>(null);
-  readonly newCommentText = signal('');
 
-  readonly Status = ReservationStatus;
+  readonly reservation = signal<Reservation | null>(null);
+  readonly profiles = signal<Profile[]>([]);
+  readonly rooms = signal<any[]>([]);
+  readonly rates = signal<any[]>([]);
+
+  readonly commentText = signal('');
+  readonly selectedGuestId = signal<number | null>(null);
+  readonly guestSearch = signal('');
+
+  readonly filteredProfiles = computed(() => {
+    const search = this.guestSearch().trim().toLowerCase();
+
+    if (!search) {
+      return this.profiles();
+    }
+
+    return this.profiles().filter((profile) => {
+      const fullName = [
+        profile.lastName,
+        profile.firstName,
+        profile.middleName ?? '',
+      ]
+        .join(' ')
+        .toLowerCase();
+
+      return (
+        fullName.includes(search) ||
+        profile.phoneNumber.toLowerCase().includes(search) ||
+        profile.email.toLowerCase().includes(search)
+      );
+    });
+  });
+
+  readonly statusLabels: Record<ReservationStatus, string> = {
+    RESERVED: 'Заброньовано',
+    CONFIRMED: 'Підтверджено',
+    IN_HOUSE: 'Заселено',
+    COMPLETED: 'Завершено',
+    CANCELLED: 'Скасовано',
+    NO_SHOW: 'Не заїхав',
+  };
+
+  readonly statusOptions = Object.entries(this.statusLabels).map(
+    ([value, label]) => ({
+      value: value as ReservationStatus,
+      label,
+    }),
+  );
 
   ngOnInit(): void {
-    const idParam = this.route.snapshot.paramMap.get('id');
-    const id = Number(idParam);
-
-    if (!idParam || !Number.isSafeInteger(id) || id <= 0) {
-      this.errorMessage.set('Некоректний ідентифікатор бронювання.');
-      this.isLoading.set(false);
-      return;
-    }
-
-    this.loadReservationData(id);
+    this.loadReservation();
   }
 
-  loadReservationData(id: number): void {
-    this.isLoading.set(true);
+  private loadReservation(): void {
+    this.loading.set(true);
     this.errorMessage.set(null);
 
-    this.reservationService.getById(id).subscribe({
+    const reservationId = this.getReservationId();
+
+    if (reservationId === null) {
+      this.errorMessage.set('Не вдалося визначити номер бронювання.');
+      this.loading.set(false);
+      return;
+    }
+
+    this.reservationService.getById(reservationId).subscribe({
       next: (reservation) => {
-        this.reservation.set(reservation);
-        this.isLoading.set(false);
-        this.loadComments(id);
+        this.reservation.set({
+          ...reservation,
+          comments: reservation.comments ?? [],
+        });
+
+        this.loading.set(false);
+        this.loadEditData();
       },
-      error: (error: unknown) => {
-        console.error('Error fetching reservation:', error);
-        this.reservation.set(null);
-        this.errorMessage.set(
-          'Не вдалося завантажити деталі бронювання.'
+      error: () => {
+        this.errorMessage.set('Не вдалося завантажити бронювання.');
+        this.loading.set(false);
+      },
+    });
+  }
+
+  private loadEditData(): void {
+    forkJoin({
+      profiles: this.profileService.getAll(),
+      rooms: this.roomService.getAll(),
+      rates: this.rateService.getAll(),
+    }).subscribe({
+      next: ({ profiles, rooms, rates }) => {
+        this.profiles.set(
+          profiles.map((profile) => ({
+            ...profile,
+            middleName: profile.middleName ?? null,
+          })) as Profile[],
         );
-        this.isLoading.set(false);
-      }
+
+        this.rooms.set(rooms);
+        this.rates.set(rates);
+      },
+      error: () => {
+        this.errorMessage.set(
+          'Бронювання завантажено, але довідники завантажити не вдалося.',
+        );
+      },
     });
   }
 
-  loadComments(reservationId: number): void {
-    this.reservationService.getComments(reservationId).subscribe({
-      next: (comments) => this.comments.set(comments),
-      error: (error: unknown) => {
-        console.error('Error fetching comments:', error);
-      }
-    });
+  private getReservationId(): number | null {
+    const segments = this.location.path().split('?')[0].split('/');
+    const id = Number(segments.at(-1));
+
+    return Number.isInteger(id) && id > 0 ? id : null;
   }
 
-  onCheckIn(): void {
-    const reservation = this.reservation();
+  getStatusLabel(status: ReservationStatus): string {
+    return this.statusLabels[status] ?? status;
+  }
 
-    if (!reservation || this.isActionPending()) {
+  getProfileName(profile: Profile): string {
+    return [
+      profile.lastName,
+      profile.firstName,
+      profile.middleName ?? '',
+    ]
+      .filter(Boolean)
+      .join(' ');
+  }
+
+  getProfileById(profileId: number): Profile | undefined {
+    return this.profiles().find((profile) => profile.id === profileId);
+  }
+
+  getRoomLabel(roomId: number): string {
+    const room = this.rooms().find((item) => item.id === roomId);
+
+    return room?.roomNumber != null
+      ? String(room.roomNumber)
+      : String(roomId);
+  }
+
+  getRateLabel(rateId: number): string {
+    const rate = this.rates().find((item) => item.id === rateId);
+
+    return rate?.name ?? rate?.code ?? String(rateId);
+  }
+
+  updateReservation<K extends keyof Reservation>(
+    field: K,
+    value: Reservation[K],
+  ): void {
+    this.reservation.update((current) =>
+      current ? { ...current, [field]: value } : current,
+    );
+  }
+
+  onPrimaryGuestChange(profileId: number): void {
+    this.updateReservation('primaryGuestId', profileId);
+
+    const current = this.reservation();
+
+    if (!current) {
       return;
     }
 
-    this.isActionPending.set(true);
+    const guestIds = current.guestIds ?? [];
 
-    this.reservationService.checkIn(reservation.id).subscribe({
-      next: () => this.refreshData(reservation.id),
-      error: (error: unknown) =>
-        this.handleActionError('Не вдалося виконати Check-In.', error)
-    });
+    if (!guestIds.includes(profileId)) {
+      this.updateReservation('guestIds', [...guestIds, profileId]);
+    }
   }
 
-  onCheckOut(): void {
-    const reservation = this.reservation();
+  addGuest(profileId: number): void {
+    const current = this.reservation();
 
-    if (!reservation || this.isActionPending()) {
+    if (!current) {
       return;
     }
 
-    this.isActionPending.set(true);
+    const guestIds = current.guestIds ?? [];
 
-    this.reservationService.checkOut(reservation.id).subscribe({
-      next: () => this.refreshData(reservation.id),
-      error: (error: unknown) =>
-        this.handleActionError('Не вдалося виконати Check-Out.', error)
-    });
+    if (!guestIds.includes(profileId)) {
+      this.updateReservation('guestIds', [...guestIds, profileId]);
+    }
+
+    this.selectedGuestId.set(null);
+    this.guestSearch.set('');
   }
 
-  onCancel(): void {
-    const reservation = this.reservation();
+  removeGuest(profileId: number): void {
+    const current = this.reservation();
 
-    if (
-      !reservation ||
-      this.isActionPending() ||
-      !confirm('Ви впевнені, що хочете скасувати це бронювання?')
-    ) {
+    if (!current || current.primaryGuestId === profileId) {
       return;
     }
 
-    this.isActionPending.set(true);
-
-    this.reservationService.cancel(reservation.id).subscribe({
-      next: () => this.refreshData(reservation.id),
-      error: (error: unknown) =>
-        this.handleActionError('Не вдалося скасувати бронювання.', error)
-    });
+    this.updateReservation(
+      'guestIds',
+      (current.guestIds ?? []).filter((id) => id !== profileId),
+    );
   }
 
-  onNoShow(): void {
-    const reservation = this.reservation();
+  saveReservation(): void {
+    const current = this.reservation();
 
-    if (
-      !reservation ||
-      this.isActionPending() ||
-      !confirm('Позначити бронювання як No-Show?')
-    ) {
+    if (!current || this.saving()) {
       return;
     }
 
-    this.isActionPending.set(true);
+    this.saving.set(true);
+    this.errorMessage.set(null);
 
-    this.reservationService.noShow(reservation.id).subscribe({
-      next: () => this.refreshData(reservation.id),
-      error: (error: unknown) =>
-        this.handleActionError('Не вдалося змінити статус на No-Show.', error)
+    const guestIds = [...new Set([
+      ...(current.guestIds ?? []),
+      current.primaryGuestId,
+    ])];
+
+    const updatedReservation = {
+      ...current,
+      guestIds,
+    };
+
+    this.reservationService.update(current.id, updatedReservation).subscribe({
+      next: (updated) => {
+        this.reservation.set({
+          ...updated,
+          comments: updated.comments ?? current.comments ?? [],
+        });
+        this.saving.set(false);
+      },
+      error: () => {
+        this.errorMessage.set('Не вдалося зберегти зміни бронювання.');
+        this.saving.set(false);
+      },
     });
   }
 
   addComment(): void {
-    const reservation = this.reservation();
-    const text = this.newCommentText().trim();
+    const current = this.reservation();
+    const text = this.commentText().trim();
 
-    if (!reservation || !text || this.isCommentPending()) {
+    if (!current || !text || this.addingComment()) {
       return;
     }
 
     const request: ReservationComment = { text };
 
-    this.isCommentPending.set(true);
+    this.addingComment.set(true);
+    this.errorMessage.set(null);
 
-    this.reservationService.createComment(reservation.id, request).subscribe({
-      next: () => {
-        this.newCommentText.set('');
-        this.isCommentPending.set(false);
-        this.loadComments(reservation.id);
+    this.reservationService.addComment(current.id, request).subscribe({
+      next: (comment: ReservationCommentResponse) => {
+        this.reservation.update((reservation) =>
+          reservation
+            ? {
+              ...reservation,
+              comments: [...(reservation.comments ?? []), comment],
+            }
+            : reservation,
+        );
+
+        this.commentText.set('');
+        this.addingComment.set(false);
       },
-      error: (error: unknown) => {
-        console.error('Error adding comment:', error);
-        this.isCommentPending.set(false);
-        alert('Не вдалося додати коментар.');
-      }
+      error: () => {
+        this.errorMessage.set('Не вдалося додати коментар.');
+        this.addingComment.set(false);
+      },
     });
   }
 
-  deleteComment(commentId: number): void {
-    const reservation = this.reservation();
+  removeComment(commentId: number): void {
+    const current = this.reservation();
 
-    if (
-      !reservation ||
-      this.isCommentPending() ||
-      !confirm('Видалити коментар?')
-    ) {
+    if (!current) {
       return;
     }
 
-    this.isCommentPending.set(true);
-
-    this.reservationService
-      .deleteComment(reservation.id, commentId)
-      .subscribe({
-        next: () => {
-          this.isCommentPending.set(false);
-          this.loadComments(reservation.id);
-        },
-        error: (error: unknown) => {
-          console.error('Error deleting comment:', error);
-          this.isCommentPending.set(false);
-          alert('Не вдалося видалити коментар.');
-        }
-      });
+    this.reservationService.deleteComment(current.id, commentId).subscribe({
+      next: () => {
+        this.reservation.update((reservation) =>
+          reservation
+            ? {
+              ...reservation,
+              comments: (reservation.comments ?? []).filter(
+                (comment) => comment.id !== commentId,
+              ),
+            }
+            : reservation,
+        );
+      },
+      error: () => {
+        this.errorMessage.set('Не вдалося видалити коментар.');
+      },
+    });
   }
 
-  close(): void {
-    void this.router.navigate(['/hotel-grid']);
-  }
-
-  private refreshData(id: number): void {
-    this.isActionPending.set(false);
-    this.loadReservationData(id);
-  }
-
-  private handleActionError(message: string, error: unknown): void {
-    console.error(error);
-    this.isActionPending.set(false);
-    alert(message);
+  goBack(): void {
+    this.location.back();
   }
 }

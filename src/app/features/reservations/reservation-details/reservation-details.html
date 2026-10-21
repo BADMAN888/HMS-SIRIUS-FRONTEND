@@ -1,288 +1,298 @@
-
-<div class="reservation-details-container">
-  <div class="tabs-header">
-    <button class="tab-btn active" type="button">
-      Reservation
-    </button>
-    <button class="tab-btn" type="button" disabled>
-      Accrual
-    </button>
-    <button class="tab-btn" type="button" disabled>
-      Registration Form
-    </button>
-    <button class="tab-btn" type="button" disabled>
-      Confirmation
-    </button>
-    <button class="tab-btn" type="button" disabled>
-      Key Cards
-    </button>
-  </div>
-
-  @if (isLoading()) {
-    <div class="loading-state">
-      <span>Завантаження бронювання...</span>
-    </div>
-  } @else if (errorMessage()) {
-    <div class="error-state">
-      <span>{{ errorMessage() }}</span>
-
+<div class="reservation-details-page">
+  <nav class="tabs">
+    @for (tab of tabs; track tab) {
       <button
-        class="action-link-btn"
         type="button"
-        (click)="close()"
+        class="tab"
+        [class.tab--active]="activeTab() === tab"
+        (click)="selectTab(tab)"
       >
-        До шахматки
+        {{ tab }}
       </button>
-    </div>
-  } @else {
-    @if (reservation(); as res) {
-      <div class="content-card">
-        <section class="info-grid-top">
-          <div class="info-item">
+    }
+  </nav>
+
+  @if (loading()) {
+    <div class="state-message">Завантаження бронювання…</div>
+  } @else if (error()) {
+    <div class="error-message">{{ error() }}</div>
+  } @else if (reservation(); as r) {
+    @if (!canEdit()) {
+      <div class="warning-message">Бронювання з таким статусом не можна редагувати.</div>
+    }
+
+    @if (activeTab() === 'Reservation') {
+      <div class="cards">
+        <section class="card">
+          <div class="row">
             <span class="label">Res. Number:</span>
-            <span class="value">
-              {{ res.confirmationNumber || '—' }}
-            </span>
+            <span class="value">{{ r.confirmationNumber }}</span>
           </div>
 
-          <div class="info-item">
-            <span class="label">Hotel:</span>
-            <span class="value">Olga Grand Hotel</span>
+          <div class="row">
+            <select
+              class="field field--grow"
+              [value]="editPrimaryGuestId()"
+              [disabled]="!canEdit() || loadingEditData()"
+              (change)="editPrimaryGuestId.set(+$any($event.target).value)"
+            >
+              @for (profile of profiles(); track profile.id) {
+                <option [value]="profile.id">{{ getProfileName(profile) }}</option>
+              }
+            </select>
           </div>
 
-          <div class="info-item">
-            <span class="label">Payment Category:</span>
-            <span class="value">
-              {{ res.rate?.name || '—' }}
-            </span>
-          </div>
-
-          <div class="info-item">
-            <span class="label">Room Category:</span>
-            <span class="value">
-              {{ res.room?.name || '—' }}
-            </span>
-          </div>
-
-          <div class="info-item">
-            <span class="label">Check-in:</span>
-            <span class="value">
-              {{ res.checkIn | date:'dd.MM.yyyy' }}
-            </span>
-          </div>
-
-          <div class="info-item">
-            <span class="label">Check-out:</span>
-            <span class="value">
-              {{ res.checkOut | date:'dd.MM.yyyy' }}
-            </span>
-          </div>
-
-          <div class="info-item">
-            <span class="label">Room Number:</span>
-            <span class="value">
-              {{ res.room?.number ?? '—' }}
-            </span>
-          </div>
-
-          <div class="info-item adults-children">
-            <span class="label">Adults:</span>
-            <span class="value">{{ res.adults }}</span>
-
-            <span class="label children-label">Children:</span>
-            <span class="value">{{ res.children }}</span>
-          </div>
-
-          <div class="info-item">
-            <span class="label">Price:</span>
-            <span class="value">
-              {{ res.rate?.name || '—' }}
-            </span>
-          </div>
-
-          <div class="info-item">
-            <span class="label">Status:</span>
-            <span class="value status-value">
-              {{ res.status }}
-            </span>
-          </div>
-        </section>
-
-        <div class="divider"></div>
-
-        <section class="info-grid-middle">
-          <div class="info-item">
-            <span class="label">Full Name:</span>
-            <span class="value">
-              {{ res.primaryGuest?.lastName || '' }}
-              {{ res.primaryGuest?.firstName || '' }}
-            </span>
-          </div>
-
-          <div class="info-item">
+          <div class="row">
             <span class="label">Phone Number:</span>
-            <span class="value">
-              {{ res.primaryGuest?.phone || '—' }}
-            </span>
+            <span class="value">{{ r.primaryGuest.phoneNumber }}</span>
           </div>
 
-          <div class="info-item">
-            <span class="label">Source:</span>
-            <span class="value">—</span>
-          </div>
-
-          <div class="info-item">
+          <div class="row">
             <span class="label">Mail:</span>
-            <span class="value">
-              {{ res.primaryGuest?.email || '—' }}
-            </span>
+            <span class="value">{{ r.primaryGuest.email }}</span>
           </div>
 
-          <div class="info-item">
+          <div class="row">
+            <span class="label">Adults:</span>
+            <input
+              class="field field--short"
+              type="number"
+              min="1"
+              [value]="editAdults()"
+              [disabled]="!canEdit()"
+              (input)="editAdults.set(+$any($event.target).value)"
+            />
+            <span class="label">Children:</span>
+            <input
+              class="field field--short"
+              type="number"
+              min="0"
+              [value]="editChildren()"
+              [disabled]="!canEdit()"
+              (input)="editChildren.set(+$any($event.target).value)"
+            />
+          </div>
+
+          <div class="row">
             <span class="label">External Booking Number:</span>
-            <span class="value">—</span>
-          </div>
-
-          <div class="info-item">
-            <span class="label">Balance:</span>
-            <span class="value">—</span>
+            <span class="value">{{ r.externalBookingNumber || '—' }}</span>
           </div>
         </section>
 
-        <div class="sections-row">
-          <section class="comments-section">
-            <span class="section-title">Comments</span>
+        <section class="card">
+          <div class="row">
+            <span class="label">Check-in:</span>
+            <input
+              class="field field--grow"
+              type="datetime-local"
+              [value]="editCheckIn()"
+              [disabled]="!canEdit()"
+              (input)="editCheckIn.set($any($event.target).value)"
+            />
+          </div>
 
-            <div class="comment-box-wrapper">
-              <div class="comments-list">
-                @for (comment of comments(); track comment.id) {
-                  <div class="comment-item">
-                    <span class="comment-text">
-                      {{ comment.text }}
-                    </span>
+          <div class="row">
+            <span class="label">Check-out:</span>
+            <input
+              class="field field--grow"
+              type="datetime-local"
+              [value]="editCheckOut()"
+              [disabled]="!canEdit()"
+              (input)="editCheckOut.set($any($event.target).value)"
+            />
+          </div>
 
-                    <button
-                      class="delete-comment-btn"
-                      type="button"
-                      aria-label="Видалити коментар"
-                      title="Видалити коментар"
-                      [disabled]="isCommentPending()"
-                      (click)="deleteComment(comment.id)"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                } @empty {
-                  <span class="empty-state">
-                    Коментарів поки немає
-                  </span>
-                }
-              </div>
+          <div class="row">
+            <span class="label">Room Number:</span>
+            <select
+              class="field field--grow"
+              [value]="editRoomId()"
+              [disabled]="!canEdit() || loadingEditData()"
+              (change)="editRoomId.set(+$any($event.target).value)"
+            >
+              @for (room of rooms(); track room.id) {
+                <option [value]="room.id">{{ room.roomNumber }} — Floor {{ room.floor }}</option>
+              }
+            </select>
+          </div>
 
-              <div class="add-comment-area">
-                <input
-                  type="text"
-                  class="comment-input"
-                  placeholder="Add comment..."
-                  aria-label="Новий коментар"
-                  [ngModel]="newCommentText()"
-                  (ngModelChange)="newCommentText.set($event)"
-                  (keydown.enter)="addComment()"
-                  [disabled]="isCommentPending()"
-                />
+          <div class="row">
+            <span class="label">Room Category:</span>
+            <span class="value">{{ r.room.categoryId }}</span>
+          </div>
 
-                <button
-                  class="btn-add"
-                  type="button"
-                  [disabled]="!newCommentText().trim() || isCommentPending()"
-                  (click)="addComment()"
-                >
-                  {{ isCommentPending() ? '...' : 'Add' }}
+          <div class="row">
+            <span class="label">Status:</span>
+            <span
+              class="status"
+              [class.reserved]="r.status === 'RESERVED'"
+              [class.confirmed]="r.status === 'CONFIRMED'"
+              [class.checked-in]="r.status === 'CHECKED_IN'"
+              [class.completed]="r.status === 'COMPLETED'"
+              [class.cancelled]="r.status === 'CANCELLED'"
+              [class.no-show]="r.status === 'NO_SHOW'"
+            >
+              {{ statusLabel(r.status) }}
+            </span>
+          </div>
+        </section>
+
+        <section class="card card--source">
+          <div class="row">
+            <span class="label">Source Company:</span>
+            <span class="value">{{ r.company || '—' }}</span>
+          </div>
+
+          <div class="row">
+            <span class="label">Operator Company:</span>
+            <span class="value">{{ r.operatorCompany || '—' }}</span>
+          </div>
+
+          <div class="row">
+            <span class="label">Source:</span>
+            <span class="value">{{ r.bookingSource || '—' }}</span>
+          </div>
+
+          <div class="row">
+            <span class="label">Price:</span>
+            <select
+              class="field field--grow"
+              [value]="editRateId()"
+              [disabled]="!canEdit() || loadingEditData()"
+              (change)="editRateId.set(+$any($event.target).value)"
+            >
+              @for (rate of rates(); track rate.id) {
+                <option [value]="rate.id">
+                  {{ rate.name }} — {{ rate.price | number: '1.2-2' }} {{ rate.currency }}
+                </option>
+              }
+            </select>
+          </div>
+
+          <div class="row">
+            <span class="label">Folio:</span>
+            <span class="value">{{ r.folioId ?? '—' }}</span>
+          </div>
+        </section>
+      </div>
+
+      <div class="panels">
+        <div class="panel-wrap">
+          <h3 class="panel-title">Comments:</h3>
+          <div class="panel">
+            @for (comment of r.comments; track comment.id) {
+              <div class="item">
+                <div class="item__body">
+                  <span class="item__text">{{ comment.text }}</span>
+                  <span class="item__meta">{{ comment.createdAt | date: 'dd.MM.yyyy HH:mm' }}</span>
+                </div>
+                <button type="button" class="item__remove" (click)="removeComment(comment.id)">
+                  <mat-icon>close</mat-icon>
                 </button>
               </div>
-            </div>
-          </section>
+            }
 
-          <section class="profiles-section">
-            <span class="section-title">Profiles</span>
-
-            <div class="profile-box-wrapper">
-              <div class="profile-item">
-                <span class="profile-name">
-                  {{ res.primaryGuest?.lastName || '' }}
-                  {{ res.primaryGuest?.firstName || '' }}
-                </span>
-
-                <span class="profile-role">Primary</span>
-              </div>
-            </div>
-          </section>
+            @if (addingComment()) {
+              <input
+                #commentInput
+                class="item item--input"
+                type="text"
+                placeholder="Новий коментар"
+                (keydown.enter)="addComment(commentInput)"
+                (keydown.escape)="addingComment.set(false)"
+                (blur)="addComment(commentInput)"
+                autofocus
+              />
+            } @else {
+              <button type="button" class="add" (click)="addingComment.set(true)">
+                <mat-icon>add</mat-icon>Add comment
+              </button>
+            }
+          </div>
         </div>
 
-        <div class="bottom-actions-bar">
-          <button
-            class="action-link-btn"
-            type="button"
-            disabled
-          >
-            History
-          </button>
+        <div class="panel-wrap">
+          <h3 class="panel-title">Profiles:</h3>
+          <div class="panel">
+            @for (profile of selectedGuests(); track profile.id) {
+              <div class="item">
+                <div class="item__body">
+                  <span class="item__text">{{ getProfileName(profile) }}</span>
+                  <span class="item__meta">{{ profile.phoneNumber }}</span>
+                </div>
+                @if (canEdit()) {
+                  <button type="button" class="item__remove" (click)="removeGuest(profile.id)">
+                    <mat-icon>close</mat-icon>
+                  </button>
+                }
+              </div>
+            }
 
-          <div class="right-actions">
-            <button
-              class="action-link-btn"
-              type="button"
-              disabled
-              title="Збереження редагованих полів ще не реалізоване"
-            >
-              Save
-            </button>
-
-            <button
-              class="action-link-btn"
-              type="button"
-              (click)="close()"
-            >
-              Close
-            </button>
-
-            <button
-              class="action-link-btn text-danger"
-              type="button"
-              [disabled]="isActionPending()"
-              (click)="onCancel()"
-            >
-              Cancel
-            </button>
-
-            <button
-              class="action-link-btn"
-              type="button"
-              [disabled]="isActionPending()"
-              (click)="onCheckIn()"
-            >
-              Check-In
-            </button>
-
-            <button
-              class="action-link-btn"
-              type="button"
-              [disabled]="isActionPending()"
-              (click)="onCheckOut()"
-            >
-              Check-Out
-            </button>
-
-            <button
-              class="action-link-btn"
-              type="button"
-              disabled
-            >
-              Copy Reservation
-            </button>
+            @if (canEdit()) {
+              <select class="add add--select" [disabled]="loadingEditData()" (change)="addGuest($event)">
+                <option value="" selected>+ Add profile</option>
+                @for (profile of availableProfiles(); track profile.id) {
+                  <option [value]="profile.id">{{ getProfileName(profile) }} — {{ profile.phoneNumber }}</option>
+                }
+              </select>
+            }
           </div>
         </div>
       </div>
+    } @else {
+      <div class="state-message">Розділ «{{ activeTab() }}» у розробці</div>
     }
+
+    @if (saveError()) {
+      <div class="save-error">{{ saveError() }}</div>
+    }
+
+    @if (saved()) {
+      <div class="save-success">Зміни збережено.</div>
+    }
+
+    <footer class="actions">
+      <button type="button" class="action" disabled>
+        <mat-icon>history</mat-icon>History
+      </button>
+
+      <div class="actions__main">
+        <button
+          type="button"
+          class="action"
+          [disabled]="saving() || loadingEditData() || !canEdit()"
+          (click)="save()"
+        >
+          <mat-icon>check</mat-icon>
+          @if (saving()) {
+            Saving…
+          } @else {
+            Save
+          }
+        </button>
+
+        <button type="button" class="action" (click)="goBack()">
+          <mat-icon>close</mat-icon>Close
+        </button>
+
+        @if (r.status === 'RESERVED' || r.status === 'CONFIRMED') {
+          <button type="button" class="action" [disabled]="actionBusy()" (click)="cancelReservation()">
+            <mat-icon>delete_outline</mat-icon>Cancel
+          </button>
+
+          <button type="button" class="action" [disabled]="actionBusy()" (click)="markNoShow()">
+            <mat-icon>person_off</mat-icon>No-Show
+          </button>
+
+          <button type="button" class="action" [disabled]="actionBusy()" (click)="checkIn()">
+            <mat-icon>login</mat-icon>Check-In
+          </button>
+        }
+      </div>
+
+      <button type="button" class="action" [disabled]="actionBusy()" (click)="copyReservation()">
+        <mat-icon>content_copy</mat-icon>Copy Reservation
+      </button>
+    </footer>
   }
 </div>

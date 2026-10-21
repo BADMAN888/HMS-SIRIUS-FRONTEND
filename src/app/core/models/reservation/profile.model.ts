@@ -5,7 +5,7 @@ export interface Profile {
   id: number;
   firstName: string;
   lastName: string;
-  middleName: string;
+  middleName: string | null;
   phoneNumber: string;
   email: string;
   gender: Gender;
