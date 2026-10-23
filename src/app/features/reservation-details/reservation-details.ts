@@ -1,26 +1,43 @@
-import {Component, inject, OnInit, signal} from '@angular/core';
+import {Component, computed, inject, OnInit, signal} from '@angular/core';
+import {FormsModule} from '@angular/forms';
 import {ActivatedRoute, Router} from '@angular/router';
+import {MatAutocompleteModule} from '@angular/material/autocomplete';
+import {MatFormFieldModule} from '@angular/material/form-field';
+import {MatInputModule} from '@angular/material/input';
+import {MatOptionModule} from '@angular/material/core';
+
 import {ReservationService} from '../../core/services/reservation.service';
 import {ProfileService} from '../../core/services/profile.service';
 import {RoomService} from '../../core/services/room.service';
 import {RateService} from '../../core/services/rate.service';
+
 import {ReservationResponse} from '../../core/models/reservation/reservation-response.model';
 import {ProfileResponse} from '../../core/models/profile/profile-response.model';
 import {RoomResponse} from '../../core/models/hotel/room-response.model';
 import {RateResponse} from '../../core/models/billing/rate-response.model';
-import {finalize, forkJoin} from 'rxjs';
 import {ReservationRequest} from '../../core/models/reservation/reservation-request.model';
 
+import {finalize, forkJoin} from 'rxjs';
+import {ReservationCommentResponse} from '../../core/models/reservation/reservation-comment-response.model';
+import {DatePipe} from '@angular/common';
 
 @Component({
-  imports: [],
   selector: 'app-reservation-details',
-  styleUrl: './reservation-details.scss',
+  standalone: true,
+  imports: [
+    FormsModule,
+    MatAutocompleteModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatOptionModule,
+    DatePipe
+  ],
   templateUrl: './reservation-details.html',
+  styleUrl: './reservation-details.scss'
 })
 export class ReservationDetails implements OnInit {
   private readonly route = inject(ActivatedRoute);
-  private readonly router = inject(Router);
+  readonly router = inject(Router);
   private readonly reservationService = inject(ReservationService);
   private readonly profileService = inject(ProfileService);
   private readonly roomService = inject(RoomService);
@@ -31,6 +48,26 @@ export class ReservationDetails implements OnInit {
   readonly profiles = signal<ProfileResponse[]>([]);
   readonly rooms = signal<RoomResponse[]>([]);
   readonly rates = signal<RateResponse[]>([]);
+
+  readonly guestSearch = signal('');
+  readonly selectedGuest = signal<ProfileResponse | null>(null);
+
+  readonly filteredProfiles = computed(() => {
+    const query = this.guestSearch().trim().toLocaleLowerCase('uk-UA');
+
+    if (query.length < 3) {
+      return [];
+    }
+
+    return this.profiles()
+      .filter(profile => {
+        const fullName = this.getProfileFullName(profile).toLocaleLowerCase('uk-UA');
+        const phone = profile.phoneNumber ?? '';
+
+        return fullName.includes(query) || phone.toLocaleLowerCase().includes(query);
+      })
+      .slice(0, 10);
+  });
 
   readonly editRoomId = signal(0);
   readonly editRateId = signal(0);
@@ -63,6 +100,30 @@ export class ReservationDetails implements OnInit {
     this.loadReservation(id);
     this.loadEditData();
   }
+
+  getProfileFullName(profile: ProfileResponse): string {
+    return [
+      profile.lastName,
+      profile.firstName,
+      profile.middleName
+    ].filter(Boolean).join(' ');
+  }
+
+  displayGuest = (profile: ProfileResponse | null): string => {
+    return profile ? this.getProfileFullName(profile) : '';
+  };
+
+  onGuestSearch(value: string): void {
+    this.guestSearch.set(value);
+    this.selectedGuest.set(null);
+  }
+
+  selectPrimaryGuest(profile: ProfileResponse): void {
+    this.selectedGuest.set(profile);
+    this.editPrimaryGuestId.set(profile.id);
+    this.guestSearch.set(this.getProfileFullName(profile));
+  }
+
   private loadReservation(id: number): void {
     this.loading.set(true);
     this.error.set('');
@@ -85,29 +146,29 @@ export class ReservationDetails implements OnInit {
       }
     });
   }
+
   private initializeForm(reservation: ReservationResponse): void {
     this.editRoomId.set(reservation.room.id);
     this.editRateId.set(reservation.rate.id);
     this.editPrimaryGuestId.set(reservation.primaryGuest.id);
     this.editGuestIds.set([...reservation.guestIds]);
-    this.editCheckIn.set(
-      this.toDateTimeLocal(reservation.checkIn)
-    );
-    this.editCheckOut.set(
-      this.toDateTimeLocal(reservation.checkOut)
-    );
+    this.editCheckIn.set(this.toDateTimeLocal(reservation.checkIn));
+    this.editCheckOut.set(this.toDateTimeLocal(reservation.checkOut));
     this.editAdults.set(reservation.adults);
     this.editChildren.set(reservation.children);
+
+    this.selectedGuest.set(reservation.primaryGuest);
+    this.guestSearch.set(this.getProfileFullName(reservation.primaryGuest));
   }
+
   private toDateTimeLocal(value: string): string {
     return value ? value.slice(0, 16) : '';
   }
 
   private toLocalDateTime(value: string): string {
-    return value.length === 16
-      ? `${value}:00`
-      : value;
+    return value.length === 16 ? `${value}:00` : value;
   }
+
   private loadEditData(): void {
     this.loadingEditData.set(true);
 
@@ -115,15 +176,15 @@ export class ReservationDetails implements OnInit {
       profiles: this.profileService.getAll(),
       rooms: this.roomService.getAll(),
       rates: this.rateService.getAll()
-    }).subscribe({
+    }).pipe(
+      finalize(() => this.loadingEditData.set(false))
+    ).subscribe({
       next: data => {
         this.profiles.set(data.profiles);
         this.rooms.set(data.rooms);
         this.rates.set(data.rates);
-        this.loadingEditData.set(false);
       },
       error: error => {
-        this.loadingEditData.set(false);
         this.saveError.set(
           error?.error?.message ||
           error?.message ||
@@ -132,13 +193,15 @@ export class ReservationDetails implements OnInit {
       }
     });
   }
+
   save(): void {
     const reservation = this.reservation();
 
     if (
       !reservation ||
       this.saving() ||
-      this.loadingEditData()
+      this.loadingEditData() ||
+      !this.editPrimaryGuestId()
     ) {
       return;
     }
@@ -147,12 +210,10 @@ export class ReservationDetails implements OnInit {
     this.saved.set(false);
     this.saveError.set('');
 
-    const guestIds = Array.from(
-      new Set([
-        ...this.editGuestIds(),
-        this.editPrimaryGuestId()
-      ])
-    );
+    const guestIds = Array.from(new Set([
+      ...this.editGuestIds(),
+      this.editPrimaryGuestId()
+    ]));
 
     const request: ReservationRequest = {
       roomId: this.editRoomId(),
@@ -165,10 +226,7 @@ export class ReservationDetails implements OnInit {
       children: this.editChildren()
     };
 
-    this.reservationService.update(
-      reservation.id,
-      request
-    ).subscribe({
+    this.reservationService.update(reservation.id, request).subscribe({
       next: updatedReservation => {
         this.reservation.set(updatedReservation);
         this.initializeForm(updatedReservation);
@@ -185,27 +243,193 @@ export class ReservationDetails implements OnInit {
       }
     });
   }
-  cancelReservation(): void { this.runLifecycleAction('cancel'); }
-  markNoShow(): void { this.runLifecycleAction('no-show'); }
+
+  cancelReservation(): void {
+    this.runLifecycleAction('cancel');
+  }
+
+  markNoShow(): void {
+    this.runLifecycleAction('no-show');
+  }
 
   private runLifecycleAction(action: 'cancel' | 'no-show'): void {
     const reservation = this.reservation();
-    if (!reservation || this.actionBusy()) return;
-    const message = action === 'cancel' ? 'Скасувати це бронювання?' : 'Позначити гостя як такого, що не заїхав?';
-    if (!window.confirm(message)) return;
-    this.actionBusy.set(true); this.saveError.set('');
-    const request = action === 'cancel' ? this.reservationService.cancel(reservation.id) : this.reservationService.noShow(reservation.id);
-    request.pipe(finalize(() => this.actionBusy.set(false))).subscribe({
+
+    if (!reservation || this.actionBusy()) {
+      return;
+    }
+
+    const message = action === 'cancel'
+      ? 'Скасувати це бронювання?'
+      : 'Позначити гостя як такого, що не заїхав?';
+
+    if (!window.confirm(message)) {
+      return;
+    }
+
+    this.actionBusy.set(true);
+    this.saveError.set('');
+
+    const request = action === 'cancel'
+      ? this.reservationService.cancel(reservation.id)
+      : this.reservationService.noShow(reservation.id);
+
+    request.pipe(
+      finalize(() => this.actionBusy.set(false))
+    ).subscribe({
       next: () => this.loadReservation(reservation.id),
-      error: error => this.saveError.set(error?.error?.message || error?.message || 'Не вдалося оновити статус бронювання.')
+      error: error => {
+        this.saveError.set(
+          error?.error?.message ||
+          error?.message ||
+          'Не вдалося оновити статус бронювання.'
+        );
+      }
     });
   }
+
   onGuestIdsChange(event: Event): void {
     const select = event.target as HTMLSelectElement;
 
     this.editGuestIds.set(
-      Array.from(select.selectedOptions)
-        .map(option => Number(option.value))
+      Array.from(select.selectedOptions).map(option => Number(option.value))
     );
+  }
+  readonly comments = signal<ReservationCommentResponse[]>([]);
+  readonly newComment = signal('');
+  readonly selectedCommentId = signal<number | null>(null);
+  readonly commentsLoading = signal(false);
+  readonly commentBusy = signal(false);
+
+  readonly editBookingSource = signal('');
+  readonly editCompany = signal('');
+  readonly editOperatorCompany = signal('');
+  readonly editExternalBookingNumber = signal('');
+
+  readonly additionalGuestSearch = signal('');
+
+  readonly filteredAdditionalGuests = computed(() => {
+    const query = this.additionalGuestSearch().trim().toLocaleLowerCase('uk-UA');
+
+    if (query.length < 3) {
+      return [];
+    }
+
+    const excludedIds = new Set([
+      this.editPrimaryGuestId(),
+      ...this.editGuestIds()
+    ]);
+
+    return this.profiles()
+      .filter(profile => {
+        if (excludedIds.has(profile.id)) {
+          return false;
+        }
+
+        const name = this.getProfileFullName(profile).toLocaleLowerCase('uk-UA');
+        const phone = profile.phoneNumber ?? '';
+
+        return name.includes(query) || phone.includes(query);
+      })
+      .slice(0, 10);
+  });
+
+  addAdditionalGuest(profile: ProfileResponse): void {
+    if (
+      profile.id === this.editPrimaryGuestId() ||
+      this.editGuestIds().includes(profile.id)
+    ) {
+      return;
+    }
+
+    this.editGuestIds.update(ids => [...ids, profile.id]);
+    this.additionalGuestSearch.set('');
+  }
+
+  removeAdditionalGuest(profileId: number): void {
+    this.editGuestIds.update(ids => ids.filter(id => id !== profileId));
+  }
+
+  getProfileById(id: number): ProfileResponse | undefined {
+    return this.profiles().find(profile => profile.id === id);
+  }
+
+  loadComments(): void {
+    const reservation = this.reservation();
+
+    if (!reservation) {
+      return;
+    }
+
+    this.commentsLoading.set(true);
+
+    this.reservationService.getComments(reservation.id)
+      .pipe(finalize(() => this.commentsLoading.set(false)))
+      .subscribe({
+        next: comments => this.comments.set(comments),
+        error: error => {
+          this.saveError.set(
+            error?.error?.message ||
+            'Не вдалося завантажити коментарі.'
+          );
+        }
+      });
+  }
+
+  addComment(): void {
+    const reservation = this.reservation();
+    const text = this.newComment().trim();
+
+    if (!reservation || !text || this.commentBusy()) {
+      return;
+    }
+
+    this.commentBusy.set(true);
+
+    this.reservationService.createComment(reservation.id, {text})
+      .pipe(finalize(() => this.commentBusy.set(false)))
+      .subscribe({
+        next: comment => {
+          this.comments.update(comments => [...comments, comment]);
+          this.newComment.set('');
+          this.selectedCommentId.set(comment.id);
+        },
+        error: error => {
+          this.saveError.set(
+            error?.error?.message ||
+            'Не вдалося додати коментар.'
+          );
+        }
+      });
+  }
+
+  deleteSelectedComment(): void {
+    const reservation = this.reservation();
+    const commentId = this.selectedCommentId();
+
+    if (!reservation || commentId === null || this.commentBusy()) {
+      return;
+    }
+
+    if (!window.confirm('Видалити вибраний коментар?')) {
+      return;
+    }
+
+    this.commentBusy.set(true);
+
+    this.reservationService.deleteComment(reservation.id, commentId)
+      .pipe(finalize(() => this.commentBusy.set(false)))
+      .subscribe({
+        next: () => {
+          this.comments.update(items => items.filter(item => item.id !== commentId));
+          this.selectedCommentId.set(null);
+        },
+        error: error => {
+          this.saveError.set(
+            error?.error?.message ||
+            'Не вдалося видалити коментар.'
+          );
+        }
+      });
   }
 }
