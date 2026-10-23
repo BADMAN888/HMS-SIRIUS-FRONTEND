@@ -3,7 +3,7 @@ import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { catchError, finalize, of } from 'rxjs';
 import { HotelGridService } from '../../core/services/hotel-grid.service';
-import { HotelGridRoom } from '../../core/models/hotel-grid-room.model';
+import { HotelGridRoom } from '../../core/models/reservation/hotel-grid-room.model';
 import { HotelGridReservationResponse } from '../../core/models/hotel-grid/hotel-grid-reservation-response.model';
 
 @Component({

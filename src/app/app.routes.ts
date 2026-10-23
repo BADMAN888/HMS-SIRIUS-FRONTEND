@@ -53,8 +53,8 @@ export const routes: Routes = [
       {
         path: 'reservations/:id',
         loadComponent: () =>
-          import('./features/reservations/reservation-details/reservation-details').then(
-            m => m.ReservationDetailsComponent
+          import('./features/reservation-details/reservation-details').then(
+            m => m.ReservationDetails
           )
       }
     ]

@@ -1,7 +1,7 @@
 import { Gender } from '../enums/gender.enum';
 import { GuestDocument } from './guest-document.model';
 
-export interface Profile {
+export interface ProfileResponse {
   id: number;
   firstName: string;
   lastName: string;

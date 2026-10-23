@@ -3,13 +3,14 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 
-import { Reservation } from '../models/reservation/reservation.model';
+
 import { ReservationRequest } from '../models/reservation/reservation-request.model';
 import { ReservationStatus } from '../models/enums/reservation-status.enum';
 import { ReservationCheckInResponse } from '../models/reservation/reservation-check-in-response.model';
 import { ReservationCheckOutResponse } from '../models/reservation/reservation-check-out-response.model';
 import { ReservationComment } from '../models/reservation/reservation-comment.model';
 import { ReservationCommentResponse } from '../models/reservation/reservation-comment-response.model';
+import {ReservationResponse} from '../models/reservation/reservation-response.model';
 
 @Injectable({
   providedIn: 'root'
@@ -18,20 +19,20 @@ export class ReservationService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = 'http://localhost:8080/api/reservations';
 
-  create(request: ReservationRequest): Observable<Reservation> {
-    return this.http.post<Reservation>(this.apiUrl, request);
+  create(request: ReservationRequest): Observable<ReservationResponse> {
+    return this.http.post<ReservationResponse>(this.apiUrl, request);
   }
 
-  getAll(): Observable<Reservation[]> {
-    return this.http.get<Reservation[]>(this.apiUrl);
+  getAll(): Observable<ReservationResponse[]> {
+    return this.http.get<ReservationResponse[]>(this.apiUrl);
   }
 
-  getById(id: number): Observable<Reservation> {
-    return this.http.get<Reservation>(`${this.apiUrl}/${id}`);
+  getById(id: number): Observable<ReservationResponse> {
+    return this.http.get<ReservationResponse>(`${this.apiUrl}/${id}`);
   }
 
-  getByStatus(status: ReservationStatus): Observable<Reservation[]> {
-    return this.http.get<Reservation[]>(
+  getByStatus(status: ReservationStatus): Observable<ReservationResponse[]> {
+    return this.http.get<ReservationResponse[]>(
       `${this.apiUrl}/status/${status}`
     );
   }
@@ -39,8 +40,8 @@ export class ReservationService {
   update(
     id: number,
     request: ReservationRequest
-  ): Observable<Reservation> {
-    return this.http.put<Reservation>(
+  ): Observable<ReservationResponse> {
+    return this.http.put<ReservationResponse>(
       `${this.apiUrl}/${id}`,
       request
     );
@@ -96,10 +97,10 @@ export class ReservationService {
     );
   }
 
-  getByDate(date: string): Observable<Reservation[]> {
+  getByDate(date: string): Observable<ReservationResponse[]> {
     const params = new HttpParams().set('date', date);
 
-    return this.http.get<Reservation[]>(
+    return this.http.get<ReservationResponse[]>(
       `${this.apiUrl}/date`,
       { params }
     );
@@ -108,12 +109,12 @@ export class ReservationService {
   getByDateRange(
     startDate: string,
     endDate: string
-  ): Observable<Reservation[]> {
+  ): Observable<ReservationResponse[]> {
     const params = new HttpParams()
       .set('startDate', startDate)
       .set('endDate', endDate);
 
-    return this.http.get<Reservation[]>(
+    return this.http.get<ReservationResponse[]>(
       `${this.apiUrl}/date-range`,
       { params }
     );

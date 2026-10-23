@@ -1,4 +1,4 @@
-import { DocumentType } from './guest-document.model';
+import {DocumentType} from '../enums/document-type.enum';
 
 export interface GuestDocumentRequest {
   documentType: DocumentType;

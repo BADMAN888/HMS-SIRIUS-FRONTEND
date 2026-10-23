@@ -8,8 +8,9 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTableModule } from '@angular/material/table';
 import { ReservationService } from '../../../core/services/reservation.service';
-import { Reservation } from '../../../core/models/reservation/reservation.model';
+
 import { ReservationStatus } from '../../../core/models/enums/reservation-status.enum';
+import {ReservationResponse} from '../../../core/models/reservation/reservation-response.model';
 
 @Component({
   selector: 'app-in-house',
@@ -29,7 +30,7 @@ export class InHouseComponent implements OnInit {
   private readonly reservationService = inject(ReservationService);
   private readonly router = inject(Router);
 
-  readonly guests = signal<Reservation[]>([]);
+  readonly guests = signal<ReservationResponse[]>([]);
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
 
@@ -65,7 +66,7 @@ export class InHouseComponent implements OnInit {
       });
   }
 
-  getGuestName(reservation: Reservation): string {
+  getGuestName(reservation: ReservationResponse): string {
     const guest = reservation.primaryGuest;
 
     return [
