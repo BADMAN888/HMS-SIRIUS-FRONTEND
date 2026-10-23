@@ -1,0 +1,25 @@
+.container {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.block {
+  padding: 30px;
+  background: #0b2038;
+  color: white;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.block:nth-child(-n + 3) {
+  grid-column: span 2;
+}
+
+.block:nth-child(4) {
+  grid-column: 2 / span 2;
+}
+
+.block:nth-child(5) {
+  grid-column: 4 / span 2;
+}

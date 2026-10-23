@@ -1,0 +1,21 @@
+<div class="reservation-details-page">
+  @if (loading()) {
+    <div class="state-message">
+      Завантаження бронювання…
+    </div>
+  } @else if (error()) {
+    <div class="error-message">
+      {{ error() }}
+    </div>
+  } @else {
+    @if (reservation(); as reservation) {
+      <div class="container">
+        <div class="block">1</div>
+        <div class="block">2</div>
+        <div class="block">3</div>
+        <div class="block">4</div>
+        <div class="block">5</div>
+      </div>
+    }
+  }
+</div>

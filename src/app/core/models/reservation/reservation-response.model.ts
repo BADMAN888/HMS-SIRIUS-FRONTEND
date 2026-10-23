@@ -1,8 +1,9 @@
+
 import { RateResponse } from '../billing/rate-response.model';
 import { RoomResponse } from '../hotel/room-response.model';
-import { ReservationComment } from './reservation-comment.model';
 import { ReservationStatus } from '../enums/reservation-status.enum';
-import {ProfileResponse} from './profile-response.model';
+import { ProfileResponse } from '../profile/profile-response.model';
+import { ReservationCommentResponse } from './reservation-comment-response.model';
 
 export interface ReservationResponse {
   id: number;
@@ -16,7 +17,7 @@ export interface ReservationResponse {
   adults: number;
   children: number;
   status: ReservationStatus;
-  comments: ReservationComment[];
+  comments: ReservationCommentResponse[];
   createdAt: string;
   folioId: number | null;
   externalBookingNumber: string | null;
