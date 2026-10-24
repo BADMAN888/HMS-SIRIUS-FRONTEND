@@ -1,6 +1,14 @@
-import { HttpInterceptorFn } from '@angular/common/http';
+
+import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
-import { catchError, finalize, Observable, shareReplay, switchMap, throwError } from 'rxjs';
+import {
+  catchError,
+  finalize,
+  Observable,
+  shareReplay,
+  switchMap,
+  throwError
+} from 'rxjs';
 import { AuthService } from '../auth/auth.service';
 import { AuthResponse } from '../models/auth/auth-response.model';
 
@@ -28,7 +36,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   });
 
   return next(authReq).pipe(
-    catchError(error => {
+    catchError((error: HttpErrorResponse) => {
       if (error.status !== 401) {
         return throwError(() => error);
       }
@@ -42,9 +50,16 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
       if (!refreshRequest$) {
         refreshRequest$ = authService.refresh().pipe(
-          shareReplay(1),
+          catchError(refreshError => {
+            authService.logout();
+            return throwError(() => refreshError);
+          }),
           finalize(() => {
             refreshRequest$ = null;
+          }),
+          shareReplay({
+            bufferSize: 1,
+            refCount: false
           })
         );
       }
@@ -58,10 +73,6 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
           });
 
           return next(retryRequest);
-        }),
-        catchError(refreshError => {
-          authService.logout();
-          return throwError(() => refreshError);
         })
       );
     })
