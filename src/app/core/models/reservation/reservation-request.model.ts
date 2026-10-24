@@ -2,6 +2,7 @@
 export interface ReservationRequest {
   roomId: number;
   rateId: number;
+  paymentCategoryId: number;
   primaryGuestId: number;
   guestIds: number[];
   checkIn: string;

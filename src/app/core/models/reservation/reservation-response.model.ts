@@ -10,6 +10,7 @@ export interface ReservationResponse {
   confirmationNumber: string;
   room: RoomResponse;
   rate: RateResponse;
+  paymentCategoryId: number;
   primaryGuest: ProfileResponse;
   guestIds: number[];
   checkIn: string;

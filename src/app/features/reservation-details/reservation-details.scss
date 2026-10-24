@@ -1,3 +1,4 @@
+
 $color-page-bg: #020817;
 $color-card-bg: #0b2038;
 $color-input-bg: #071a30;
@@ -71,6 +72,7 @@ $color-tab-active: #3b9bea;
 }
 
 .status {
+  flex-shrink: 0;
   padding: 7px 12px;
   border: 1px solid $color-border-status;
   border-radius: 8px;
@@ -187,12 +189,12 @@ $color-tab-active: #3b9bea;
   padding: 4px 0;
 
   span {
-    color: #000000;
+    color: #000;
     font-size: 13px;
   }
 
   small {
-    color: #555555;
+    color: #555;
     font-size: 12px;
   }
 }
@@ -219,6 +221,74 @@ $color-tab-active: #3b9bea;
     font-size: 13px;
     font-weight: 500;
   }
+}
+
+.guest-counts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 4px;
+}
+
+.guest-count {
+  min-width: 0;
+
+  .field-label {
+    margin-top: 14px;
+    margin-bottom: 10px;
+  }
+}
+
+.counter {
+  display: grid;
+  grid-template-columns: 40px minmax(24px, 1fr) 40px;
+  align-items: center;
+  min-height: 42px;
+  overflow: hidden;
+  border: 1px solid $color-border-input;
+  border-radius: 8px;
+  background: $color-input-bg;
+}
+
+.counter-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 42px;
+  padding: 0;
+  border: 0;
+  background: $color-button-secondary-bg;
+  color: $color-text-primary;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 150ms ease;
+
+  &:hover:not(:disabled) {
+    background: $color-button-secondary-hover-bg;
+  }
+
+  &:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+
+  &:focus-visible {
+    position: relative;
+    z-index: 1;
+    outline: 2px solid $color-border-focus;
+    outline-offset: -3px;
+  }
+}
+
+.counter-value {
+  min-width: 0;
+  color: $color-text-primary;
+  font-size: 15px;
+  font-weight: 600;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
 .info-row {
@@ -274,6 +344,11 @@ $color-tab-active: #3b9bea;
     border-color: $color-border-focus;
     background: $color-comment-selected-bg;
   }
+
+  &:focus-visible {
+    outline: 2px solid $color-border-focus;
+    outline-offset: 2px;
+  }
 }
 
 .additional-guests {
@@ -321,6 +396,10 @@ $color-tab-active: #3b9bea;
   color: $color-text-danger;
   font-size: 21px;
   cursor: pointer;
+
+  &:hover {
+    background: $color-button-danger-hover-bg;
+  }
 }
 
 .primary-button,
@@ -420,6 +499,34 @@ $color-tab-active: #3b9bea;
   color: $color-text-success;
 }
 
+:host ::ng-deep {
+  .mat-mdc-form-field {
+    .mat-mdc-input-element {
+      color: $color-text-primary !important;
+      caret-color: $color-caret;
+    }
+
+    .mdc-floating-label,
+    .mat-mdc-input-element::placeholder {
+      color: $color-text-muted !important;
+    }
+
+    .mdc-notched-outline__leading,
+    .mdc-notched-outline__notch,
+    .mdc-notched-outline__trailing {
+      border-color: $color-border-input !important;
+    }
+
+    &.mat-focused {
+      .mdc-notched-outline__leading,
+      .mdc-notched-outline__notch,
+      .mdc-notched-outline__trailing {
+        border-color: $color-border-focus !important;
+      }
+    }
+  }
+}
+
 @media (max-width: 1100px) {
   .container {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -461,44 +568,17 @@ $color-tab-active: #3b9bea;
   }
 }
 
-:host ::ng-deep {
-  .mat-mdc-form-field {
-    .mat-mdc-input-element {
-      color: $color-text-primary !important;
-      caret-color: $color-caret;
-    }
+@media (max-width: 380px) {
+  .guest-counts {
+    gap: 10px;
+  }
 
-    .mdc-floating-label,
-    .mat-mdc-input-element::placeholder {
-      color: $color-text-muted !important;
-    }
+  .counter {
+    grid-template-columns: 34px minmax(20px, 1fr) 34px;
+  }
+
+  .counter-button {
+    width: 34px;
   }
 }
 
-.cdk-overlay-container {
-  .mat-mdc-autocomplete-panel {
-    background-color: #ffffff !important;
-    border: 1px solid #cccccc !important;
-    border-radius: 8px !important;
-
-    .mat-mdc-option {
-      background-color: transparent !important;
-
-      .guest-option span,
-      .mdc-list-item__primary-text {
-        color: #000000 !important;
-      }
-
-      .guest-option small,
-      .mdc-list-item__secondary-text {
-        color: #444444 !important;
-      }
-
-      &:hover,
-      &.mdc-list-item--highlighted,
-      &.mdc-list-item--activated {
-        background-color: #f0f0f0 !important;
-      }
-    }
-  }
-}

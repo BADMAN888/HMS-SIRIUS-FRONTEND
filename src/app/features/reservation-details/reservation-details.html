@@ -27,24 +27,30 @@
           <h2>Guest name</h2>
 
           <label class="field-label">ПІБ гостя</label>
+
           <mat-form-field appearance="outline" class="full-width">
             <input
               matInput
               [value]="guestSearch()"
               (input)="onGuestSearch($any($event.target).value)"
               [matAutocomplete]="guestAutocomplete"
-              placeholder="Guest name"
+              placeholder="Введіть ПІБ гостя"
             />
 
             <mat-autocomplete
               #guestAutocomplete="matAutocomplete"
+              [displayWith]="displayGuest"
               (optionSelected)="selectPrimaryGuest($event.option.value)"
             >
               @for (profile of filteredProfiles(); track profile.id) {
                 <mat-option [value]="profile">
                   <div class="guest-option">
                     <span>{{ getProfileFullName(profile) }}</span>
-                    <small>{{ profile.phoneNumber || 'Телефон не вказаний' }}</small>
+                    <small>
+                      {{ profile.phoneNumber || 'Телефон не вказаний' }}
+                      ·
+                      {{ profile.email || 'Email не вказаний' }}
+                    </small>
                   </div>
                 </mat-option>
               }
@@ -55,38 +61,144 @@
             </mat-autocomplete>
           </mat-form-field>
 
-          @if (selectedGuest(); as guest) {
-            <div class="guest-contact">
-              <div>
-                <span>Телефон</span>
-                <strong>{{ guest.phoneNumber || '—' }}</strong>
-              </div>
-              <div>
-                <span>Email</span>
-                <strong>{{ guest.email || '—' }}</strong>
+          <label class="field-label">Телефон</label>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <input
+              matInput
+              type="tel"
+              [value]="guestPhoneSearch()"
+              (input)="onGuestPhoneSearch($any($event.target).value)"
+              [matAutocomplete]="phoneAutocomplete"
+              placeholder="Введіть номер телефону"
+            />
+
+            <mat-autocomplete
+              #phoneAutocomplete="matAutocomplete"
+              [displayWith]="displayGuest"
+              (optionSelected)="selectPrimaryGuest($event.option.value)"
+            >
+              @for (profile of filteredProfilesByPhone(); track profile.id) {
+                <mat-option [value]="profile">
+                  <div class="guest-option">
+                    <span>{{ getProfileFullName(profile) }}</span>
+                    <small>
+                      {{ profile.phoneNumber || 'Телефон не вказаний' }}
+                      ·
+                      {{ profile.email || 'Email не вказаний' }}
+                    </small>
+                  </div>
+                </mat-option>
+              }
+
+              @if (guestPhoneSearch().trim().length >= 3 && filteredProfilesByPhone().length === 0) {
+                <mat-option disabled>
+                  Профілів із таким телефоном не знайдено
+                </mat-option>
+              }
+            </mat-autocomplete>
+          </mat-form-field>
+
+          <label class="field-label">Email</label>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <input
+              matInput
+              type="email"
+              [value]="guestEmailSearch()"
+              (input)="onGuestEmailSearch($any($event.target).value)"
+              [matAutocomplete]="emailAutocomplete"
+              placeholder="Введіть email"
+            />
+
+            <mat-autocomplete
+              #emailAutocomplete="matAutocomplete"
+              [displayWith]="displayGuest"
+              (optionSelected)="selectPrimaryGuest($event.option.value)"
+            >
+              @for (profile of filteredProfilesByEmail(); track profile.id) {
+                <mat-option [value]="profile">
+                  <div class="guest-option">
+                    <span>{{ getProfileFullName(profile) }}</span>
+                    <small>
+                      {{ profile.email || 'Email не вказаний' }}
+                      ·
+                      {{ profile.phoneNumber || 'Телефон не вказаний' }}
+                    </small>
+                  </div>
+                </mat-option>
+              }
+
+              @if (guestEmailSearch().trim().length >= 3 && filteredProfilesByEmail().length === 0) {
+                <mat-option disabled>
+                  Профілів із таким email не знайдено
+                </mat-option>
+              }
+            </mat-autocomplete>
+          </mat-form-field>
+
+          <div class="guest-counts">
+            <div class="guest-count">
+              <span class="field-label">Дорослі</span>
+
+              <div class="counter">
+                <button
+                  class="counter-button"
+                  type="button"
+                  aria-label="Зменшити кількість дорослих"
+                  [disabled]="editAdults() <= 1"
+                  (click)="decreaseAdults()"
+                >
+                  −
+                </button>
+
+                <span class="counter-value" aria-live="polite">
+                  {{ editAdults() }}
+                </span>
+
+                <button
+                  class="counter-button"
+                  type="button"
+                  aria-label="Збільшити кількість дорослих"
+                  (click)="increaseAdults()"
+                >
+                  +
+                </button>
               </div>
             </div>
-          }
 
-          <label class="field-label">Дорослі</label>
-          <input
-            class="text-input"
-            type="number"
-            min="1"
-            [value]="editAdults()"
-            (input)="editAdults.set(+$any($event.target).value)"
-          />
+            <div class="guest-count">
+              <span class="field-label">Діти</span>
 
-          <label class="field-label">Діти</label>
-          <input
-            class="text-input"
-            type="number"
-            min="0"
-            [value]="editChildren()"
-            (input)="editChildren.set(+$any($event.target).value)"
-          />
+              <div class="counter">
+                <button
+                  class="counter-button"
+                  type="button"
+                  aria-label="Зменшити кількість дітей"
+                  [disabled]="editChildren() <= 0"
+                  (click)="decreaseChildren()"
+                >
+                  −
+                </button>
+
+                <span class="counter-value" aria-live="polite">
+                  {{ editChildren() }}
+                </span>
+
+                <button
+                  class="counter-button"
+                  type="button"
+                  aria-label="Збільшити кількість дітей"
+                  (click)="increaseChildren()"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+          </div>
 
           <label class="field-label">Джерело бронювання</label>
+
           <input
             class="text-input"
             [value]="editBookingSource()"
@@ -99,6 +211,7 @@
           <h2>Інформація про проживання</h2>
 
           <label class="field-label">Заїзд</label>
+
           <input
             class="text-input"
             type="datetime-local"
@@ -107,6 +220,7 @@
           />
 
           <label class="field-label">Виїзд</label>
+
           <input
             class="text-input"
             type="datetime-local"
@@ -115,6 +229,7 @@
           />
 
           <label class="field-label">Номер кімнати</label>
+
           <select
             class="text-input"
             [value]="editRoomId()"
@@ -128,6 +243,7 @@
           </select>
 
           <label class="field-label">Тариф</label>
+
           <select
             class="text-input"
             [value]="editRateId()"
@@ -150,6 +266,7 @@
           <h2>Інформація про бронювання</h2>
 
           <label class="field-label">Номер бронювання</label>
+
           <input
             class="text-input"
             [value]="reservation.confirmationNumber"
@@ -157,6 +274,7 @@
           />
 
           <label class="field-label">Компанія-джерело</label>
+
           <input
             class="text-input"
             [value]="editCompany()"
@@ -165,6 +283,7 @@
           />
 
           <label class="field-label">Компанія-оператор</label>
+
           <input
             class="text-input"
             [value]="editOperatorCompany()"
@@ -173,6 +292,7 @@
           />
 
           <label class="field-label">Зовнішній номер бронювання</label>
+
           <input
             class="text-input"
             [value]="editExternalBookingNumber()"
@@ -250,6 +370,7 @@
 
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Знайти гостя</mat-label>
+
             <input
               matInput
               [value]="additionalGuestSearch()"
@@ -264,7 +385,9 @@
             >
               @for (profile of filteredAdditionalGuests(); track profile.id) {
                 <mat-option [value]="profile">
-                  {{ getProfileFullName(profile) }} · {{ profile.phoneNumber || 'Без телефону' }}
+                  {{ getProfileFullName(profile) }}
+                  ·
+                  {{ profile.phoneNumber || 'Без телефону' }}
                 </mat-option>
               }
             </mat-autocomplete>
