@@ -92,7 +92,9 @@ export class ReservationDetails implements OnInit {
     }
 
     return this.rooms().filter(
-      room => room.categoryId === categoryId
+      room =>
+        room.categoryId === categoryId &&
+        room.status === RoomStatus.AVAILABLE
     );
   });
 
@@ -341,9 +343,15 @@ export class ReservationDetails implements OnInit {
             return;
           }
 
-          this.rooms.set(availableRooms);
+          const filteredRooms = availableRooms.filter(
+            room =>
+              room.categoryId === categoryId &&
+              room.status === RoomStatus.AVAILABLE
+          );
 
-          if (!availableRooms.some(room => room.id === this.editRoomId())) {
+          this.rooms.set(filteredRooms);
+
+          if (!filteredRooms.some(room => room.id === this.editRoomId())) {
             this.editRoomId.set(0);
           }
         },
@@ -597,3 +605,4 @@ export class ReservationDetails implements OnInit {
     this.editChildren.update(current => current + 1);
   }
 }
+
