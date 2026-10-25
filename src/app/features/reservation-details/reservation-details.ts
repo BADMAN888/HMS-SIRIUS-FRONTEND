@@ -6,6 +6,7 @@ import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatOptionModule } from '@angular/material/core';
+import { MatSelectModule } from '@angular/material/select';
 import { finalize, forkJoin } from 'rxjs';
 
 import { ReservationService } from '../../core/services/reservation.service';
@@ -22,7 +23,6 @@ import { RateResponse } from '../../core/models/billing/rate-response.model';
 import { ReservationRequest } from '../../core/models/reservation/reservation-request.model';
 import { ReservationCommentResponse } from '../../core/models/reservation/reservation-comment-response.model';
 import { RoomStatus } from '../../core/models/enums/room-status.enum';
-import {MatSelectModule} from '@angular/material/select';
 
 @Component({
   selector: 'app-reservation-details',
@@ -86,18 +86,13 @@ export class ReservationDetails implements OnInit {
 
   readonly filteredRooms = computed(() => {
     const categoryId = this.editRoomCategoryId();
-    const currentRoomId = this.editRoomId();
 
     if (!categoryId) {
       return [];
     }
 
-    return this.rooms().filter(room =>
-      room.categoryId === categoryId &&
-      (
-        room.status === RoomStatus.AVAILABLE ||
-        room.id === currentRoomId
-      )
+    return this.rooms().filter(
+      room => room.categoryId === categoryId
     );
   });
 
@@ -278,12 +273,16 @@ export class ReservationDetails implements OnInit {
     this.editChildren.set(reservation.children);
     this.editCompany.set(reservation.company ?? '');
     this.editOperatorCompany.set(reservation.operatorCompany ?? '');
-    this.editExternalBookingNumber.set(reservation.externalBookingNumber ?? '');
+    this.editExternalBookingNumber.set(
+      reservation.externalBookingNumber ?? ''
+    );
 
     this.selectedGuest.set(reservation.primaryGuest);
     this.guestSearch.set(this.getProfileFullName(reservation.primaryGuest));
     this.guestPhoneSearch.set(reservation.primaryGuest.phoneNumber ?? '');
     this.guestEmailSearch.set(reservation.primaryGuest.email ?? '');
+
+    this.loadAvailableRooms(this.editRoomCategoryId());
   }
 
   private toDateTimeLocal(value: string): string {
@@ -299,7 +298,6 @@ export class ReservationDetails implements OnInit {
 
     forkJoin({
       profiles: this.profileService.getAll(),
-      rooms: this.roomService.getAll(),
       rates: this.rateService.getAll(),
       roomCategories: this.roomCategoryService.getAll()
     }).pipe(
@@ -307,7 +305,6 @@ export class ReservationDetails implements OnInit {
     ).subscribe({
       next: data => {
         this.profiles.set(data.profiles);
-        this.rooms.set(data.rooms);
         this.rates.set(data.rates);
         this.roomCategories.set(data.roomCategories);
       },
@@ -323,18 +320,47 @@ export class ReservationDetails implements OnInit {
 
   onRoomCategoryChange(categoryId: number): void {
     this.editRoomCategoryId.set(categoryId);
+    this.editRoomId.set(0);
+    this.rooms.set([]);
+    this.saveError.set('');
+    this.loadAvailableRooms(categoryId);
+  }
 
-    const availableRooms = this.rooms().filter(room =>
-      room.categoryId === categoryId &&
-      (
-        room.status === RoomStatus.AVAILABLE ||
-        room.id === this.editRoomId()
-      )
-    );
-
-    if (!availableRooms.some(room => room.id === this.editRoomId())) {
-      this.editRoomId.set(availableRooms[0]?.id ?? 0);
+  private loadAvailableRooms(categoryId: number): void {
+    if (!categoryId) {
+      this.rooms.set([]);
+      this.editRoomId.set(0);
+      return;
     }
+
+    this.roomService
+      .getAllByCategoryIdAndStatus(categoryId, RoomStatus.AVAILABLE)
+      .subscribe({
+        next: availableRooms => {
+          if (this.editRoomCategoryId() !== categoryId) {
+            return;
+          }
+
+          this.rooms.set(availableRooms);
+
+          if (!availableRooms.some(room => room.id === this.editRoomId())) {
+            this.editRoomId.set(0);
+          }
+        },
+        error: error => {
+          if (this.editRoomCategoryId() !== categoryId) {
+            return;
+          }
+
+          this.rooms.set([]);
+          this.editRoomId.set(0);
+          this.saveError.set(
+            error?.error?.message ||
+            error?.message ||
+            'Не вдалося завантажити доступні номери.'
+          );
+        }
+      });
   }
 
   onPaymentCategoryChange(categoryId: number): void {

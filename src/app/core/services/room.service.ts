@@ -56,15 +56,12 @@ export class RoomService {
       responseType: 'text'
     });
   }
-  getByIdAndStatus(
-    id: number,
+  getAllByCategoryIdAndStatus(
+    categoryId: number,
     status: RoomStatus
-  ): Observable<RoomResponse> {
-    const params = new HttpParams().set('status', status);
-
-    return this.http.get<RoomResponse>(
-      `${this.apiUrl}/${id}/status`,
-      { params }
+  ): Observable<RoomResponse[]> {
+    return this.http.get<RoomResponse[]>(
+      `${this.apiUrl}/category/${categoryId}/status/${status}`
     );
   }
 }
