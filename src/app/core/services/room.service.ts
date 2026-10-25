@@ -1,5 +1,5 @@
 
-import { HttpClient } from '@angular/common/http';
+import {HttpClient, HttpParams} from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { RoomRequest } from '../models/hotel/room-request.model';
@@ -55,5 +55,16 @@ export class RoomService {
     return this.http.delete(`${this.apiUrl}/${id}`, {
       responseType: 'text'
     });
+  }
+  getByIdAndStatus(
+    id: number,
+    status: RoomStatus
+  ): Observable<RoomResponse> {
+    const params = new HttpParams().set('status', status);
+
+    return this.http.get<RoomResponse>(
+      `${this.apiUrl}/${id}/status`,
+      { params }
+    );
   }
 }

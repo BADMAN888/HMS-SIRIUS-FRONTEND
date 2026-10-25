@@ -6,20 +6,23 @@ import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatOptionModule } from '@angular/material/core';
+import { finalize, forkJoin } from 'rxjs';
 
 import { ReservationService } from '../../core/services/reservation.service';
 import { ProfileService } from '../../core/services/profile.service';
 import { RoomService } from '../../core/services/room.service';
 import { RateService } from '../../core/services/rate.service';
+import { RoomCategoryService } from '../../core/services/room-category.service';
 
 import { ReservationResponse } from '../../core/models/reservation/reservation-response.model';
 import { ProfileResponse } from '../../core/models/profile/profile-response.model';
 import { RoomResponse } from '../../core/models/hotel/room-response.model';
+import { RoomCategoryResponse } from '../../core/models/hotel/room-category-response.model';
 import { RateResponse } from '../../core/models/billing/rate-response.model';
 import { ReservationRequest } from '../../core/models/reservation/reservation-request.model';
 import { ReservationCommentResponse } from '../../core/models/reservation/reservation-comment-response.model';
-
-import { finalize, forkJoin } from 'rxjs';
+import { RoomStatus } from '../../core/models/enums/room-status.enum';
+import {MatSelectModule} from '@angular/material/select';
 
 @Component({
   selector: 'app-reservation-details',
@@ -30,6 +33,7 @@ import { finalize, forkJoin } from 'rxjs';
     MatFormFieldModule,
     MatInputModule,
     MatOptionModule,
+    MatSelectModule,
     DatePipe
   ],
   templateUrl: './reservation-details.html',
@@ -37,24 +41,24 @@ import { finalize, forkJoin } from 'rxjs';
 })
 export class ReservationDetails implements OnInit {
   private readonly route = inject(ActivatedRoute);
-
   readonly router = inject(Router);
 
   private readonly reservationService = inject(ReservationService);
   private readonly profileService = inject(ProfileService);
   private readonly roomService = inject(RoomService);
   private readonly rateService = inject(RateService);
+  private readonly roomCategoryService = inject(RoomCategoryService);
 
   readonly reservation = signal<ReservationResponse | null>(null);
 
   readonly profiles = signal<ProfileResponse[]>([]);
   readonly rooms = signal<RoomResponse[]>([]);
   readonly rates = signal<RateResponse[]>([]);
+  readonly roomCategories = signal<RoomCategoryResponse[]>([]);
 
   readonly guestSearch = signal('');
   readonly guestPhoneSearch = signal('');
   readonly guestEmailSearch = signal('');
-
   readonly selectedGuest = signal<ProfileResponse | null>(null);
 
   readonly filteredProfiles = computed(() =>
@@ -69,6 +73,8 @@ export class ReservationDetails implements OnInit {
     this.filterProfiles(this.guestEmailSearch(), 'email')
   );
 
+  readonly editRoomCategoryId = signal(0);
+  readonly editPaymentCategoryId = signal(0);
   readonly editRoomId = signal(0);
   readonly editRateId = signal(0);
   readonly editPrimaryGuestId = signal(0);
@@ -77,6 +83,23 @@ export class ReservationDetails implements OnInit {
   readonly editCheckOut = signal('');
   readonly editAdults = signal(1);
   readonly editChildren = signal(0);
+
+  readonly filteredRooms = computed(() => {
+    const categoryId = this.editRoomCategoryId();
+    const currentRoomId = this.editRoomId();
+
+    if (!categoryId) {
+      return [];
+    }
+
+    return this.rooms().filter(room =>
+      room.categoryId === categoryId &&
+      (
+        room.status === RoomStatus.AVAILABLE ||
+        room.id === currentRoomId
+      )
+    );
+  });
 
   readonly loading = signal(true);
   readonly loadingEditData = signal(true);
@@ -93,7 +116,6 @@ export class ReservationDetails implements OnInit {
   readonly commentsLoading = signal(false);
   readonly commentBusy = signal(false);
 
-  readonly editBookingSource = signal('');
   readonly editCompany = signal('');
   readonly editOperatorCompany = signal('');
   readonly editExternalBookingNumber = signal('');
@@ -122,10 +144,10 @@ export class ReservationDetails implements OnInit {
 
         const name = this.getProfileFullName(profile)
           .toLocaleLowerCase('uk-UA');
-
         const phone = profile.phoneNumber ?? '';
 
-        return name.includes(query) || phone.toLocaleLowerCase().includes(query);
+        return name.includes(query) ||
+          phone.toLocaleLowerCase().includes(query);
       })
       .slice(0, 10);
   });
@@ -134,7 +156,7 @@ export class ReservationDetails implements OnInit {
     const id = Number(this.route.snapshot.paramMap.get('id'));
 
     if (!id) {
-      this.error.set('Invalid reservation ID.');
+      this.error.set('Некоректний ID бронювання.');
       this.loading.set(false);
       this.loadingEditData.set(false);
       return;
@@ -215,7 +237,6 @@ export class ReservationDetails implements OnInit {
   selectPrimaryGuest(profile: ProfileResponse): void {
     this.selectedGuest.set(profile);
     this.editPrimaryGuestId.set(profile.id);
-
     this.guestSearch.set(this.getProfileFullName(profile));
     this.guestPhoneSearch.set(profile.phoneNumber ?? '');
     this.guestEmailSearch.set(profile.email ?? '');
@@ -237,15 +258,16 @@ export class ReservationDetails implements OnInit {
         this.error.set(
           error?.error?.message ||
           error?.message ||
-          `Failed to load reservation. HTTP ${error?.status || ''}`
+          `Не вдалося завантажити бронювання. HTTP ${error?.status || ''}`
         );
-
         this.loading.set(false);
       }
     });
   }
 
   private initializeForm(reservation: ReservationResponse): void {
+    this.editRoomCategoryId.set(reservation.room.categoryId ?? 0);
+    this.editPaymentCategoryId.set(reservation.paymentCategoryId ?? 0);
     this.editRoomId.set(reservation.room.id);
     this.editRateId.set(reservation.rate.id);
     this.editPrimaryGuestId.set(reservation.primaryGuest.id);
@@ -254,6 +276,9 @@ export class ReservationDetails implements OnInit {
     this.editCheckOut.set(this.toDateTimeLocal(reservation.checkOut));
     this.editAdults.set(reservation.adults);
     this.editChildren.set(reservation.children);
+    this.editCompany.set(reservation.company ?? '');
+    this.editOperatorCompany.set(reservation.operatorCompany ?? '');
+    this.editExternalBookingNumber.set(reservation.externalBookingNumber ?? '');
 
     this.selectedGuest.set(reservation.primaryGuest);
     this.guestSearch.set(this.getProfileFullName(reservation.primaryGuest));
@@ -275,7 +300,8 @@ export class ReservationDetails implements OnInit {
     forkJoin({
       profiles: this.profileService.getAll(),
       rooms: this.roomService.getAll(),
-      rates: this.rateService.getAll()
+      rates: this.rateService.getAll(),
+      roomCategories: this.roomCategoryService.getAll()
     }).pipe(
       finalize(() => this.loadingEditData.set(false))
     ).subscribe({
@@ -283,15 +309,40 @@ export class ReservationDetails implements OnInit {
         this.profiles.set(data.profiles);
         this.rooms.set(data.rooms);
         this.rates.set(data.rates);
+        this.roomCategories.set(data.roomCategories);
       },
       error: error => {
         this.saveError.set(
           error?.error?.message ||
           error?.message ||
-          `Failed to load reservation data. HTTP ${error?.status || ''}`
+          `Не вдалося завантажити дані. HTTP ${error?.status || ''}`
         );
       }
     });
+  }
+
+  onRoomCategoryChange(categoryId: number): void {
+    this.editRoomCategoryId.set(categoryId);
+
+    const availableRooms = this.rooms().filter(room =>
+      room.categoryId === categoryId &&
+      (
+        room.status === RoomStatus.AVAILABLE ||
+        room.id === this.editRoomId()
+      )
+    );
+
+    if (!availableRooms.some(room => room.id === this.editRoomId())) {
+      this.editRoomId.set(availableRooms[0]?.id ?? 0);
+    }
+  }
+
+  onPaymentCategoryChange(categoryId: number): void {
+    this.editPaymentCategoryId.set(categoryId);
+  }
+
+  onRoomChange(roomId: number): void {
+    this.editRoomId.set(roomId);
   }
 
   save(): void {
@@ -301,8 +352,13 @@ export class ReservationDetails implements OnInit {
       !reservation ||
       this.saving() ||
       this.loadingEditData() ||
-      !this.editPrimaryGuestId()
+      !this.editPrimaryGuestId() ||
+      !this.editRoomId() ||
+      !this.editRoomCategoryId() ||
+      !this.editPaymentCategoryId() ||
+      !this.editRateId()
     ) {
+      this.saveError.set('Заповніть усі обов’язкові поля.');
       return;
     }
 
@@ -316,15 +372,19 @@ export class ReservationDetails implements OnInit {
     ]));
 
     const request: ReservationRequest = {
-      paymentCategoryId: 0,
       roomId: this.editRoomId(),
       rateId: this.editRateId(),
+      paymentCategoryId: this.editPaymentCategoryId(),
       primaryGuestId: this.editPrimaryGuestId(),
       guestIds,
       checkIn: this.toLocalDateTime(this.editCheckIn()),
       checkOut: this.toLocalDateTime(this.editCheckOut()),
       adults: this.editAdults(),
-      children: this.editChildren()
+      children: this.editChildren(),
+      bookingSource: reservation.bookingSource,
+      company: this.editCompany(),
+      operatorCompany: this.editOperatorCompany(),
+      externalBookingNumber: this.editExternalBookingNumber()
     };
 
     this.reservationService.update(reservation.id, request).subscribe({
@@ -336,11 +396,10 @@ export class ReservationDetails implements OnInit {
       },
       error: error => {
         this.saving.set(false);
-
         this.saveError.set(
           error?.error?.message ||
           error?.message ||
-          `Failed to save reservation. HTTP ${error?.status || ''}`
+          `Не вдалося зберегти бронювання. HTTP ${error?.status || ''}`
         );
       }
     });
@@ -433,8 +492,7 @@ export class ReservationDetails implements OnInit {
         next: comments => this.comments.set(comments),
         error: error => {
           this.saveError.set(
-            error?.error?.message ||
-            'Не вдалося завантажити коментарі.'
+            error?.error?.message || 'Не вдалося завантажити коментарі.'
           );
         }
       });
@@ -460,8 +518,7 @@ export class ReservationDetails implements OnInit {
         },
         error: error => {
           this.saveError.set(
-            error?.error?.message ||
-            'Не вдалося додати коментар.'
+            error?.error?.message || 'Не вдалося додати коментар.'
           );
         }
       });
@@ -488,17 +545,16 @@ export class ReservationDetails implements OnInit {
           this.comments.update(items =>
             items.filter(item => item.id !== commentId)
           );
-
           this.selectedCommentId.set(null);
         },
         error: error => {
           this.saveError.set(
-            error?.error?.message ||
-            'Не вдалося видалити коментар.'
+            error?.error?.message || 'Не вдалося видалити коментар.'
           );
         }
       });
   }
+
   decreaseAdults(): void {
     this.editAdults.update(current => Math.max(1, current - 1));
   }

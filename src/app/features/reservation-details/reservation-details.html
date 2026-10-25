@@ -10,7 +10,6 @@
           <h1>Бронювання №{{ reservation.confirmationNumber }}</h1>
           <p>Детальна інформація про бронювання та гостей</p>
         </div>
-
         <span class="status">{{ reservation.status }}</span>
       </header>
 
@@ -140,7 +139,6 @@
           <div class="guest-counts">
             <div class="guest-count">
               <span class="field-label">Дорослі</span>
-
               <div class="counter">
                 <button
                   class="counter-button"
@@ -151,11 +149,7 @@
                 >
                   −
                 </button>
-
-                <span class="counter-value" aria-live="polite">
-                  {{ editAdults() }}
-                </span>
-
+                <span class="counter-value" aria-live="polite">{{ editAdults() }}</span>
                 <button
                   class="counter-button"
                   type="button"
@@ -169,7 +163,6 @@
 
             <div class="guest-count">
               <span class="field-label">Діти</span>
-
               <div class="counter">
                 <button
                   class="counter-button"
@@ -180,11 +173,7 @@
                 >
                   −
                 </button>
-
-                <span class="counter-value" aria-live="polite">
-                  {{ editChildren() }}
-                </span>
-
+                <span class="counter-value" aria-live="polite">{{ editChildren() }}</span>
                 <button
                   class="counter-button"
                   type="button"
@@ -196,22 +185,12 @@
               </div>
             </div>
           </div>
-
-          <label class="field-label">Джерело бронювання</label>
-
-          <input
-            class="text-input"
-            [value]="editBookingSource()"
-            (input)="editBookingSource.set($any($event.target).value)"
-            placeholder="Наприклад, Walk-in"
-          />
         </section>
 
         <section class="block">
           <h2>Інформація про проживання</h2>
 
           <label class="field-label">Заїзд</label>
-
           <input
             class="text-input"
             type="datetime-local"
@@ -220,7 +199,6 @@
           />
 
           <label class="field-label">Виїзд</label>
-
           <input
             class="text-input"
             type="datetime-local"
@@ -228,22 +206,49 @@
             (input)="editCheckOut.set($any($event.target).value)"
           />
 
-          <label class="field-label">Номер кімнати</label>
+          <label class="field-label">Категорія номера</label>
+          <select
+            class="text-input"
+            [value]="editRoomCategoryId()"
+            (change)="onRoomCategoryChange(+$any($event.target).value)"
+          >
+            <option [value]="0" disabled>Оберіть категорію номера</option>
+            @for (category of roomCategories(); track category.id) {
+              <option [value]="category.id">
+                {{ category.name }}
+              </option>
+            }
+          </select>
 
+          <label class="field-label">Категорія оплати</label>
+          <select
+            class="text-input"
+            [value]="editPaymentCategoryId()"
+            (change)="onPaymentCategoryChange(+$any($event.target).value)"
+          >
+            <option [value]="0" disabled>Оберіть категорію оплати</option>
+            @for (category of roomCategories(); track category.id) {
+              <option [value]="category.id">
+                {{ category.name }}
+              </option>
+            }
+          </select>
+
+          <label class="field-label">Номер кімнати</label>
           <select
             class="text-input"
             [value]="editRoomId()"
-            (change)="editRoomId.set(+$any($event.target).value)"
+            (change)="onRoomChange(+$any($event.target).value)"
           >
-            @for (room of rooms(); track room.id) {
+            <option [value]="0" disabled>Оберіть номер кімнати</option>
+            @for (room of filteredRooms(); track room.id) {
               <option [value]="room.id">
-                {{ room.roomNumber }} · Поверх {{ room.floor }}
+                {{ room.roomNumber }}
               </option>
             }
           </select>
 
           <label class="field-label">Тариф</label>
-
           <select
             class="text-input"
             [value]="editRateId()"
@@ -255,18 +260,12 @@
               </option>
             }
           </select>
-
-          <div class="info-row">
-            <span>Категорія номера</span>
-            <strong>{{ reservation.room.categoryId }}</strong>
-          </div>
         </section>
 
         <section class="block">
           <h2>Інформація про бронювання</h2>
 
           <label class="field-label">Номер бронювання</label>
-
           <input
             class="text-input"
             [value]="reservation.confirmationNumber"
@@ -274,7 +273,6 @@
           />
 
           <label class="field-label">Компанія-джерело</label>
-
           <input
             class="text-input"
             [value]="editCompany()"
@@ -283,7 +281,6 @@
           />
 
           <label class="field-label">Компанія-оператор</label>
-
           <input
             class="text-input"
             [value]="editOperatorCompany()"
@@ -292,7 +289,6 @@
           />
 
           <label class="field-label">Зовнішній номер бронювання</label>
-
           <input
             class="text-input"
             [value]="editExternalBookingNumber()"
@@ -370,7 +366,6 @@
 
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Знайти гостя</mat-label>
-
             <input
               matInput
               [value]="additionalGuestSearch()"
@@ -401,7 +396,6 @@
                     <strong>{{ getProfileFullName(guest) }}</strong>
                     <small>{{ guest.phoneNumber || 'Телефон не вказаний' }}</small>
                   </div>
-
                   <button
                     class="remove-button"
                     type="button"
