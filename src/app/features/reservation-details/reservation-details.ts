@@ -1,4 +1,3 @@
-
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -343,84 +342,77 @@ export class ReservationDetails implements OnInit {
 
     const currentRoomId = this.editRoomId();
 
-    this.roomService.getAllByCategoryId(categoryId).subscribe({
-      next: categoryRooms => {
-        if (this.editRoomCategoryId() !== categoryId) {
-          return;
-        }
+    this.roomService
+      .getAllByCategoryIdAndStatus(categoryId, RoomStatus.AVAILABLE)
+      .subscribe({
+        next: availableRooms => {
+          if (this.editRoomCategoryId() !== categoryId) {
+            return;
+          }
 
-        const availableRooms = categoryRooms.filter(
-          room =>
-            room.categoryId === categoryId &&
-            room.status === RoomStatus.AVAILABLE
-        );
+          const filteredAvailableRooms = availableRooms.filter(
+            room =>
+              room.categoryId === categoryId &&
+              room.status === RoomStatus.AVAILABLE
+          );
 
-        if (!currentRoomId) {
-          this.rooms.set(availableRooms);
-          this.editRoomId.set(0);
-          return;
-        }
+          if (!currentRoomId) {
+            this.rooms.set(filteredAvailableRooms);
+            this.editRoomId.set(0);
+            return;
+          }
 
-        const currentRoom = categoryRooms.find(
-          room => room.id === currentRoomId
-        );
+          this.roomService.getById(currentRoomId).subscribe({
+            next: currentRoom => {
+              if (this.editRoomCategoryId() !== categoryId) {
+                return;
+              }
 
-        if (currentRoom) {
-          this.rooms.set([
-            ...availableRooms.filter(room => room.id !== currentRoomId),
-            currentRoom
-          ]);
-          this.editRoomId.set(currentRoomId);
-          return;
-        }
+              if (currentRoom.categoryId !== categoryId) {
+                this.rooms.set(filteredAvailableRooms);
+                this.editRoomId.set(0);
+                this.saveError.set(
+                  'Поточний номер не належить вибраній категорії.'
+                );
+                return;
+              }
 
-        this.roomService.getById(currentRoomId).subscribe({
-          next: room => {
-            if (this.editRoomCategoryId() !== categoryId) {
-              return;
-            }
+              this.rooms.set([
+                ...filteredAvailableRooms.filter(
+                  room => room.id !== currentRoom.id
+                ),
+                currentRoom
+              ]);
 
-            if (room.categoryId !== categoryId) {
-              this.rooms.set(availableRooms);
+              this.editRoomId.set(currentRoom.id);
+            },
+            error: () => {
+              if (this.editRoomCategoryId() !== categoryId) {
+                return;
+              }
+
+              this.rooms.set(filteredAvailableRooms);
               this.editRoomId.set(0);
               this.saveError.set(
-                'Поточний номер не належить вибраній категорії.'
+                `Не вдалося завантажити поточний номер кімнати №${currentRoomId}.`
               );
-              return;
             }
-
-            this.rooms.set([
-              ...availableRooms.filter(item => item.id !== room.id),
-              room
-            ]);
-            this.editRoomId.set(currentRoomId);
-          },
-          error: () => {
-            if (this.editRoomCategoryId() !== categoryId) {
-              return;
-            }
-
-            this.rooms.set(availableRooms);
-            this.editRoomId.set(0);
-            this.saveError.set(
-              `Не вдалося завантажити поточний номер кімнати №${currentRoomId}.`
-            );
+          });
+        },
+        error: error => {
+          if (this.editRoomCategoryId() !== categoryId) {
+            return;
           }
-        });
-      },
-      error: error => {
-        if (this.editRoomCategoryId() !== categoryId) {
-          return;
-        }
 
-        this.rooms.set([]);
-        this.saveError.set(
-          error?.error?.message ||
-          error?.message ||
-          'Не вдалося завантажити номери категорії.'
-        );
-      }
-    });
+          this.rooms.set([]);
+          this.editRoomId.set(0);
+          this.saveError.set(
+            error?.error?.message ||
+            error?.message ||
+            'Не вдалося завантажити доступні номери.'
+          );
+        }
+      });
   }
 
   onPaymentCategoryChange(categoryId: number): void {
@@ -683,3 +675,4 @@ export class ReservationDetails implements OnInit {
     this.editChildren.update(current => current + 1);
   }
 }
+
