@@ -1,3 +1,4 @@
+
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -86,6 +87,7 @@ export class ReservationDetails implements OnInit {
 
   readonly filteredRooms = computed(() => {
     const categoryId = this.editRoomCategoryId();
+    const currentRoomId = this.editRoomId();
 
     if (!categoryId) {
       return [];
@@ -94,7 +96,10 @@ export class ReservationDetails implements OnInit {
     return this.rooms().filter(
       room =>
         room.categoryId === categoryId &&
-        room.status === RoomStatus.AVAILABLE
+        (
+          room.status === RoomStatus.AVAILABLE ||
+          room.id === currentRoomId
+        )
     );
   });
 
@@ -273,7 +278,8 @@ export class ReservationDetails implements OnInit {
     this.editCheckOut.set(this.toDateTimeLocal(reservation.checkOut));
     this.editAdults.set(reservation.adults);
     this.editChildren.set(reservation.children);
-    this.editCompany.set(reservation.company ?? '');
+
+    this.editCompany.set(reservation.bookingSource ?? '');
     this.editOperatorCompany.set(reservation.operatorCompany ?? '');
     this.editExternalBookingNumber.set(
       reservation.externalBookingNumber ?? ''
@@ -335,40 +341,86 @@ export class ReservationDetails implements OnInit {
       return;
     }
 
-    this.roomService
-      .getAllByCategoryIdAndStatus(categoryId, RoomStatus.AVAILABLE)
-      .subscribe({
-        next: availableRooms => {
-          if (this.editRoomCategoryId() !== categoryId) {
-            return;
-          }
+    const currentRoomId = this.editRoomId();
 
-          const filteredRooms = availableRooms.filter(
-            room =>
-              room.categoryId === categoryId &&
-              room.status === RoomStatus.AVAILABLE
-          );
-
-          this.rooms.set(filteredRooms);
-
-          if (!filteredRooms.some(room => room.id === this.editRoomId())) {
-            this.editRoomId.set(0);
-          }
-        },
-        error: error => {
-          if (this.editRoomCategoryId() !== categoryId) {
-            return;
-          }
-
-          this.rooms.set([]);
-          this.editRoomId.set(0);
-          this.saveError.set(
-            error?.error?.message ||
-            error?.message ||
-            'Не вдалося завантажити доступні номери.'
-          );
+    this.roomService.getAllByCategoryId(categoryId).subscribe({
+      next: categoryRooms => {
+        if (this.editRoomCategoryId() !== categoryId) {
+          return;
         }
-      });
+
+        const availableRooms = categoryRooms.filter(
+          room =>
+            room.categoryId === categoryId &&
+            room.status === RoomStatus.AVAILABLE
+        );
+
+        if (!currentRoomId) {
+          this.rooms.set(availableRooms);
+          this.editRoomId.set(0);
+          return;
+        }
+
+        const currentRoom = categoryRooms.find(
+          room => room.id === currentRoomId
+        );
+
+        if (currentRoom) {
+          this.rooms.set([
+            ...availableRooms.filter(room => room.id !== currentRoomId),
+            currentRoom
+          ]);
+          this.editRoomId.set(currentRoomId);
+          return;
+        }
+
+        this.roomService.getById(currentRoomId).subscribe({
+          next: room => {
+            if (this.editRoomCategoryId() !== categoryId) {
+              return;
+            }
+
+            if (room.categoryId !== categoryId) {
+              this.rooms.set(availableRooms);
+              this.editRoomId.set(0);
+              this.saveError.set(
+                'Поточний номер не належить вибраній категорії.'
+              );
+              return;
+            }
+
+            this.rooms.set([
+              ...availableRooms.filter(item => item.id !== room.id),
+              room
+            ]);
+            this.editRoomId.set(currentRoomId);
+          },
+          error: () => {
+            if (this.editRoomCategoryId() !== categoryId) {
+              return;
+            }
+
+            this.rooms.set(availableRooms);
+            this.editRoomId.set(0);
+            this.saveError.set(
+              `Не вдалося завантажити поточний номер кімнати №${currentRoomId}.`
+            );
+          }
+        });
+      },
+      error: error => {
+        if (this.editRoomCategoryId() !== categoryId) {
+          return;
+        }
+
+        this.rooms.set([]);
+        this.saveError.set(
+          error?.error?.message ||
+          error?.message ||
+          'Не вдалося завантажити номери категорії.'
+        );
+      }
+    });
   }
 
   onPaymentCategoryChange(categoryId: number): void {
@@ -382,17 +434,43 @@ export class ReservationDetails implements OnInit {
   save(): void {
     const reservation = this.reservation();
 
+    if (!reservation || this.saving()) {
+      return;
+    }
+
+    if (this.loadingEditData()) {
+      this.saveError.set('Зачекайте, поки завантажаться дані форми.');
+      return;
+    }
+
+    const missingFields: string[] = [];
+
+    if (!this.editPrimaryGuestId()) missingFields.push('основного гостя');
+    if (!this.editRoomCategoryId()) missingFields.push('категорії номера');
+    if (!this.editPaymentCategoryId()) missingFields.push('категорії оплати');
+    if (!this.editRoomId()) missingFields.push('номера кімнати');
+    if (!this.editRateId()) missingFields.push('тарифу');
+    if (!this.editCheckIn()) missingFields.push('дати заїзду');
+    if (!this.editCheckOut()) missingFields.push('дати виїзду');
+    if (this.editAdults() < 1) missingFields.push('кількості дорослих');
+    if (this.editChildren() < 0) missingFields.push('кількості дітей');
+
+    if (missingFields.length > 0) {
+      this.saveError.set(
+        `Заповніть обов’язкові поля: ${missingFields.join(', ')}.`
+      );
+      return;
+    }
+
+    const checkInTime = new Date(this.editCheckIn()).getTime();
+    const checkOutTime = new Date(this.editCheckOut()).getTime();
+
     if (
-      !reservation ||
-      this.saving() ||
-      this.loadingEditData() ||
-      !this.editPrimaryGuestId() ||
-      !this.editRoomId() ||
-      !this.editRoomCategoryId() ||
-      !this.editPaymentCategoryId() ||
-      !this.editRateId()
+      !Number.isFinite(checkInTime) ||
+      !Number.isFinite(checkOutTime) ||
+      checkOutTime <= checkInTime
     ) {
-      this.saveError.set('Заповніть усі обов’язкові поля.');
+      this.saveError.set('Дата виїзду має бути пізніше дати заїзду.');
       return;
     }
 
@@ -415,8 +493,8 @@ export class ReservationDetails implements OnInit {
       checkOut: this.toLocalDateTime(this.editCheckOut()),
       adults: this.editAdults(),
       children: this.editChildren(),
-      bookingSource: reservation.bookingSource,
-      company: this.editCompany(),
+      bookingSource: this.editCompany(),
+      company: reservation.company,
       operatorCompany: this.editOperatorCompany(),
       externalBookingNumber: this.editExternalBookingNumber()
     };
@@ -605,4 +683,3 @@ export class ReservationDetails implements OnInit {
     this.editChildren.update(current => current + 1);
   }
 }
-
