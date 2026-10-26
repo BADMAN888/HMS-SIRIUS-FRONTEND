@@ -89,16 +89,13 @@ export class ReservationDetails implements OnInit {
     const currentRoomId = this.editRoomId();
 
     if (!categoryId) {
-      return [];
+      return this.rooms();
     }
 
     return this.rooms().filter(
       room =>
-        room.categoryId === categoryId &&
-        (
-          room.status === RoomStatus.AVAILABLE ||
-          room.id === currentRoomId
-        )
+        room.categoryId === categoryId ||
+        room.id === currentRoomId
     );
   });
 
@@ -163,8 +160,7 @@ export class ReservationDetails implements OnInit {
       return;
     }
 
-    this.loadReservation(id);
-    this.loadEditData();
+    this.loadDataAndReservation(id);
   }
 
   getProfileFullName(profile: ProfileResponse): string {
@@ -243,40 +239,81 @@ export class ReservationDetails implements OnInit {
     this.guestEmailSearch.set(profile.email ?? '');
   }
 
-  private loadReservation(id: number): void {
+  private loadDataAndReservation(id: number): void {
     this.loading.set(true);
+    this.loadingEditData.set(true);
     this.error.set('');
     this.saveError.set('');
     this.saved.set(false);
 
-    this.reservationService.getById(id).subscribe({
-      next: reservation => {
-        this.reservation.set(reservation);
-        this.initializeForm(reservation);
+    forkJoin({
+      reservation: this.reservationService.getById(id),
+      profiles: this.profileService.getAll(),
+      rates: this.rateService.getAll(),
+      roomCategories: this.roomCategoryService.getAll(),
+      allRooms: this.roomService.getAll()
+    }).pipe(
+      finalize(() => {
         this.loading.set(false);
+        this.loadingEditData.set(false);
+      })
+    ).subscribe({
+      next: data => {
+        this.profiles.set(data.profiles);
+        this.rates.set(data.rates);
+        this.roomCategories.set(data.roomCategories);
+        this.rooms.set(data.allRooms);
+
+        this.reservation.set(data.reservation);
+        this.initializeForm(data.reservation);
       },
       error: error => {
         this.error.set(
           error?.error?.message ||
           error?.message ||
-          `Не вдалося завантажити бронювання. HTTP ${error?.status || ''}`
+          `Не вдалося завантажити дані бронювання. HTTP ${error?.status || ''}`
         );
-        this.loading.set(false);
       }
     });
   }
 
   private initializeForm(reservation: ReservationResponse): void {
-    this.editRoomCategoryId.set(reservation.room.categoryId ?? 0);
+    const roomId = reservation.room?.id ?? (reservation as any).roomId ?? 0;
+    const roomCategoryId = reservation.room?.categoryId ?? (reservation as any).roomCategoryId ?? 0;
+
+    this.editRoomId.set(roomId);
+
+    if (roomCategoryId) {
+      this.editRoomCategoryId.set(roomCategoryId);
+    } else if (roomId) {
+      const foundRoom = this.rooms().find(r => r.id === roomId);
+      if (foundRoom?.categoryId != null) {
+        this.editRoomCategoryId.set(foundRoom.categoryId);
+      } else {
+        this.roomService.getById(roomId).subscribe({
+          next: room => {
+            if (room && room.categoryId) {
+              this.editRoomCategoryId.set(room.categoryId);
+              if (!this.rooms().some(r => r.id === room.id)) {
+                this.rooms.update(list => [...list, room]);
+              }
+            }
+          }
+        });
+      }
+    }
+
     this.editPaymentCategoryId.set(reservation.paymentCategoryId ?? 0);
-    this.editRoomId.set(reservation.room.id);
-    this.editRateId.set(reservation.rate.id);
-    this.editPrimaryGuestId.set(reservation.primaryGuest.id);
-    this.editGuestIds.set([...reservation.guestIds]);
+    this.editRateId.set(reservation.rate?.id ?? (reservation as any).rateId ?? 0);
+
+    this.editPrimaryGuestId.set(reservation.primaryGuest?.id ?? 0);
+    this.editGuestIds.set([...(reservation.guestIds ?? [])]);
+
     this.editCheckIn.set(this.toDateTimeLocal(reservation.checkIn));
     this.editCheckOut.set(this.toDateTimeLocal(reservation.checkOut));
-    this.editAdults.set(reservation.adults);
-    this.editChildren.set(reservation.children);
+
+    this.editAdults.set(reservation.adults ?? 1);
+    this.editChildren.set(reservation.children ?? 0);
 
     this.editCompany.set(reservation.bookingSource ?? '');
     this.editOperatorCompany.set(reservation.operatorCompany ?? '');
@@ -284,12 +321,12 @@ export class ReservationDetails implements OnInit {
       reservation.externalBookingNumber ?? ''
     );
 
-    this.selectedGuest.set(reservation.primaryGuest);
-    this.guestSearch.set(this.getProfileFullName(reservation.primaryGuest));
-    this.guestPhoneSearch.set(reservation.primaryGuest.phoneNumber ?? '');
-    this.guestEmailSearch.set(reservation.primaryGuest.email ?? '');
-
-    this.loadAvailableRooms(this.editRoomCategoryId());
+    if (reservation.primaryGuest) {
+      this.selectedGuest.set(reservation.primaryGuest);
+      this.guestSearch.set(this.getProfileFullName(reservation.primaryGuest));
+      this.guestPhoneSearch.set(reservation.primaryGuest.phoneNumber ?? '');
+      this.guestEmailSearch.set(reservation.primaryGuest.email ?? '');
+    }
   }
 
   private toDateTimeLocal(value: string): string {
@@ -300,119 +337,14 @@ export class ReservationDetails implements OnInit {
     return value.length === 16 ? `${value}:00` : value;
   }
 
-  private loadEditData(): void {
-    this.loadingEditData.set(true);
-
-    forkJoin({
-      profiles: this.profileService.getAll(),
-      rates: this.rateService.getAll(),
-      roomCategories: this.roomCategoryService.getAll()
-    }).pipe(
-      finalize(() => this.loadingEditData.set(false))
-    ).subscribe({
-      next: data => {
-        this.profiles.set(data.profiles);
-        this.rates.set(data.rates);
-        this.roomCategories.set(data.roomCategories);
-      },
-      error: error => {
-        this.saveError.set(
-          error?.error?.message ||
-          error?.message ||
-          `Не вдалося завантажити дані. HTTP ${error?.status || ''}`
-        );
-      }
-    });
-  }
-
-  onRoomCategoryChange(categoryId: number): void {
-    this.editRoomCategoryId.set(categoryId);
-    this.editRoomId.set(0);
-    this.rooms.set([]);
-    this.saveError.set('');
-    this.loadAvailableRooms(categoryId);
-  }
-
-  private loadAvailableRooms(categoryId: number): void {
-    if (!categoryId) {
-      this.rooms.set([]);
-      this.editRoomId.set(0);
+  onRoomCategoryChange(categoryId: number | null): void {
+    if (categoryId === null || this.editRoomCategoryId() === categoryId) {
       return;
     }
 
-    const currentRoomId = this.editRoomId();
-
-    this.roomService
-      .getAllByCategoryIdAndStatus(categoryId, RoomStatus.AVAILABLE)
-      .subscribe({
-        next: availableRooms => {
-          if (this.editRoomCategoryId() !== categoryId) {
-            return;
-          }
-
-          const filteredAvailableRooms = availableRooms.filter(
-            room =>
-              room.categoryId === categoryId &&
-              room.status === RoomStatus.AVAILABLE
-          );
-
-          if (!currentRoomId) {
-            this.rooms.set(filteredAvailableRooms);
-            this.editRoomId.set(0);
-            return;
-          }
-
-          this.roomService.getById(currentRoomId).subscribe({
-            next: currentRoom => {
-              if (this.editRoomCategoryId() !== categoryId) {
-                return;
-              }
-
-              if (currentRoom.categoryId !== categoryId) {
-                this.rooms.set(filteredAvailableRooms);
-                this.editRoomId.set(0);
-                this.saveError.set(
-                  'Поточний номер не належить вибраній категорії.'
-                );
-                return;
-              }
-
-              this.rooms.set([
-                ...filteredAvailableRooms.filter(
-                  room => room.id !== currentRoom.id
-                ),
-                currentRoom
-              ]);
-
-              this.editRoomId.set(currentRoom.id);
-            },
-            error: () => {
-              if (this.editRoomCategoryId() !== categoryId) {
-                return;
-              }
-
-              this.rooms.set(filteredAvailableRooms);
-              this.editRoomId.set(0);
-              this.saveError.set(
-                `Не вдалося завантажити поточний номер кімнати №${currentRoomId}.`
-              );
-            }
-          });
-        },
-        error: error => {
-          if (this.editRoomCategoryId() !== categoryId) {
-            return;
-          }
-
-          this.rooms.set([]);
-          this.editRoomId.set(0);
-          this.saveError.set(
-            error?.error?.message ||
-            error?.message ||
-            'Не вдалося завантажити доступні номери.'
-          );
-        }
-      });
+    this.editRoomCategoryId.set(categoryId);
+    this.editRoomId.set(0);
+    this.saveError.set('');
   }
 
   onPaymentCategoryChange(categoryId: number): void {
@@ -421,6 +353,10 @@ export class ReservationDetails implements OnInit {
 
   onRoomChange(roomId: number): void {
     this.editRoomId.set(roomId);
+    const room = this.rooms().find(r => r.id === roomId);
+    if (room && room.categoryId && room.categoryId !== this.editRoomCategoryId()) {
+      this.editRoomCategoryId.set(room.categoryId);
+    }
   }
 
   save(): void {
@@ -491,15 +427,15 @@ export class ReservationDetails implements OnInit {
       externalBookingNumber: this.editExternalBookingNumber()
     };
 
-    this.reservationService.update(reservation.id, request).subscribe({
+    this.reservationService.update(reservation.id, request).pipe(
+      finalize(() => this.saving.set(false))
+    ).subscribe({
       next: updatedReservation => {
         this.reservation.set(updatedReservation);
         this.initializeForm(updatedReservation);
-        this.saving.set(false);
         this.saved.set(true);
       },
       error: error => {
-        this.saving.set(false);
         this.saveError.set(
           error?.error?.message ||
           error?.message ||
@@ -542,7 +478,7 @@ export class ReservationDetails implements OnInit {
     request.pipe(
       finalize(() => this.actionBusy.set(false))
     ).subscribe({
-      next: () => this.loadReservation(reservation.id),
+      next: () => this.loadDataAndReservation(reservation.id),
       error: error => {
         this.saveError.set(
           error?.error?.message ||
@@ -675,4 +611,3 @@ export class ReservationDetails implements OnInit {
     this.editChildren.update(current => current + 1);
   }
 }
-

@@ -209,12 +209,13 @@
           <label class="field-label">Категорія номера</label>
           <select
             class="text-input"
-            [value]="editRoomCategoryId()"
-            (change)="onRoomCategoryChange(+$any($event.target).value)"
+            [ngModel]="editRoomCategoryId()"
+            [ngModelOptions]="{ standalone: true }"
+            (ngModelChange)="onRoomCategoryChange(+$event)"
           >
-            <option [value]="0" disabled>Оберіть категорію номера</option>
+            <option [ngValue]="0" disabled>Оберіть категорію номера</option>
             @for (category of roomCategories(); track category.id) {
-              <option [value]="category.id">
+              <option [ngValue]="category.id">
                 {{ category.name }}
               </option>
             }
@@ -223,12 +224,13 @@
           <label class="field-label">Категорія оплати</label>
           <select
             class="text-input"
-            [value]="editPaymentCategoryId()"
-            (change)="onPaymentCategoryChange(+$any($event.target).value)"
+            [ngModel]="editPaymentCategoryId()"
+            [ngModelOptions]="{ standalone: true }"
+            (ngModelChange)="onPaymentCategoryChange(+$event)"
           >
-            <option [value]="0" disabled>Оберіть категорію оплати</option>
+            <option [ngValue]="0" disabled>Оберіть категорію оплати</option>
             @for (category of roomCategories(); track category.id) {
-              <option [value]="category.id">
+              <option [ngValue]="category.id">
                 {{ category.name }}
               </option>
             }
@@ -237,12 +239,13 @@
           <label class="field-label">Номер кімнати</label>
           <select
             class="text-input"
-            [value]="editRoomId()"
-            (change)="onRoomChange(+$any($event.target).value)"
+            [ngModel]="editRoomId()"
+            [ngModelOptions]="{ standalone: true }"
+            (ngModelChange)="onRoomChange(+$event)"
           >
-            <option [value]="0" disabled>Оберіть номер кімнати</option>
+            <option [ngValue]="0" disabled>Оберіть номер кімнати</option>
             @for (room of filteredRooms(); track room.id) {
-              <option [value]="room.id">
+              <option [ngValue]="room.id">
                 {{ room.roomNumber }}
               </option>
             }
