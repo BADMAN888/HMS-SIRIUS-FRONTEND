@@ -1,3 +1,4 @@
+
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -14,6 +15,7 @@ import { ProfileService } from '../../core/services/profile.service';
 import { RoomService } from '../../core/services/room.service';
 import { RateService } from '../../core/services/rate.service';
 import { RoomCategoryService } from '../../core/services/room-category.service';
+import { CompanyService } from '../../core/services/company.service';
 
 import { ReservationResponse } from '../../core/models/reservation/reservation-response.model';
 import { ProfileResponse } from '../../core/models/profile/profile-response.model';
@@ -22,7 +24,8 @@ import { RoomCategoryResponse } from '../../core/models/hotel/room-category-resp
 import { RateResponse } from '../../core/models/billing/rate-response.model';
 import { ReservationRequest } from '../../core/models/reservation/reservation-request.model';
 import { ReservationCommentResponse } from '../../core/models/reservation/reservation-comment-response.model';
-import { RoomStatus } from '../../core/models/enums/room-status.enum';
+import {CompanyResponse} from '../../core/models/company-response.model';
+
 
 @Component({
   selector: 'app-reservation-details',
@@ -48,6 +51,7 @@ export class ReservationDetails implements OnInit {
   private readonly roomService = inject(RoomService);
   private readonly rateService = inject(RateService);
   private readonly roomCategoryService = inject(RoomCategoryService);
+  private readonly companyService = inject(CompanyService);
 
   readonly reservation = signal<ReservationResponse | null>(null);
 
@@ -55,6 +59,7 @@ export class ReservationDetails implements OnInit {
   readonly rooms = signal<RoomResponse[]>([]);
   readonly rates = signal<RateResponse[]>([]);
   readonly roomCategories = signal<RoomCategoryResponse[]>([]);
+  readonly companies = signal<CompanyResponse[]>([]);
 
   readonly guestSearch = signal('');
   readonly guestPhoneSearch = signal('');
@@ -83,6 +88,13 @@ export class ReservationDetails implements OnInit {
   readonly editCheckOut = signal('');
   readonly editAdults = signal(1);
   readonly editChildren = signal(0);
+
+  readonly editSourceCompanyId = signal<number | null>(null);
+  readonly editOperatorCompanyId = signal<number | null>(null);
+  readonly editBookingSource = signal('');
+  readonly editExternalBookingNumber = signal('');
+
+  readonly reservationNumberCopied = signal(false);
 
   readonly filteredRooms = computed(() => {
     const categoryId = this.editRoomCategoryId();
@@ -113,10 +125,6 @@ export class ReservationDetails implements OnInit {
   readonly selectedCommentId = signal<number | null>(null);
   readonly commentsLoading = signal(false);
   readonly commentBusy = signal(false);
-
-  readonly editCompany = signal('');
-  readonly editOperatorCompany = signal('');
-  readonly editExternalBookingNumber = signal('');
 
   readonly additionalGuestSearch = signal('');
 
@@ -251,6 +259,7 @@ export class ReservationDetails implements OnInit {
       profiles: this.profileService.getAll(),
       rates: this.rateService.getAll(),
       roomCategories: this.roomCategoryService.getAll(),
+      companies: this.companyService.getAll(),
       allRooms: this.roomService.getAll()
     }).pipe(
       finalize(() => {
@@ -262,6 +271,7 @@ export class ReservationDetails implements OnInit {
         this.profiles.set(data.profiles);
         this.rates.set(data.rates);
         this.roomCategories.set(data.roomCategories);
+        this.companies.set(data.companies.filter(company => company.active));
         this.rooms.set(data.allRooms);
 
         this.reservation.set(data.reservation);
@@ -279,23 +289,28 @@ export class ReservationDetails implements OnInit {
 
   private initializeForm(reservation: ReservationResponse): void {
     const roomId = reservation.room?.id ?? (reservation as any).roomId ?? 0;
-    const roomCategoryId = reservation.room?.categoryId ?? (reservation as any).roomCategoryId ?? 0;
+    const roomCategoryId =
+      reservation.room?.categoryId ??
+      (reservation as any).roomCategoryId ??
+      0;
 
     this.editRoomId.set(roomId);
 
     if (roomCategoryId) {
       this.editRoomCategoryId.set(roomCategoryId);
     } else if (roomId) {
-      const foundRoom = this.rooms().find(r => r.id === roomId);
+      const foundRoom = this.rooms().find(room => room.id === roomId);
+
       if (foundRoom?.categoryId != null) {
         this.editRoomCategoryId.set(foundRoom.categoryId);
       } else {
         this.roomService.getById(roomId).subscribe({
           next: room => {
-            if (room && room.categoryId) {
+            if (room?.categoryId) {
               this.editRoomCategoryId.set(room.categoryId);
-              if (!this.rooms().some(r => r.id === room.id)) {
-                this.rooms.update(list => [...list, room]);
+
+              if (!this.rooms().some(item => item.id === room.id)) {
+                this.rooms.update(items => [...items, room]);
               }
             }
           }
@@ -304,7 +319,9 @@ export class ReservationDetails implements OnInit {
     }
 
     this.editPaymentCategoryId.set(reservation.paymentCategoryId ?? 0);
-    this.editRateId.set(reservation.rate?.id ?? (reservation as any).rateId ?? 0);
+    this.editRateId.set(
+      reservation.rate?.id ?? (reservation as any).rateId ?? 0
+    );
 
     this.editPrimaryGuestId.set(reservation.primaryGuest?.id ?? 0);
     this.editGuestIds.set([...(reservation.guestIds ?? [])]);
@@ -315,8 +332,9 @@ export class ReservationDetails implements OnInit {
     this.editAdults.set(reservation.adults ?? 1);
     this.editChildren.set(reservation.children ?? 0);
 
-    this.editCompany.set(reservation.bookingSource ?? '');
-    this.editOperatorCompany.set(reservation.operatorCompany ?? '');
+    this.editSourceCompanyId.set(reservation.sourceCompany?.id ?? null);
+    this.editOperatorCompanyId.set(reservation.operatorCompany?.id ?? null);
+    this.editBookingSource.set(reservation.bookingSource ?? '');
     this.editExternalBookingNumber.set(
       reservation.externalBookingNumber ?? ''
     );
@@ -326,6 +344,11 @@ export class ReservationDetails implements OnInit {
       this.guestSearch.set(this.getProfileFullName(reservation.primaryGuest));
       this.guestPhoneSearch.set(reservation.primaryGuest.phoneNumber ?? '');
       this.guestEmailSearch.set(reservation.primaryGuest.email ?? '');
+    } else {
+      this.selectedGuest.set(null);
+      this.guestSearch.set('');
+      this.guestPhoneSearch.set('');
+      this.guestEmailSearch.set('');
     }
   }
 
@@ -353,8 +376,13 @@ export class ReservationDetails implements OnInit {
 
   onRoomChange(roomId: number): void {
     this.editRoomId.set(roomId);
-    const room = this.rooms().find(r => r.id === roomId);
-    if (room && room.categoryId && room.categoryId !== this.editRoomCategoryId()) {
+
+    const room = this.rooms().find(item => item.id === roomId);
+
+    if (
+      room?.categoryId &&
+      room.categoryId !== this.editRoomCategoryId()
+    ) {
       this.editRoomCategoryId.set(room.categoryId);
     }
   }
@@ -373,15 +401,41 @@ export class ReservationDetails implements OnInit {
 
     const missingFields: string[] = [];
 
-    if (!this.editPrimaryGuestId()) missingFields.push('основного гостя');
-    if (!this.editRoomCategoryId()) missingFields.push('категорії номера');
-    if (!this.editPaymentCategoryId()) missingFields.push('категорії оплати');
-    if (!this.editRoomId()) missingFields.push('номера кімнати');
-    if (!this.editRateId()) missingFields.push('тарифу');
-    if (!this.editCheckIn()) missingFields.push('дати заїзду');
-    if (!this.editCheckOut()) missingFields.push('дати виїзду');
-    if (this.editAdults() < 1) missingFields.push('кількості дорослих');
-    if (this.editChildren() < 0) missingFields.push('кількості дітей');
+    if (!this.editPrimaryGuestId()) {
+      missingFields.push('основного гостя');
+    }
+
+    if (!this.editRoomCategoryId()) {
+      missingFields.push('категорії номера');
+    }
+
+    if (!this.editPaymentCategoryId()) {
+      missingFields.push('категорії оплати');
+    }
+
+    if (!this.editRoomId()) {
+      missingFields.push('номера кімнати');
+    }
+
+    if (!this.editRateId()) {
+      missingFields.push('тарифу');
+    }
+
+    if (!this.editCheckIn()) {
+      missingFields.push('дати заїзду');
+    }
+
+    if (!this.editCheckOut()) {
+      missingFields.push('дати виїзду');
+    }
+
+    if (this.editAdults() < 1) {
+      missingFields.push('кількості дорослих');
+    }
+
+    if (this.editChildren() < 0) {
+      missingFields.push('кількості дітей');
+    }
 
     if (missingFields.length > 0) {
       this.saveError.set(
@@ -421,10 +475,11 @@ export class ReservationDetails implements OnInit {
       checkOut: this.toLocalDateTime(this.editCheckOut()),
       adults: this.editAdults(),
       children: this.editChildren(),
-      bookingSource: this.editCompany(),
-      company: reservation.company,
-      operatorCompany: this.editOperatorCompany(),
-      externalBookingNumber: this.editExternalBookingNumber()
+      bookingSource: this.editBookingSource().trim() || null,
+      sourceCompanyId: this.editSourceCompanyId(),
+      operatorCompanyId: this.editOperatorCompanyId(),
+      externalBookingNumber:
+        this.editExternalBookingNumber().trim() || null
     };
 
     this.reservationService.update(reservation.id, request).pipe(
@@ -552,7 +607,7 @@ export class ReservationDetails implements OnInit {
       .pipe(finalize(() => this.commentBusy.set(false)))
       .subscribe({
         next: comment => {
-          this.comments.update(comments => [...comments, comment]);
+          this.comments.update(items => [...items, comment]);
           this.newComment.set('');
           this.selectedCommentId.set(comment.id);
         },
@@ -609,5 +664,28 @@ export class ReservationDetails implements OnInit {
 
   increaseChildren(): void {
     this.editChildren.update(current => current + 1);
+  }
+  readonly filteredRates = computed(() => {
+    const categoryId = this.editPaymentCategoryId();
+
+    return this.rates().filter(rate => rate.categoryId === categoryId);
+  });
+  async copyReservationNumber(): Promise<void> {
+    const confirmationNumber = this.reservation()?.confirmationNumber;
+
+    if (confirmationNumber == null) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(String(confirmationNumber));
+      this.reservationNumberCopied.set(true);
+
+      setTimeout(() => {
+        this.reservationNumberCopied.set(false);
+      }, 2000);
+    } catch (error) {
+      console.error('Не вдалося скопіювати номер бронювання:', error);
+    }
   }
 }

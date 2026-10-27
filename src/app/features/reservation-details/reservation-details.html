@@ -257,10 +257,12 @@
             [value]="editRateId()"
             (change)="editRateId.set(+$any($event.target).value)"
           >
-            @for (rate of rates(); track rate.id) {
+            @for (rate of filteredRates(); track rate.id) {
               <option [value]="rate.id">
                 {{ rate.name }} · {{ rate.price }} {{ rate.currency }}
               </option>
+            } @empty {
+              <option [ngValue]="0" disabled>Немає доступних тарифів</option>
             }
           </select>
         </section>
@@ -269,26 +271,61 @@
           <h2>Інформація про бронювання</h2>
 
           <label class="field-label">Номер бронювання</label>
-          <input
-            class="text-input"
-            [value]="reservation.confirmationNumber"
-            readonly
-          />
+
+          <div
+            class="reservation-number-wrapper"
+            [class.copied]="reservationNumberCopied()"
+          >
+            <input
+              class="text-input reservation-number-input"
+              [value]="reservation.confirmationNumber"
+              readonly
+              (click)="copyReservationNumber()"
+              title="Натисніть, щоб скопіювати номер бронювання"
+            />
+
+            @if (reservationNumberCopied()) {
+              <span class="copied-label">✓ Скопійовано</span>
+            }
+          </div>
 
           <label class="field-label">Компанія-джерело</label>
-          <input
+          <select
             class="text-input"
-            [value]="editCompany()"
-            (input)="editCompany.set($any($event.target).value)"
-            placeholder="Наприклад, Booking.com"
-          />
+            [ngModel]="editSourceCompanyId()"
+            [ngModelOptions]="{ standalone: true }"
+            (ngModelChange)="editSourceCompanyId.set($event === null ? null : +$event)"
+          >
+            <option [ngValue]="null">Без компанії-джерела</option>
+            @for (company of companies(); track company.id) {
+              <option [ngValue]="company.id">
+                {{ company.shortName || company.fullName }} · {{ company.edrpou }}
+              </option>
+            }
+          </select>
 
           <label class="field-label">Компанія-оператор</label>
+          <select
+            class="text-input"
+            [ngModel]="editOperatorCompanyId()"
+            [ngModelOptions]="{ standalone: true }"
+            (ngModelChange)="editOperatorCompanyId.set($event === null ? null : +$event)"
+          >
+            <option [ngValue]="null">Без компанії-оператора</option>
+            @for (company of companies(); track company.id) {
+              <option [ngValue]="company.id">
+                {{ company.shortName || company.fullName }} · {{ company.edrpou }}
+              </option>
+            }
+          </select>
+
+          <label class="field-label">Джерело бронювання</label>
           <input
             class="text-input"
-            [value]="editOperatorCompany()"
-            (input)="editOperatorCompany.set($any($event.target).value)"
-            placeholder="Назва компанії"
+            [value]="editBookingSource()"
+            (input)="editBookingSource.set($any($event.target).value)"
+            placeholder="Наприклад, walk-in"
+            maxlength="150"
           />
 
           <label class="field-label">Зовнішній номер бронювання</label>

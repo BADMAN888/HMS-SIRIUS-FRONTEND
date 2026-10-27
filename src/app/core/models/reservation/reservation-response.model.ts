@@ -4,6 +4,7 @@ import { RoomResponse } from '../hotel/room-response.model';
 import { ReservationStatus } from '../enums/reservation-status.enum';
 import { ProfileResponse } from '../profile/profile-response.model';
 import { ReservationCommentResponse } from './reservation-comment-response.model';
+import {CompanyResponse} from '../company-response.model';
 
 export interface ReservationResponse {
   id: number;
@@ -23,6 +24,6 @@ export interface ReservationResponse {
   folioId: number | null;
   externalBookingNumber: string | null;
   bookingSource: string | null;
-  company: string | null;
-  operatorCompany: string | null;
+  sourceCompany: CompanyResponse | null;
+  operatorCompany: CompanyResponse | null;
 }

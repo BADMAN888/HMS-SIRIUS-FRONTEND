@@ -1,4 +1,3 @@
-
 export interface ReservationRequest {
   roomId: number;
   rateId: number;
@@ -9,8 +8,8 @@ export interface ReservationRequest {
   checkOut: string;
   adults: number;
   children: number;
-  externalBookingNumber?: string | null;
   bookingSource?: string | null;
-  company?: string | null;
-  operatorCompany?: string | null;
+  sourceCompanyId?: number | null;
+  operatorCompanyId?: number | null;
+  externalBookingNumber?: string | null;
 }
