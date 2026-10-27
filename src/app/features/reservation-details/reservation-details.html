@@ -1,548 +1,74 @@
+
 <div class="reservation-details-page">
-  @if (loading()) {
-    <div class="state-message">Завантаження бронювання…</div>
-  } @else if (error()) {
-    <div class="error-message">{{ error() }}</div>
-  } @else {
-    @if (reservation(); as reservation) {
-      <header class="details-header">
-        <div>
-          <h1>Бронювання №{{ reservation.confirmationNumber }}</h1>
-          <p>Детальна інформація про бронювання та гостей</p>
-        </div>
-        <span class="status">{{ reservation.status }}</span>
-      </header>
 
-      <nav class="details-tabs">
-        <button
-          class="tab"
-          [class.active]="activeTab() === 'reservation'"
-          type="button"
-          (click)="activeTab.set('reservation')"
-        >
-          Reservation
-        </button>
+  <nav class="details-tabs" aria-label="Вкладки бронювання">
+    <button
+      type="button"
+      [class.active]="activeTab() === 'reservation'"
+      (click)="selectTab('reservation')"
+    >
+      <mat-icon>event_note</mat-icon>
+      <span>Бронювання</span>
+    </button>
 
-        <button
-          class="tab"
-          [class.active]="activeTab() === 'accrual'"
-          type="button"
-          (click)="activeTab.set('accrual')"
-        >
-          Accrual
-        </button>
+    <button
+      type="button"
+      [class.active]="activeTab() === 'accrual'"
+      (click)="selectTab('accrual')"
+    >
+      <mat-icon>payments</mat-icon>
+      <span>Нарахування</span>
+    </button>
 
-        <button
-          class="tab"
-          [class.active]="activeTab() === 'registration-form'"
-          type="button"
-          (click)="activeTab.set('registration-form')"
-        >
-          Registration Form
-        </button>
+    <button
+      type="button"
+      [class.active]="activeTab() === 'registration-form'"
+      (click)="selectTab('registration-form')"
+    >
+      <mat-icon>badge</mat-icon>
+      <span>Реєстраційна форма</span>
+    </button>
 
-        <button
-          class="tab"
-          [class.active]="activeTab() === 'confirmation'"
-          type="button"
-          (click)="activeTab.set('confirmation')"
-        >
-          Confirmation
-        </button>
+    <button
+      type="button"
+      [class.active]="activeTab() === 'confirmation'"
+      (click)="selectTab('confirmation')"
+    >
+      <mat-icon>mark_email_read</mat-icon>
+      <span>Підтвердження</span>
+    </button>
 
-        <button
-          class="tab"
-          [class.active]="activeTab() === 'key-cards'"
-          type="button"
-          (click)="activeTab.set('key-cards')"
-        >
-          Key Cards
-        </button>
-      </nav>
-      @if (activeTab() === 'reservation') {
+    <button
+      type="button"
+      [class.active]="activeTab() === 'key-cards'"
+      (click)="selectTab('key-cards')"
+    >
+      <mat-icon>key</mat-icon>
+      <span>Ключ-картки</span>
+    </button>
+  </nav>
 
-      <div class="container">
-        <section class="block">
-          <h2>Guest name</h2>
-
-          <label class="field-label">ПІБ гостя</label>
-
-          <mat-form-field appearance="outline" class="full-width">
-            <input
-              matInput
-              [value]="guestSearch()"
-              (input)="onGuestSearch($any($event.target).value)"
-              [matAutocomplete]="guestAutocomplete"
-              placeholder="Введіть ПІБ гостя"
-            />
-
-            <mat-autocomplete
-              #guestAutocomplete="matAutocomplete"
-              [displayWith]="displayGuest"
-              (optionSelected)="selectPrimaryGuest($event.option.value)"
-            >
-              @for (profile of filteredProfiles(); track profile.id) {
-                <mat-option [value]="profile">
-                  <div class="guest-option">
-                    <span>{{ getProfileFullName(profile) }}</span>
-                    <small>
-                      {{ profile.phoneNumber || 'Телефон не вказаний' }}
-                      ·
-                      {{ profile.email || 'Email не вказаний' }}
-                    </small>
-                  </div>
-                </mat-option>
-              }
-
-              @if (guestSearch().trim().length >= 3 && filteredProfiles().length === 0) {
-                <mat-option disabled>Гостей не знайдено</mat-option>
-              }
-            </mat-autocomplete>
-          </mat-form-field>
-
-          <label class="field-label">Телефон</label>
-
-          <mat-form-field appearance="outline" class="full-width">
-            <input
-              matInput
-              type="tel"
-              [value]="guestPhoneSearch()"
-              (input)="onGuestPhoneSearch($any($event.target).value)"
-              [matAutocomplete]="phoneAutocomplete"
-              placeholder="Введіть номер телефону"
-            />
-
-            <mat-autocomplete
-              #phoneAutocomplete="matAutocomplete"
-              [displayWith]="displayGuest"
-              (optionSelected)="selectPrimaryGuest($event.option.value)"
-            >
-              @for (profile of filteredProfilesByPhone(); track profile.id) {
-                <mat-option [value]="profile">
-                  <div class="guest-option">
-                    <span>{{ getProfileFullName(profile) }}</span>
-                    <small>
-                      {{ profile.phoneNumber || 'Телефон не вказаний' }}
-                      ·
-                      {{ profile.email || 'Email не вказаний' }}
-                    </small>
-                  </div>
-                </mat-option>
-              }
-
-              @if (guestPhoneSearch().trim().length >= 3 && filteredProfilesByPhone().length === 0) {
-                <mat-option disabled>
-                  Профілів із таким телефоном не знайдено
-                </mat-option>
-              }
-            </mat-autocomplete>
-          </mat-form-field>
-
-          <label class="field-label">Email</label>
-
-          <mat-form-field appearance="outline" class="full-width">
-            <input
-              matInput
-              type="email"
-              [value]="guestEmailSearch()"
-              (input)="onGuestEmailSearch($any($event.target).value)"
-              [matAutocomplete]="emailAutocomplete"
-              placeholder="Введіть email"
-            />
-
-            <mat-autocomplete
-              #emailAutocomplete="matAutocomplete"
-              [displayWith]="displayGuest"
-              (optionSelected)="selectPrimaryGuest($event.option.value)"
-            >
-              @for (profile of filteredProfilesByEmail(); track profile.id) {
-                <mat-option [value]="profile">
-                  <div class="guest-option">
-                    <span>{{ getProfileFullName(profile) }}</span>
-                    <small>
-                      {{ profile.email || 'Email не вказаний' }}
-                      ·
-                      {{ profile.phoneNumber || 'Телефон не вказаний' }}
-                    </small>
-                  </div>
-                </mat-option>
-              }
-
-              @if (guestEmailSearch().trim().length >= 3 && filteredProfilesByEmail().length === 0) {
-                <mat-option disabled>
-                  Профілів із таким email не знайдено
-                </mat-option>
-              }
-            </mat-autocomplete>
-          </mat-form-field>
-
-          <div class="guest-counts">
-            <div class="guest-count">
-              <span class="field-label">Дорослі</span>
-              <div class="counter">
-                <button
-                  class="counter-button"
-                  type="button"
-                  aria-label="Зменшити кількість дорослих"
-                  [disabled]="editAdults() <= 1"
-                  (click)="decreaseAdults()"
-                >
-                  −
-                </button>
-                <span class="counter-value" aria-live="polite">{{ editAdults() }}</span>
-                <button
-                  class="counter-button"
-                  type="button"
-                  aria-label="Збільшити кількість дорослих"
-                  (click)="increaseAdults()"
-                >
-                  +
-                </button>
-              </div>
-            </div>
-
-            <div class="guest-count">
-              <span class="field-label">Діти</span>
-              <div class="counter">
-                <button
-                  class="counter-button"
-                  type="button"
-                  aria-label="Зменшити кількість дітей"
-                  [disabled]="editChildren() <= 0"
-                  (click)="decreaseChildren()"
-                >
-                  −
-                </button>
-                <span class="counter-value" aria-live="polite">{{ editChildren() }}</span>
-                <button
-                  class="counter-button"
-                  type="button"
-                  aria-label="Збільшити кількість дітей"
-                  (click)="increaseChildren()"
-                >
-                  +
-                </button>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section class="block">
-          <h2>Інформація про проживання</h2>
-
-          <label class="field-label">Заїзд</label>
-          <input
-            class="text-input"
-            type="datetime-local"
-            [value]="editCheckIn()"
-            (input)="editCheckIn.set($any($event.target).value)"
-          />
-
-          <label class="field-label">Виїзд</label>
-          <input
-            class="text-input"
-            type="datetime-local"
-            [value]="editCheckOut()"
-            (input)="editCheckOut.set($any($event.target).value)"
-          />
-
-          <label class="field-label">Категорія номера</label>
-          <select
-            class="text-input"
-            [ngModel]="editRoomCategoryId()"
-            [ngModelOptions]="{ standalone: true }"
-            (ngModelChange)="onRoomCategoryChange(+$event)"
-          >
-            <option [ngValue]="0" disabled>Оберіть категорію номера</option>
-            @for (category of roomCategories(); track category.id) {
-              <option [ngValue]="category.id">
-                {{ category.name }}
-              </option>
-            }
-          </select>
-
-          <label class="field-label">Категорія оплати</label>
-          <select
-            class="text-input"
-            [ngModel]="editPaymentCategoryId()"
-            [ngModelOptions]="{ standalone: true }"
-            (ngModelChange)="onPaymentCategoryChange(+$event)"
-          >
-            <option [ngValue]="0" disabled>Оберіть категорію оплати</option>
-            @for (category of roomCategories(); track category.id) {
-              <option [ngValue]="category.id">
-                {{ category.name }}
-              </option>
-            }
-          </select>
-
-          <label class="field-label">Номер кімнати</label>
-          <select
-            class="text-input"
-            [ngModel]="editRoomId()"
-            [ngModelOptions]="{ standalone: true }"
-            (ngModelChange)="onRoomChange(+$event)"
-          >
-            <option [ngValue]="0" disabled>Оберіть номер кімнати</option>
-            @for (room of filteredRooms(); track room.id) {
-              <option [ngValue]="room.id">
-                {{ room.roomNumber }}
-              </option>
-            }
-          </select>
-
-          <label class="field-label">Тариф</label>
-          <select
-            class="text-input"
-            [value]="editRateId()"
-            (change)="editRateId.set(+$any($event.target).value)"
-          >
-            @for (rate of filteredRates(); track rate.id) {
-              <option [value]="rate.id">
-                {{ rate.name }} · {{ rate.price }} {{ rate.currency }}
-              </option>
-            } @empty {
-              <option [ngValue]="0" disabled>Немає доступних тарифів</option>
-            }
-          </select>
-        </section>
-
-        <section class="block">
-          <h2>Інформація про бронювання</h2>
-
-          <label class="field-label">Номер бронювання</label>
-
-          <div
-            class="reservation-number-wrapper"
-            [class.copied]="reservationNumberCopied()"
-          >
-            <input
-              class="text-input reservation-number-input"
-              [value]="reservation.confirmationNumber"
-              readonly
-              (click)="copyReservationNumber()"
-              title="Натисніть, щоб скопіювати номер бронювання"
-            />
-
-            @if (reservationNumberCopied()) {
-              <span class="copied-label">✓</span>
-            }
-          </div>
-
-          <label class="field-label">Компанія-джерело</label>
-          <select
-            class="text-input"
-            [ngModel]="editSourceCompanyId()"
-            [ngModelOptions]="{ standalone: true }"
-            (ngModelChange)="editSourceCompanyId.set($event === null ? null : +$event)"
-          >
-            <option [ngValue]="null">Без компанії-джерела</option>
-            @for (company of companies(); track company.id) {
-              <option [ngValue]="company.id">
-                {{ company.shortName || company.fullName }} · {{ company.edrpou }}
-              </option>
-            }
-          </select>
-
-          <label class="field-label">Компанія-оператор</label>
-          <select
-            class="text-input"
-            [ngModel]="editOperatorCompanyId()"
-            [ngModelOptions]="{ standalone: true }"
-            (ngModelChange)="editOperatorCompanyId.set($event === null ? null : +$event)"
-          >
-            <option [ngValue]="null">Без компанії-оператора</option>
-            @for (company of companies(); track company.id) {
-              <option [ngValue]="company.id">
-                {{ company.shortName || company.fullName }} · {{ company.edrpou }}
-              </option>
-            }
-          </select>
-
-          <label class="field-label">Джерело бронювання</label>
-          <input
-            class="text-input"
-            [value]="editBookingSource()"
-            (input)="editBookingSource.set($any($event.target).value)"
-            placeholder="Наприклад, walk-in"
-            maxlength="150"
-          />
-
-          <label class="field-label">Зовнішній номер бронювання</label>
-          <input
-            class="text-input"
-            [value]="editExternalBookingNumber()"
-            (input)="editExternalBookingNumber.set($any($event.target).value)"
-            placeholder="Необов'язково"
-          />
-
-          <div class="info-row">
-            <span>Тариф</span>
-            <strong>{{ reservation.rate.name }}</strong>
-          </div>
-
-          <div class="info-row">
-            <span>Рахунок</span>
-            <strong>{{ reservation.folioId ?? 'Не створений' }}</strong>
-          </div>
-
-          <p class="muted">
-            Баланс буде доступний після підключення даних нарахувань і платежів із рахунку.
-          </p>
-        </section>
-
-        <section class="block">
-          <h2>Коментарі</h2>
-
-          <textarea
-            class="text-input comment-input"
-            [value]="newComment()"
-            (input)="newComment.set($any($event.target).value)"
-            placeholder="Введіть коментар..."
-            rows="4"
-          ></textarea>
-
-          <button
-            class="secondary-button"
-            type="button"
-            [disabled]="commentBusy() || !newComment().trim()"
-            (click)="addComment()"
-          >
-            Зберегти коментар
-          </button>
-
-          @if (commentsLoading()) {
-            <p class="muted">Завантаження коментарів…</p>
-          } @else {
-            <div class="comments-list">
-              @for (comment of comments(); track comment.id) {
-                <button
-                  class="comment-item"
-                  [class.selected]="selectedCommentId() === comment.id"
-                  type="button"
-                  (click)="selectedCommentId.set(comment.id)"
-                >
-                  <span>{{ comment.text }}</span>
-                  <small>{{ comment.createdAt | date:'dd.MM.yyyy HH:mm' }}</small>
-                </button>
-              } @empty {
-                <p class="muted">Коментарів поки немає.</p>
-              }
-            </div>
-          }
-
-          <button
-            class="danger-button"
-            type="button"
-            [disabled]="commentBusy() || selectedCommentId() === null"
-            (click)="deleteSelectedComment()"
-          >
-            Видалити вибраний коментар
-          </button>
-        </section>
-
-        <section class="block">
-          <h2>Додаткові гості</h2>
-
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Знайти гостя</mat-label>
-            <input
-              matInput
-              [value]="additionalGuestSearch()"
-              (input)="additionalGuestSearch.set($any($event.target).value)"
-              [matAutocomplete]="additionalGuestAutocomplete"
-              placeholder="ПІБ або телефон"
-            />
-
-            <mat-autocomplete
-              #additionalGuestAutocomplete="matAutocomplete"
-              (optionSelected)="addAdditionalGuest($event.option.value)"
-            >
-              @for (profile of filteredAdditionalGuests(); track profile.id) {
-                <mat-option [value]="profile">
-                  {{ getProfileFullName(profile) }}
-                  ·
-                  {{ profile.phoneNumber || 'Без телефону' }}
-                </mat-option>
-              }
-            </mat-autocomplete>
-          </mat-form-field>
-
-          <div class="additional-guests">
-            @for (guestId of editGuestIds(); track guestId) {
-              @if (getProfileById(guestId); as guest) {
-                <div class="additional-guest">
-                  <div>
-                    <strong>{{ getProfileFullName(guest) }}</strong>
-                    <small>{{ guest.phoneNumber || 'Телефон не вказаний' }}</small>
-                  </div>
-                  <button
-                    class="remove-button"
-                    type="button"
-                    [attr.aria-label]="'Видалити ' + getProfileFullName(guest)"
-                    (click)="removeAdditionalGuest(guestId)"
-                  >
-                    ×
-                  </button>
-                </div>
-              }
-            } @empty {
-              <p class="muted">Додаткових гостей немає.</p>
-            }
-          </div>
-        </section>
-      </div>
-
-      @if (saveError()) {
-        <div class="error-message">{{ saveError() }}</div>
+  <main class="tab-content">
+    @switch (activeTab()) {
+      @case ('reservation') {
+        <app-reservation-tab />
       }
 
-      @if (saved()) {
-        <div class="success-message">Зміни збережено.</div>
+      @case ('accrual') {
+        <app-accrual-tab />
       }
 
-      <footer class="action-bar">
-        <button class="secondary-button" type="button" disabled>
-          Історія
-        </button>
+      @case ('registration-form') {
+        <app-registration-form-tab />
+      }
 
-        <div class="action-group">
-          <button
-            class="primary-button"
-            type="button"
-            [disabled]="saving() || loadingEditData()"
-            (click)="save()"
-          >
-            {{ saving() ? 'Збереження…' : 'Зберегти' }}
-          </button>
+      @case ('confirmation') {
+        <app-confirmation-tab />
+      }
 
-          <button
-            class="danger-button"
-            type="button"
-            [disabled]="actionBusy()"
-            (click)="cancelReservation()"
-          >
-            Скасувати бронювання
-          </button>
-
-          <button
-            class="secondary-button"
-            type="button"
-            [disabled]="actionBusy()"
-            (click)="markNoShow()"
-          >
-            No-show
-          </button>
-
-          <button
-            class="secondary-button"
-            type="button"
-            (click)="router.navigate(['/hotel-grid'])"
-          >
-            Закрити
-          </button>
-        </div>
-      </footer>
+      @case ('key-cards') {
+        <app-key-cards-tab />
+      }
     }
-  }
+  </main>
 </div>

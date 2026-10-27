@@ -1,9 +1,11 @@
-import { Component } from '@angular/core';
+import { Component, input } from '@angular/core';
 
 @Component({
-  imports: [],
   selector: 'app-accrual-tab',
-  styleUrl: './accrual-tab.scss',
+  standalone: true,
   templateUrl: './accrual-tab.html',
+  styleUrl: './accrual-tab.scss'
 })
-export class AccrualTab {}
+export class AccrualTab {
+  readonly reservation = input<unknown | null>(null);
+}

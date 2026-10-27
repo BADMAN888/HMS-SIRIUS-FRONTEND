@@ -1,0 +1,139 @@
+:host {
+  display: block;
+  min-width: 0;
+  color: #e2eaf5;
+}
+
+.accrual-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.section-header,
+.operations-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.section-header h2,
+.operations-header h3,
+.empty-state h3 {
+  margin: 0;
+  color: #e2eaf5;
+}
+
+.section-header h2 {
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.section-header p,
+.operations-header p {
+  margin: 6px 0 0;
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.summary-card,
+.operations-card {
+  min-width: 0;
+  border: 1px solid #193653;
+  border-radius: 12px;
+  background: #0b2038;
+}
+
+.summary-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+}
+
+.card-label {
+  color: #a9bfd8;
+  font-size: 13px;
+}
+
+.summary-card strong {
+  color: #e2eaf5;
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.card-description {
+  color: #7187a2;
+  font-size: 12px;
+}
+
+.operations-card {
+  padding: 22px;
+}
+
+.operations-header {
+  padding-bottom: 18px;
+  border-bottom: 1px solid #193653;
+}
+
+.operations-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 240px;
+  padding: 32px 20px;
+  text-align: center;
+}
+
+.empty-icon {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  margin-bottom: 16px;
+  border: 1px solid #25496b;
+  border-radius: 14px;
+  background: #102b45;
+  color: #8fc8ff;
+  font-size: 24px;
+}
+
+.empty-state h3 {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.empty-state p {
+  max-width: 420px;
+  margin: 10px 0 0;
+  color: #94a3b8;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+@media (max-width: 850px) {
+  .summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .summary-card {
+    padding: 16px;
+  }
+
+  .summary-card strong {
+    font-size: 24px;
+  }
+}
