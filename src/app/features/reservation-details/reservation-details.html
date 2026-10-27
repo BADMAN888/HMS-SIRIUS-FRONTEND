@@ -14,12 +14,52 @@
       </header>
 
       <nav class="details-tabs">
-        <button class="tab active" type="button">Reservation</button>
-        <button class="tab" type="button" disabled>Accrual</button>
-        <button class="tab" type="button" disabled>Registration Form</button>
-        <button class="tab" type="button" disabled>Confirmation</button>
-        <button class="tab" type="button" disabled>Key Cards</button>
+        <button
+          class="tab"
+          [class.active]="activeTab() === 'reservation'"
+          type="button"
+          (click)="activeTab.set('reservation')"
+        >
+          Reservation
+        </button>
+
+        <button
+          class="tab"
+          [class.active]="activeTab() === 'accrual'"
+          type="button"
+          (click)="activeTab.set('accrual')"
+        >
+          Accrual
+        </button>
+
+        <button
+          class="tab"
+          [class.active]="activeTab() === 'registration-form'"
+          type="button"
+          (click)="activeTab.set('registration-form')"
+        >
+          Registration Form
+        </button>
+
+        <button
+          class="tab"
+          [class.active]="activeTab() === 'confirmation'"
+          type="button"
+          (click)="activeTab.set('confirmation')"
+        >
+          Confirmation
+        </button>
+
+        <button
+          class="tab"
+          [class.active]="activeTab() === 'key-cards'"
+          type="button"
+          (click)="activeTab.set('key-cards')"
+        >
+          Key Cards
+        </button>
       </nav>
+      @if (activeTab() === 'reservation') {
 
       <div class="container">
         <section class="block">

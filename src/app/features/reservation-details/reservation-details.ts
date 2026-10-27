@@ -688,4 +688,7 @@ export class ReservationDetails implements OnInit {
       console.error('Не вдалося скопіювати номер бронювання:', error);
     }
   }
+  readonly activeTab = signal<
+    'reservation' | 'accrual' | 'registration-form' | 'confirmation' | 'key-cards'
+  >('reservation');
 }
