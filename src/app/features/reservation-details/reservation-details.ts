@@ -683,7 +683,7 @@ export class ReservationDetails implements OnInit {
 
       setTimeout(() => {
         this.reservationNumberCopied.set(false);
-      }, 2000);
+      }, 5000);
     } catch (error) {
       console.error('Не вдалося скопіювати номер бронювання:', error);
     }
