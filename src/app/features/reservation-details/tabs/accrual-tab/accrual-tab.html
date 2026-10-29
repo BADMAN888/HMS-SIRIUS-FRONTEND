@@ -1,46 +1,357 @@
 <section class="accrual-page">
-  <div class="section-header">
-    <div>
-      <h2>Нарахування</h2>
-      <p>Фінансові операції за бронюванням</p>
-    </div>
-  </div>
+  @if (loading()) {
+    <div class="state-message">Завантаження фінансових даних…</div>
+  } @else {
+    @if (error()) {
+      <div class="message error-message">{{ error() }}</div>
+    }
 
-  <div class="summary-grid">
-    <article class="summary-card">
-      <span class="card-label">Нараховано</span>
-      <strong>—</strong>
-      <span class="card-description">Дані ще не підключені</span>
-    </article>
+    @if (success()) {
+      <div class="message success-message">{{ success() }}</div>
+    }
 
-    <article class="summary-card">
-      <span class="card-label">Сплачено</span>
-      <strong>—</strong>
-      <span class="card-description">Дані ще не підключені</span>
-    </article>
+    <section class="service-card">
+      <form class="service-form" (ngSubmit)="addAccrual()">
+        <div class="form-field service-field">
+          <label for="serviceType">Послуга</label>
+          <select
+            id="serviceType"
+            name="serviceType"
+            [(ngModel)]="serviceType"
+            [disabled]="isClosed() || saving()"
+          >
+            @for (type of accrualTypes; track type) {
+              <option [ngValue]="type">{{ formatAccrualType(type) }}</option>
+            }
+          </select>
+        </div>
 
-    <article class="summary-card">
-      <span class="card-label">Залишок до сплати</span>
-      <strong>—</strong>
-      <span class="card-description">Дані ще не підключені</span>
-    </article>
-  </div>
+        <div class="form-field service-name-field">
+          <label for="serviceName">Назва послуги</label>
+          <input
+            id="serviceName"
+            name="serviceName"
+            type="text"
+            [(ngModel)]="serviceName"
+            placeholder="Наприклад, сніданок"
+            [disabled]="isClosed() || saving()"
+            required
+          />
+        </div>
 
-  <section class="operations-card">
-    <div class="operations-header">
-      <div>
-        <h3>Фінансові операції</h3>
-        <p>Нарахування, платежі та коригування</p>
+        <div class="form-field quantity-field">
+          <label for="quantity">Кількість</label>
+          <input
+            id="quantity"
+            name="quantity"
+            type="number"
+            min="1"
+            step="1"
+            [(ngModel)]="quantity"
+            [disabled]="isClosed() || saving()"
+            required
+          />
+        </div>
+
+        <div class="form-field price-field">
+          <label for="unitPrice">Вартість за одиницю</label>
+          <div class="input-with-suffix">
+            <input
+              id="unitPrice"
+              name="unitPrice"
+              type="number"
+              min="0"
+              step="0.01"
+              [(ngModel)]="unitPrice"
+              placeholder="0,00"
+              [disabled]="isClosed() || saving()"
+              required
+            />
+            <span>₴</span>
+          </div>
+        </div>
+
+        <div class="form-field date-field">
+          <label>Дата послуги</label>
+          <div class="readonly-value">
+            {{ today | date: 'dd.MM.yyyy' }}
+          </div>
+        </div>
+
+        <div class="form-field notes-field">
+          <label for="notes">Примітки</label>
+          <input
+            id="notes"
+            name="notes"
+            type="text"
+            [(ngModel)]="notes"
+            placeholder="Додаткова інформація"
+            [disabled]="isClosed() || saving()"
+          />
+        </div>
+
+        <div class="service-form-footer">
+          <div class="calculated-total">
+            <span>Загальна вартість</span>
+            <strong>
+              {{ (unitPrice ?? 0) * quantity | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}
+            </strong>
+          </div>
+
+          <button
+            class="primary-button"
+            type="submit"
+            [disabled]="isClosed() || saving()"
+          >
+            {{ saving() ? 'Збереження…' : 'Додати нарахування' }}
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <div class="billing-layout">
+      <section class="panel accruals-panel">
+        <div class="panel-heading">
+          <div>
+            <h2>Нарахування</h2>
+            <p>Послуги та витрати за бронюванням</p>
+          </div>
+          <span class="count-badge">{{ accruals().length }}</span>
+        </div>
+
+        <div class="table-scroll">
+          <table class="accrual-table">
+            <thead>
+            <tr>
+              <th>Найменування</th>
+              <th>Дата</th>
+              <th>Кількість</th>
+              <th>Сума</th>
+              <th aria-label="Дії"></th>
+            </tr>
+            </thead>
+
+            <tbody>
+              @for (accrual of accruals(); track trackAccrual($index, accrual)) {
+                <tr>
+                  <td>
+                    <div class="accrual-name">
+                      <span class="type-indicator"></span>
+                      <div>
+                        <strong>{{ accrual.description }}</strong>
+                        <span>{{ formatAccrualType(accrual.type) }}</span>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="date-cell">
+                    {{ accrual.accruedAt | date: 'dd.MM.yyyy' }}
+                  </td>
+                  <td>{{ accrual.quantity }}</td>
+                  <td class="amount-cell">
+                    {{ accrual.amount | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}
+                  </td>
+                  <td class="actions-cell">
+                    <button
+                      class="icon-button delete-button"
+                      type="button"
+                      title="Видалити нарахування"
+                      aria-label="Видалити нарахування"
+                      [disabled]="isClosed()"
+                      (click)="deleteAccrual(accrual)"
+                    >
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3" />
+                      </svg>
+                    </button>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="5">
+                    <div class="table-empty">
+                      <span class="empty-symbol">₴</span>
+                      <strong>Нарахувань поки немає</strong>
+                      <span>Додай послугу через форму вище.</span>
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <div class="panel-footer total-footer">
+          <span>Усього нараховано</span>
+          <strong>
+            {{ totalAmount() | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}
+          </strong>
+        </div>
+      </section>
+
+      <div class="right-column">
+        <section class="panel invoice-panel">
+          <div class="panel-heading">
+            <div>
+              <h2>Відкриті рахунки</h2>
+              <p>Рахунки, за якими можна проводити операції</p>
+            </div>
+            <span class="status-dot open-dot"></span>
+          </div>
+
+          @if (openFolio(); as invoice) {
+            <div class="invoice-parties">
+              <div>
+                <span>Номер рахунку</span>
+                <strong>№{{ invoice.id }}</strong>
+              </div>
+              <div>
+                <span>Бронювання</span>
+                <strong>№{{ invoice.reservationId }}</strong>
+              </div>
+            </div>
+
+            <div class="invoice-metrics">
+              <div>
+                <span>Сума</span>
+                <strong>
+                  {{ invoice.totalAmount | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}
+                </strong>
+              </div>
+              <div>
+                <span>Сплачено</span>
+                <strong class="paid-value">
+                  {{ invoice.paidAmount | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}
+                </strong>
+              </div>
+              <div>
+                <span>Баланс</span>
+                <strong>
+                  {{ balance() | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}
+                </strong>
+              </div>
+            </div>
+
+            @if (advanceAmount() > 0) {
+              <div class="advance-note">
+                Передоплата / переплата:
+                <strong>
+                  {{ advanceAmount() | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}
+                </strong>
+              </div>
+            }
+
+            <form class="payment-form" (ngSubmit)="addPayment()">
+              <h3>Додати оплату</h3>
+
+              <div class="payment-fields">
+                <div class="form-field">
+                  <label for="paymentMethod">Спосіб оплати</label>
+                  <select
+                    id="paymentMethod"
+                    name="paymentMethod"
+                    [(ngModel)]="paymentMethod"
+                    [disabled]="saving()"
+                  >
+                    @for (method of paymentMethods; track method) {
+                      <option [ngValue]="method">
+                        {{ formatPaymentMethod(method) }}
+                      </option>
+                    }
+                  </select>
+                </div>
+
+                <div class="form-field">
+                  <label for="paymentAmount">Сума оплати</label>
+                  <input
+                    id="paymentAmount"
+                    name="paymentAmount"
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    [(ngModel)]="paymentAmount"
+                    placeholder="0,00"
+                    [disabled]="saving()"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div class="form-field">
+                <label for="paymentDescription">Примітка до оплати</label>
+                <input
+                  id="paymentDescription"
+                  name="paymentDescription"
+                  type="text"
+                  [(ngModel)]="paymentDescription"
+                  placeholder="Необов'язково"
+                  [disabled]="saving()"
+                />
+              </div>
+
+              <button
+                class="secondary-button"
+                type="submit"
+                [disabled]="saving()"
+              >
+                Зареєструвати оплату
+              </button>
+            </form>
+          } @else {
+            <div class="invoice-empty">
+              <strong>Відкритого рахунку немає</strong>
+              <span>
+                Для цього бронювання фоліо не знайдено або воно вже закрите.
+              </span>
+            </div>
+          }
+        </section>
+
+        <section class="panel invoice-panel closed-panel">
+          <div class="panel-heading">
+            <div>
+              <h2>Закриті рахунки</h2>
+              <p>Завершені фінансові операції</p>
+            </div>
+            <span class="status-dot closed-dot"></span>
+          </div>
+
+          @if (closedFolio(); as invoice) {
+            <div class="closed-invoice-row">
+              <div>
+                <span>Рахунок №{{ invoice.id }}</span>
+                <strong>
+                  {{ invoice.totalAmount | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}
+                </strong>
+              </div>
+              <div>
+                <span>Баланс</span>
+                <strong>
+                  {{ balance() | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}
+                </strong>
+              </div>
+              <span class="closed-label">Закрито</span>
+            </div>
+          } @else {
+            <div class="compact-empty">
+              Закритих рахунків для цього бронювання немає.
+            </div>
+          }
+        </section>
+
+        <section class="panel cancelled-panel">
+          <div class="panel-heading">
+            <div>
+              <h2>Анульовані нарахування</h2>
+              <p>Скасовані фінансові записи</p>
+            </div>
+            <span class="status-dot cancelled-dot"></span>
+          </div>
+
+          <div class="compact-empty">
+            Окремий список анульованих нарахувань поки не підтримується API.
+          </div>
+        </section>
       </div>
     </div>
-
-    <div class="empty-state">
-      <div class="empty-icon">₴</div>
-      <h3>Операцій поки не відображено</h3>
-      <p>
-        Щоб показувати реальні суми та історію платежів,
-        потрібно підключити джерело фінансових даних.
-      </p>
-    </div>
-  </section>
+  }
 </section>

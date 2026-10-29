@@ -1,6 +1,6 @@
 import { AccrualResponse } from './accrual-response.model';
 import { PaymentResponse } from './payment-response.model';
-import {FolioStatus} from '../enums/folio-status.enum';
+import { FolioStatus } from '../enums/folio-status.enum';
 
 export interface FolioResponse {
   id: number;
@@ -8,6 +8,8 @@ export interface FolioResponse {
   status: FolioStatus;
   totalAmount: number;
   paidAmount: number;
+  balance: number;
+  advanceAmount: number;
   accruals: AccrualResponse[];
   payments: PaymentResponse[];
 }
