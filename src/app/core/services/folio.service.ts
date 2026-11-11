@@ -1,7 +1,7 @@
-
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+
 import { FolioRequest } from '../models/billing/folio-request.model';
 import { FolioResponse } from '../models/billing/folio-response.model';
 
@@ -20,8 +20,8 @@ export class FolioService {
     return this.http.get<FolioResponse>(`${this.apiUrl}/${id}`);
   }
 
-  getByReservationId(reservationId: number): Observable<FolioResponse> {
-    return this.http.get<FolioResponse>(
+  getByReservationId(reservationId: number): Observable<FolioResponse[]> {
+    return this.http.get<FolioResponse[]>(
       `${this.apiUrl}/reservation/${reservationId}`
     );
   }

@@ -1,10 +1,13 @@
-import {AccrualType} from '../enums/accrual-type.enum';
-
+import { AccrualType } from '../enums/accrual-type.enum';
 
 export interface AccrualRequest {
-  folioId: number;
+  hotelId: number;
+  reservationId?: number | null;
+  recipientId?: number | null;
+  folioId?: number | null;
   type: AccrualType;
-  description: string;
+  name: string;
+  description?: string | null;
   unitPrice: number;
   quantity: number;
 }

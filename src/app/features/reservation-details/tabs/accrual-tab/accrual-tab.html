@@ -18,7 +18,7 @@
             id="serviceType"
             name="serviceType"
             [(ngModel)]="serviceType"
-            [disabled]="isClosed() || saving()"
+            [disabled]="!selectedFolio() || saving()"
           >
             @for (type of accrualTypes; track type) {
               <option [ngValue]="type">{{ formatAccrualType(type) }}</option>
@@ -34,7 +34,7 @@
             type="text"
             [(ngModel)]="serviceName"
             placeholder="Наприклад, сніданок"
-            [disabled]="isClosed() || saving()"
+            [disabled]="!selectedFolio() || saving()"
             required
           />
         </div>
@@ -48,7 +48,7 @@
             min="1"
             step="1"
             [(ngModel)]="quantity"
-            [disabled]="isClosed() || saving()"
+            [disabled]="!selectedFolio() || saving()"
             required
           />
         </div>
@@ -64,7 +64,7 @@
               step="0.01"
               [(ngModel)]="unitPrice"
               placeholder="0,00"
-              [disabled]="isClosed() || saving()"
+              [disabled]="!selectedFolio() || saving()"
               required
             />
             <span>₴</span>
@@ -86,7 +86,7 @@
             type="text"
             [(ngModel)]="notes"
             placeholder="Додаткова інформація"
-            [disabled]="isClosed() || saving()"
+            [disabled]="!selectedFolio() || saving()"
           />
         </div>
 
@@ -101,7 +101,7 @@
           <button
             class="primary-button"
             type="submit"
-            [disabled]="isClosed() || saving()"
+            [disabled]="!selectedFolio() || saving()"
           >
             {{ saving() ? 'Збереження…' : 'Додати нарахування' }}
           </button>
@@ -114,7 +114,7 @@
         <div class="panel-heading">
           <div>
             <h2>Нарахування</h2>
-            <p>Послуги та витрати за бронюванням</p>
+            <p>Послуги та витрати за всіма рахунками бронювання</p>
           </div>
           <span class="count-badge">{{ accruals().length }}</span>
         </div>
@@ -124,6 +124,7 @@
             <thead>
             <tr>
               <th>Найменування</th>
+              <th>Рахунок</th>
               <th>Дата</th>
               <th>Кількість</th>
               <th>Сума</th>
@@ -138,11 +139,15 @@
                     <div class="accrual-name">
                       <span class="type-indicator"></span>
                       <div>
-                        <strong>{{ accrual.description }}</strong>
+                        <strong>{{ accrual.name || accrual.description || 'Нарахування' }}</strong>
                         <span>{{ formatAccrualType(accrual.type) }}</span>
+                        @if (accrual.description && accrual.name) {
+                          <span>{{ accrual.description }}</span>
+                        }
                       </div>
                     </div>
                   </td>
+                  <td>№{{ accrual.folioId }}</td>
                   <td class="date-cell">
                     {{ accrual.accruedAt | date: 'dd.MM.yyyy' }}
                   </td>
@@ -156,7 +161,7 @@
                       type="button"
                       title="Видалити нарахування"
                       aria-label="Видалити нарахування"
-                      [disabled]="isClosed()"
+                      [disabled]="saving() || !canDeleteAccrual(accrual)"
                       (click)="deleteAccrual(accrual)"
                     >
                       <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -167,7 +172,7 @@
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="5">
+                  <td colspan="6">
                     <div class="table-empty">
                       <span class="empty-symbol">₴</span>
                       <strong>Нарахувань поки немає</strong>
@@ -193,114 +198,133 @@
           <div class="panel-heading">
             <div>
               <h2>Відкриті рахунки</h2>
-              <p>Рахунки, за якими можна проводити операції</p>
+              <p>Вибери рахунок для проведення операцій</p>
             </div>
             <span class="status-dot open-dot"></span>
           </div>
 
-          @if (openFolio(); as invoice) {
-            <div class="invoice-parties">
-              <div>
-                <span>Номер рахунку</span>
-                <strong>№{{ invoice.id }}</strong>
-              </div>
-              <div>
-                <span>Бронювання</span>
-                <strong>№{{ invoice.reservationId }}</strong>
-              </div>
-            </div>
-
-            <div class="invoice-metrics">
-              <div>
-                <span>Сума</span>
-                <strong>
-                  {{ invoice.totalAmount | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}
-                </strong>
-              </div>
-              <div>
-                <span>Сплачено</span>
-                <strong class="paid-value">
-                  {{ invoice.paidAmount | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}
-                </strong>
-              </div>
-              <div>
-                <span>Баланс</span>
-                <strong>
-                  {{ balance() | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}
-                </strong>
-              </div>
-            </div>
-
-            @if (advanceAmount() > 0) {
-              <div class="advance-note">
-                Передоплата / переплата:
-                <strong>
-                  {{ advanceAmount() | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}
-                </strong>
-              </div>
-            }
-
-            <form class="payment-form" (ngSubmit)="addPayment()">
-              <h3>Додати оплату</h3>
-
-              <div class="payment-fields">
-                <div class="form-field">
-                  <label for="paymentMethod">Спосіб оплати</label>
-                  <select
-                    id="paymentMethod"
-                    name="paymentMethod"
-                    [(ngModel)]="paymentMethod"
-                    [disabled]="saving()"
-                  >
-                    @for (method of paymentMethods; track method) {
-                      <option [ngValue]="method">
-                        {{ formatPaymentMethod(method) }}
-                      </option>
-                    }
-                  </select>
-                </div>
-
-                <div class="form-field">
-                  <label for="paymentAmount">Сума оплати</label>
-                  <input
-                    id="paymentAmount"
-                    name="paymentAmount"
-                    type="number"
-                    min="0.01"
-                    step="0.01"
-                    [(ngModel)]="paymentAmount"
-                    placeholder="0,00"
-                    [disabled]="saving()"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div class="form-field">
-                <label for="paymentDescription">Примітка до оплати</label>
-                <input
-                  id="paymentDescription"
-                  name="paymentDescription"
-                  type="text"
-                  [(ngModel)]="paymentDescription"
-                  placeholder="Необов'язково"
-                  [disabled]="saving()"
-                />
-              </div>
-
-              <button
-                class="secondary-button"
-                type="submit"
+          @if (openFolios().length > 0) {
+            <div class="form-field folio-select-field">
+              <label for="selectedFolio">Відкритий рахунок</label>
+              <select
+                id="selectedFolio"
+                name="selectedFolio"
+                [ngModel]="selectedFolioId()"
+                (ngModelChange)="selectFolio($event)"
                 [disabled]="saving()"
               >
-                Зареєструвати оплату
-              </button>
-            </form>
+                @for (folio of openFolios(); track trackFolio($index, folio)) {
+                  <option [ngValue]="folio.id">
+                    Рахунок №{{ folio.id }}
+                  </option>
+                }
+              </select>
+            </div>
+
+            @if (selectedFolio(); as invoice) {
+              <div class="invoice-parties">
+                <div>
+                  <span>Номер рахунку</span>
+                  <strong>№{{ invoice.id }}</strong>
+                </div>
+                <div>
+                  <span>Бронювання</span>
+                  <strong>№{{ invoice.reservationId }}</strong>
+                </div>
+              </div>
+
+              <div class="invoice-metrics">
+                <div>
+                  <span>Сума</span>
+                  <strong>
+                    {{ invoice.totalAmount | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}
+                  </strong>
+                </div>
+                <div>
+                  <span>Сплачено</span>
+                  <strong class="paid-value">
+                    {{ invoice.paidAmount | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}
+                  </strong>
+                </div>
+                <div>
+                  <span>Баланс</span>
+                  <strong>
+                    {{ invoice.balance | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}
+                  </strong>
+                </div>
+              </div>
+
+              @if (invoice.advanceAmount > 0) {
+                <div class="advance-note">
+                  Передоплата / переплата:
+                  <strong>
+                    {{ invoice.advanceAmount | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}
+                  </strong>
+                </div>
+              }
+
+              <form class="payment-form" (ngSubmit)="addPayment()">
+                <h3>Додати оплату</h3>
+
+                <div class="payment-fields">
+                  <div class="form-field">
+                    <label for="paymentMethod">Спосіб оплати</label>
+                    <select
+                      id="paymentMethod"
+                      name="paymentMethod"
+                      [(ngModel)]="paymentMethod"
+                      [disabled]="saving()"
+                    >
+                      @for (method of paymentMethods; track method) {
+                        <option [ngValue]="method">
+                          {{ formatPaymentMethod(method) }}
+                        </option>
+                      }
+                    </select>
+                  </div>
+
+                  <div class="form-field">
+                    <label for="paymentAmount">Сума оплати</label>
+                    <input
+                      id="paymentAmount"
+                      name="paymentAmount"
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      [(ngModel)]="paymentAmount"
+                      placeholder="0,00"
+                      [disabled]="saving()"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div class="form-field">
+                  <label for="paymentDescription">Примітка до оплати</label>
+                  <input
+                    id="paymentDescription"
+                    name="paymentDescription"
+                    type="text"
+                    [(ngModel)]="paymentDescription"
+                    placeholder="Необов'язково"
+                    [disabled]="saving()"
+                  />
+                </div>
+
+                <button
+                  class="secondary-button"
+                  type="submit"
+                  [disabled]="saving()"
+                >
+                  Зареєструвати оплату
+                </button>
+              </form>
+            }
           } @else {
             <div class="invoice-empty">
-              <strong>Відкритого рахунку немає</strong>
+              <strong>Відкритих рахунків немає</strong>
               <span>
-                Для цього бронювання фоліо не знайдено або воно вже закрите.
+                Для цього бронювання немає рахунку, за яким можна проводити операції.
               </span>
             </div>
           }
@@ -315,7 +339,7 @@
             <span class="status-dot closed-dot"></span>
           </div>
 
-          @if (closedFolio(); as invoice) {
+          @for (invoice of closedFolios(); track trackFolio($index, invoice)) {
             <div class="closed-invoice-row">
               <div>
                 <span>Рахунок №{{ invoice.id }}</span>
@@ -324,16 +348,65 @@
                 </strong>
               </div>
               <div>
+                <span>Сплачено</span>
+                <strong>
+                  {{ invoice.paidAmount | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}
+                </strong>
+              </div>
+              <div>
                 <span>Баланс</span>
                 <strong>
-                  {{ balance() | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}
+                  {{ invoice.balance | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}
                 </strong>
               </div>
               <span class="closed-label">Закрито</span>
             </div>
-          } @else {
+          } @empty {
             <div class="compact-empty">
               Закритих рахунків для цього бронювання немає.
+            </div>
+          }
+        </section>
+
+        <section class="panel invoice-panel">
+          <div class="panel-heading">
+            <div>
+              <h2>Історія оплат</h2>
+              <p>Усі платежі за рахунками бронювання</p>
+            </div>
+            <span class="count-badge">{{ payments().length }}</span>
+          </div>
+
+          @if (payments().length > 0) {
+            <div class="table-scroll">
+              <table class="accrual-table">
+                <thead>
+                <tr>
+                  <th>Рахунок</th>
+                  <th>Спосіб</th>
+                  <th>Дата</th>
+                  <th>Сума</th>
+                </tr>
+                </thead>
+                <tbody>
+                  @for (payment of payments(); track trackPayment($index, payment)) {
+                    <tr>
+                      <td>№{{ payment.folioId }}</td>
+                      <td>{{ formatPaymentMethod(payment.method) }}</td>
+                      <td class="date-cell">
+                        {{ payment.paidAt | date: 'dd.MM.yyyy HH:mm' }}
+                      </td>
+                      <td class="amount-cell">
+                        {{ payment.amount | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          } @else {
+            <div class="compact-empty">
+              Платежів за цим бронюванням поки немає.
             </div>
           }
         </section>
@@ -353,5 +426,32 @@
         </section>
       </div>
     </div>
+
+    <section class="billing-summary">
+      <div>
+        <span>Загалом нараховано</span>
+        <strong>
+          {{ totalAmount() | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}
+        </strong>
+      </div>
+      <div>
+        <span>Загалом сплачено</span>
+        <strong>
+          {{ paidAmount() | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}
+        </strong>
+      </div>
+      <div>
+        <span>Загальний баланс</span>
+        <strong>
+          {{ balance() | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}
+        </strong>
+      </div>
+      <div>
+        <span>Передоплата / переплата</span>
+        <strong>
+          {{ advanceAmount() | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}
+        </strong>
+      </div>
+    </section>
   }
 </section>
