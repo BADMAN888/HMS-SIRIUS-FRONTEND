@@ -4,6 +4,6 @@ export interface CompanyRequest {
   fullName: string;
   shortName: string;
   edrpou: string;
-  registrationDate: string | null;
+  registrationDate?: string | null;
   organizationalLegalForm: OrganizationalLegalForm;
 }

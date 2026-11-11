@@ -1,4 +1,4 @@
 export interface BalanceOperationRequest {
   amount: number;
-  description: string | null;
+  description?: string | null;
 }

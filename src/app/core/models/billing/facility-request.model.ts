@@ -8,5 +8,5 @@ export interface FacilityRequest {
   unit: string;
   active: boolean;
   type: FacilityType;
-  taxStatus: TaxStatus | null;
+  taxStatus?: TaxStatus | null;
 }

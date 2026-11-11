@@ -1,6 +1,0 @@
-export enum PriceStatus {
-  ACTIVE = 'ACTIVE',
-  INACTIVE = 'INACTIVE',
-  SCHEDULED = 'SCHEDULED',
-  EXPIRED = 'EXPIRED'
-}

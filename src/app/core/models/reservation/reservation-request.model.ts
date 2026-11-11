@@ -1,4 +1,4 @@
-import {TaxStatus} from '../enums/tax-status.enum';
+import { TaxStatus } from '../enums/tax-status.enum';
 
 export interface ReservationRequest {
   roomId: number;

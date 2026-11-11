@@ -1,6 +1,6 @@
 
 import { GuestDocumentResponse } from './guest-document-response.model';
-import {Gender} from '../enums/gender.enum';
+import { Gender } from '../enums/gender.enum';
 
 export interface ProfileResponse {
   id: number;

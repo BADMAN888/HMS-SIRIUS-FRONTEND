@@ -4,5 +4,5 @@ export interface GuestDocumentRequest {
   documentType: DocumentType;
   documentNumber: string;
   issueDate: string;
-  expiryDate: string | null;
+  expiryDate?: string | null;
 }

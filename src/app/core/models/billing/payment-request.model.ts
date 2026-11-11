@@ -1,8 +1,8 @@
-import {PaymentMethod} from '../enums/payment-method.enum';
+import { PaymentMethod } from '../enums/payment-method.enum';
 
 export interface PaymentRequest {
   folioId: number;
   method: PaymentMethod;
   amount: number;
-  description: string | null;
+  description?: string | null;
 }
