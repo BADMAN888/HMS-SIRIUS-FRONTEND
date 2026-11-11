@@ -5,7 +5,7 @@ import { HotelGridReservationResponse } from './hotel-grid-reservation-response.
 export interface HotelGridRoomResponse {
   id: number;
   roomNumber: string;
-  floor: number;
+  floor: number | null;
   status: RoomStatus;
   roomView: RoomView;
   hotelId: number;
