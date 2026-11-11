@@ -1,7 +1,6 @@
-import {FolioStatus} from '../enums/folio-status.enum';
-
-
 export interface FolioRequest {
-  reservationId: number;
-  status: FolioStatus;
+  hotelId: number;
+  reservationId: number | null;
+  recipientId: number | null;
+  payerId: number | null;
 }

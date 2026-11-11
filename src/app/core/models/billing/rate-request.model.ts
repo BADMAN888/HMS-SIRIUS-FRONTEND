@@ -3,6 +3,6 @@ export interface RateRequest {
   description: string | null;
   currency: string;
   categoryId: number;
-  price: number;
   active: boolean;
+  breakfastIncluded: boolean;
 }

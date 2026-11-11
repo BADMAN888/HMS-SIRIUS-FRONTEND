@@ -4,6 +4,7 @@ export interface RateResponse {
   description: string | null;
   currency: string;
   categoryId: number;
-  price: number;
+  currentPrice: number;
   active: boolean;
+  breakfastIncluded: boolean;
 }

@@ -1,5 +1,4 @@
-import {PaymentMethod} from '../enums/payment-method.enum';
-
+import { PaymentMethod } from '../enums/payment-method.enum';
 
 export interface PaymentResponse {
   id: number;
@@ -8,4 +7,5 @@ export interface PaymentResponse {
   amount: number;
   description: string | null;
   paidAt: string;
+  reversalOfPaymentId: number | null;
 }

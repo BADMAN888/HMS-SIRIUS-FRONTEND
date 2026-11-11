@@ -1,15 +1,19 @@
+import { FolioStatus } from '../enums/folio-status.enum';
 import { AccrualResponse } from './accrual-response.model';
 import { PaymentResponse } from './payment-response.model';
-import { FolioStatus } from '../enums/folio-status.enum';
 
 export interface FolioResponse {
   id: number;
-  reservationId: number;
+  hotelId: number;
+  reservationId: number | null;
+  recipientId: number | null;
+  payerId: number | null;
   status: FolioStatus;
   totalAmount: number;
   paidAmount: number;
   balance: number;
-  advanceAmount: number;
+  createdAt: string;
+  closedAt: string | null;
   accruals: AccrualResponse[];
   payments: PaymentResponse[];
 }
