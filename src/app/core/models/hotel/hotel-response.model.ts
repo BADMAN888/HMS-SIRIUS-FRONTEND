@@ -4,6 +4,6 @@ export interface HotelResponse {
   address: string | null;
   email: string | null;
   phone: string | null;
-  checkInTime: string;
-  checkOutTime: string;
+  checkInTime: string | null;
+  checkOutTime: string | null;
 }

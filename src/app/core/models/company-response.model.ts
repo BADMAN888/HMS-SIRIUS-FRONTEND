@@ -1,10 +1,12 @@
+import { OrganizationalLegalForm } from './enums/organizational-legal-form.enum';
+
 export interface CompanyResponse {
   id: number;
   fullName: string;
-  shortName: string | null;
+  shortName: string;
   edrpou: string;
   registrationDate: string | null;
-  organizationalLegalForm: string;
+  organizationalLegalForm: OrganizationalLegalForm;
   active: boolean;
   createdAt: string;
   updatedAt: string;
