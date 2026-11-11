@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 
 import { FolioRequest } from '../models/billing/folio-request.model';
 import { FolioResponse } from '../models/billing/folio-response.model';
+import { FolioReopenRequest } from '../models/billing/folio-reopen-request.model';
 
 @Injectable({
   providedIn: 'root'
@@ -20,18 +21,47 @@ export class FolioService {
     return this.http.get<FolioResponse>(`${this.apiUrl}/${id}`);
   }
 
+  getAll(): Observable<FolioResponse[]> {
+    return this.http.get<FolioResponse[]>(this.apiUrl);
+  }
+
   getByReservationId(reservationId: number): Observable<FolioResponse[]> {
     return this.http.get<FolioResponse[]>(
       `${this.apiUrl}/reservation/${reservationId}`
     );
   }
 
-  getAll(): Observable<FolioResponse[]> {
-    return this.http.get<FolioResponse[]>(this.apiUrl);
+  getByHotelId(hotelId: number): Observable<FolioResponse[]> {
+    return this.http.get<FolioResponse[]>(
+      `${this.apiUrl}/hotel/${hotelId}`
+    );
   }
 
-  update(id: number, request: FolioRequest): Observable<FolioResponse> {
-    return this.http.put<FolioResponse>(`${this.apiUrl}/${id}`, request);
+  attachAccruals(
+    folioId: number,
+    accrualIds: number[]
+  ): Observable<FolioResponse> {
+    return this.http.put<FolioResponse>(
+      `${this.apiUrl}/${folioId}/accruals`,
+      accrualIds
+    );
+  }
+
+  close(id: number): Observable<FolioResponse> {
+    return this.http.patch<FolioResponse>(
+      `${this.apiUrl}/${id}/close`,
+      null
+    );
+  }
+
+  reopen(
+    id: number,
+    request: FolioReopenRequest
+  ): Observable<FolioResponse> {
+    return this.http.patch<FolioResponse>(
+      `${this.apiUrl}/${id}/reopen`,
+      request
+    );
   }
 
   delete(id: number): Observable<void> {

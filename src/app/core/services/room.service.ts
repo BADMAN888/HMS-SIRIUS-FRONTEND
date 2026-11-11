@@ -1,11 +1,11 @@
-
-import {HttpClient, HttpParams} from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
+
 import { RoomRequest } from '../models/hotel/room-request.model';
 import { RoomResponse } from '../models/hotel/room-response.model';
-import {RoomStatus} from '../models/enums/room-status.enum';
-
+import { RoomStatusRequest } from '../models/hotel/room-status-request.model';
+import { RoomStatus } from '../models/enums/room-status.enum';
 
 @Injectable({
   providedIn: 'root'
@@ -43,19 +43,6 @@ export class RoomService {
     );
   }
 
-  create(request: RoomRequest): Observable<RoomResponse> {
-    return this.http.post<RoomResponse>(this.apiUrl, request);
-  }
-
-  update(id: number, request: RoomRequest): Observable<RoomResponse> {
-    return this.http.put<RoomResponse>(`${this.apiUrl}/${id}`, request);
-  }
-
-  delete(id: number): Observable<string> {
-    return this.http.delete(`${this.apiUrl}/${id}`, {
-      responseType: 'text'
-    });
-  }
   getAllByCategoryIdAndStatus(
     categoryId: number,
     status: RoomStatus
@@ -63,5 +50,32 @@ export class RoomService {
     return this.http.get<RoomResponse[]>(
       `${this.apiUrl}/category/${categoryId}/status/${status}`
     );
+  }
+
+  create(request: RoomRequest): Observable<RoomResponse> {
+    return this.http.post<RoomResponse>(this.apiUrl, request);
+  }
+
+  update(id: number, request: RoomRequest): Observable<RoomResponse> {
+    return this.http.put<RoomResponse>(
+      `${this.apiUrl}/${id}`,
+      request
+    );
+  }
+
+  updateRoomStatus(
+    id: number,
+    request: RoomStatusRequest
+  ): Observable<RoomResponse> {
+    return this.http.patch<RoomResponse>(
+      `${this.apiUrl}/${id}/status`,
+      request
+    );
+  }
+
+  delete(id: number): Observable<string> {
+    return this.http.delete(`${this.apiUrl}/${id}`, {
+      responseType: 'text'
+    });
   }
 }

@@ -34,7 +34,7 @@ export class RoomUnavailabilityService {
   ): Observable<RoomUnavailabilityResponse> {
     return this.http.patch<RoomUnavailabilityResponse>(
       `${this.apiUrl}/${repairId}/finish`,
-      {}
+      null
     );
   }
 }

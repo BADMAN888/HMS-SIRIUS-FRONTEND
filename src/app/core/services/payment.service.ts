@@ -1,9 +1,9 @@
-
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { PaymentRequest } from '../models/billing/payment-request.model';
 import { PaymentResponse } from '../models/billing/payment-response.model';
+import { PaymentRefundRequest } from '../models/billing/payment-refund-request.model';
 
 @Injectable({
   providedIn: 'root'
@@ -30,11 +30,13 @@ export class PaymentService {
     );
   }
 
-  update(id: number, request: PaymentRequest): Observable<PaymentResponse> {
-    return this.http.put<PaymentResponse>(`${this.apiUrl}/${id}`, request);
-  }
-
-  delete(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/${id}`);
+  refund(
+    id: number,
+    request: PaymentRefundRequest
+  ): Observable<PaymentResponse> {
+    return this.http.post<PaymentResponse>(
+      `${this.apiUrl}/${id}/refund`,
+      request
+    );
   }
 }

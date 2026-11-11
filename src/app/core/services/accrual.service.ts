@@ -1,7 +1,7 @@
-
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+
 import { AccrualRequest } from '../models/billing/accrual-request.model';
 import { AccrualResponse } from '../models/billing/accrual-response.model';
 
@@ -21,7 +21,23 @@ export class AccrualService {
   }
 
   getByFolioId(folioId: number): Observable<AccrualResponse[]> {
-    return this.http.get<AccrualResponse[]>(`${this.apiUrl}/folio/${folioId}`);
+    return this.http.get<AccrualResponse[]>(
+      `${this.apiUrl}/folio/${folioId}`
+    );
+  }
+
+  getUnassignedByHotelId(hotelId: number): Observable<AccrualResponse[]> {
+    return this.http.get<AccrualResponse[]>(
+      `${this.apiUrl}/hotel/${hotelId}/unassigned`
+    );
+  }
+
+  getUnassignedByReservationId(
+    reservationId: number
+  ): Observable<AccrualResponse[]> {
+    return this.http.get<AccrualResponse[]>(
+      `${this.apiUrl}/reservation/${reservationId}/unassigned`
+    );
   }
 
   create(request: AccrualRequest): Observable<AccrualResponse> {

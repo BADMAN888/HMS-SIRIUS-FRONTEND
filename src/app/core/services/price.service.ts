@@ -1,7 +1,7 @@
-
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+
 import { PriceRequest } from '../models/billing/price-request.model';
 import { PriceResponse } from '../models/billing/price-response.model';
 
@@ -16,19 +16,18 @@ export class PriceService {
     return this.http.post<PriceResponse>(this.apiUrl, request);
   }
 
-  getById(id: number): Observable<PriceResponse> {
-    return this.http.get<PriceResponse>(`${this.apiUrl}/${id}`);
+  getHistory(rateId: number): Observable<PriceResponse[]> {
+    return this.http.get<PriceResponse[]>(
+      `${this.apiUrl}/rate/${rateId}`
+    );
   }
 
-  getAll(): Observable<PriceResponse[]> {
-    return this.http.get<PriceResponse[]>(this.apiUrl);
-  }
-
-  update(id: number, request: PriceRequest): Observable<PriceResponse> {
-    return this.http.put<PriceResponse>(`${this.apiUrl}/${id}`, request);
-  }
-
-  delete(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/${id}`);
+  getPriceForDate(
+    rateId: number,
+    date: string
+  ): Observable<PriceResponse> {
+    return this.http.get<PriceResponse>(
+      `${this.apiUrl}/rate/${rateId}/date/${date}`
+    );
   }
 }
