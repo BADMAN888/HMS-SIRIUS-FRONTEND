@@ -1,6 +1,6 @@
 export interface RoomCategoryRequest {
   name: string;
-  description: string | null;
+  description?: string | null;
   countOfBeds: number;
   hotelId: number;
 }
