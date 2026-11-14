@@ -2,8 +2,10 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+
 import { ProfileRequest } from '../models/profile/profile-request.model';
 import { ProfileResponse } from '../models/profile/profile-response.model';
+import { ProfileReservationResponse } from '../models/profile/profile-reservation-response.model';
 
 @Injectable({
   providedIn: 'root'
@@ -18,6 +20,12 @@ export class ProfileService {
 
   getAll(): Observable<ProfileResponse[]> {
     return this.http.get<ProfileResponse[]>(this.apiUrl);
+  }
+
+  getReservations(id: number): Observable<ProfileReservationResponse[]> {
+    return this.http.get<ProfileReservationResponse[]>(
+      `${this.apiUrl}/${id}/reservations`
+    );
   }
 
   create(request: ProfileRequest): Observable<ProfileResponse> {
