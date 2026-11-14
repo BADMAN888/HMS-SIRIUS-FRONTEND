@@ -1,3 +1,4 @@
+
 <div class="check-in-page">
   <div class="page-header">
     <div>
@@ -5,15 +6,26 @@
       <p>Гості, які прибувають у вибрану дату</p>
     </div>
 
-    <div class="date-selector">
-      <label for="check-in-date">Дата заїзду</label>
-
-      <input
-        id="check-in-date"
-        type="date"
-        [value]="selectedDate()"
-        (change)="onDateChange($event)"
+    <div class="header-actions">
+      <button
+        type="button"
+        class="new-booking-button"
+        (click)="newReservation()"
       >
+        <span>＋</span>
+        Нове бронювання
+      </button>
+
+      <div class="date-selector">
+        <label for="check-in-date">Дата заїзду</label>
+
+        <input
+          id="check-in-date"
+          type="date"
+          [value]="selectedDate()"
+          (change)="onDateChange($event)"
+        />
+      </div>
     </div>
   </div>
 

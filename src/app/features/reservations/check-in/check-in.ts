@@ -133,4 +133,7 @@ export class CheckIn implements OnInit {
 
     return `${year}-${month}-${day}`;
   }
+  newReservation(): void {
+    this.router.navigate(['/reservations', 'new']);
+  }
 }

@@ -1,3 +1,4 @@
+
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth-guard';
 
@@ -48,6 +49,13 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/reservations/check-out/check-out').then(
             m => m.CheckOut
+          )
+      },
+      {
+        path: 'reservations/new',
+        loadComponent: () =>
+          import('./features/reservation-details/reservation-details').then(
+            m => m.ReservationDetails
           )
       },
       {

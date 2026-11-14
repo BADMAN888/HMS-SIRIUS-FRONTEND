@@ -1,3 +1,4 @@
+
 .check-in-page {
   min-height: 100%;
   padding: 32px;
@@ -21,6 +22,40 @@
     margin: 8px 0 0;
     color: #8190a8;
     font-size: 14px;
+  }
+}
+
+.header-actions {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+}
+
+.new-booking-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 42px;
+  padding: 0 16px;
+  border: 1px solid #2684c4;
+  border-radius: 8px;
+  background: #176b9f;
+  color: #f2f8ff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: #2082bd;
+  }
+
+  &:focus-visible {
+    outline: 2px solid #4ba3e8;
+    outline-offset: 2px;
   }
 }
 
@@ -60,13 +95,12 @@
 }
 
 .summary-card {
+  display: flex;
   min-width: 150px;
   padding: 18px 20px;
   border: 1px solid #1e304d;
   border-radius: 10px;
   background: #101c30;
-
-  display: flex;
   flex-direction: column;
   gap: 8px;
 
@@ -91,8 +125,8 @@
 
 table {
   width: 100%;
-  border-collapse: collapse;
   min-width: 1100px;
+  border-collapse: collapse;
 }
 
 thead {
@@ -231,8 +265,8 @@ tbody tr {
 .state-message,
 .empty-state,
 .error-message {
-  border-radius: 10px;
   padding: 24px;
+  border-radius: 10px;
   text-align: center;
 }
 
@@ -269,6 +303,7 @@ tbody tr {
   background: #2b1820;
   color: #e58b98;
 }
+
 .guest-name {
   display: flex;
   flex-direction: column;
@@ -282,5 +317,29 @@ tbody tr {
   span {
     color: #94a3b8;
     font-size: 13px;
+  }
+}
+
+@media (max-width: 700px) {
+  .check-in-page {
+    padding: 20px;
+  }
+
+  .page-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .header-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .new-booking-button {
+    width: 100%;
+  }
+
+  .summary {
+    flex-wrap: wrap;
   }
 }

@@ -1,6 +1,5 @@
-
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
-import {DatePipe, DecimalPipe} from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
@@ -38,7 +37,7 @@ import { TaxStatus } from '../../../../core/models/enums/tax-status.enum';
     MatOptionModule,
     MatSelectModule,
     DatePipe,
-    DecimalPipe,
+    DecimalPipe
   ],
   templateUrl: './reservation-tab.html',
   styleUrl: './reservation-tab.scss'
@@ -55,6 +54,9 @@ export class ReservationTab implements OnInit {
   private readonly companyService = inject(CompanyService);
 
   readonly reservation = signal<ReservationResponse | null>(null);
+
+  readonly isCreateMode = signal(false);
+  readonly isCopyMode = signal(false);
 
   readonly profiles = signal<ProfileResponse[]>([]);
   readonly rooms = signal<RoomResponse[]>([]);
@@ -169,16 +171,41 @@ export class ReservationTab implements OnInit {
   });
 
   ngOnInit(): void {
-    const id = Number(this.route.snapshot.paramMap.get('id'));
+    const idParam = this.route.snapshot.paramMap.get('id');
+    const id = idParam ? Number(idParam) : null;
 
-    if (!id) {
-      this.error.set('Некоректний ID бронювання.');
-      this.loading.set(false);
-      this.loadingEditData.set(false);
+    const copyFromParam = this.route.snapshot.queryParamMap.get('copyFrom');
+    const copyFromId = copyFromParam ? Number(copyFromParam) : null;
+
+    if (
+      copyFromId !== null &&
+      Number.isInteger(copyFromId) &&
+      copyFromId > 0
+    ) {
+      this.isCreateMode.set(true);
+      this.isCopyMode.set(true);
+      this.loadDataAndReservation(copyFromId);
       return;
     }
 
-    this.loadDataAndReservation(id);
+    if (
+      idParam &&
+      Number.isInteger(id) &&
+      id! > 0
+    ) {
+      this.loadDataAndReservation(id!);
+      return;
+    }
+
+    if (idParam === 'new' || !idParam) {
+      this.isCreateMode.set(true);
+      this.loadCreateFormData();
+      return;
+    }
+
+    this.error.set('Некоректний ID бронювання.');
+    this.loading.set(false);
+    this.loadingEditData.set(false);
   }
 
   getProfileFullName(profile: ProfileResponse): string {
@@ -257,6 +284,69 @@ export class ReservationTab implements OnInit {
     this.guestEmailSearch.set(profile.email ?? '');
   }
 
+  private loadCreateFormData(): void {
+    this.loading.set(true);
+    this.loadingEditData.set(true);
+    this.error.set('');
+
+    forkJoin({
+      profiles: this.profileService.getAll(),
+      rates: this.rateService.getAll(),
+      roomCategories: this.roomCategoryService.getAll(),
+      companies: this.companyService.getAll(),
+      rooms: this.roomService.getAll()
+    }).pipe(
+      finalize(() => {
+        this.loading.set(false);
+        this.loadingEditData.set(false);
+      })
+    ).subscribe({
+      next: data => {
+        this.profiles.set(data.profiles);
+        this.rates.set(data.rates);
+        this.roomCategories.set(data.roomCategories);
+        this.companies.set(data.companies.filter(company => company.active));
+        this.rooms.set(data.rooms);
+
+        this.reservation.set(null);
+        this.comments.set([]);
+
+        this.editRoomCategoryId.set(0);
+        this.editPaymentCategoryId.set(0);
+        this.editRoomId.set(0);
+        this.editRateId.set(0);
+        this.editPrimaryGuestId.set(0);
+        this.editGuestIds.set([]);
+
+        this.editCheckIn.set('');
+        this.editCheckOut.set('');
+        this.editAdults.set(1);
+        this.editChildren.set(0);
+        this.editTaxStatus.set(TaxStatus.RESIDENT);
+
+        this.editSourceCompanyId.set(null);
+        this.editOperatorCompanyId.set(null);
+        this.editBookingSource.set('');
+        this.editExternalBookingNumber.set('');
+
+        this.selectedGuest.set(null);
+        this.guestSearch.set('');
+        this.guestPhoneSearch.set('');
+        this.guestEmailSearch.set('');
+
+        this.newComment.set('');
+        this.selectedCommentId.set(null);
+      },
+      error: error => {
+        this.error.set(
+          error?.error?.message ||
+          error?.message ||
+          `Не вдалося завантажити дані форми. HTTP ${error?.status || ''}`
+        );
+      }
+    });
+  }
+
   private loadDataAndReservation(id: number): void {
     this.loading.set(true);
     this.loadingEditData.set(true);
@@ -286,6 +376,14 @@ export class ReservationTab implements OnInit {
 
         this.reservation.set(data.reservation);
         this.initializeForm(data.reservation);
+
+        if (this.isCopyMode()) {
+          this.comments.set([]);
+          this.newComment.set('');
+          this.selectedCommentId.set(null);
+
+          this.editExternalBookingNumber.set('');
+        }
       },
       error: error => {
         this.error.set(
@@ -299,6 +397,7 @@ export class ReservationTab implements OnInit {
 
   private initializeForm(reservation: ReservationResponse): void {
     const roomId = reservation.room?.id ?? (reservation as any).roomId ?? 0;
+
     const roomCategoryId =
       reservation.room?.categoryId ??
       (reservation as any).roomCategoryId ??
@@ -329,6 +428,7 @@ export class ReservationTab implements OnInit {
     }
 
     this.editPaymentCategoryId.set(reservation.paymentCategoryId ?? 0);
+
     this.editRateId.set(
       reservation.rate?.id ?? (reservation as any).rateId ?? 0
     );
@@ -346,6 +446,7 @@ export class ReservationTab implements OnInit {
     this.editSourceCompanyId.set(reservation.sourceCompany?.id ?? null);
     this.editOperatorCompanyId.set(reservation.operatorCompany?.id ?? null);
     this.editBookingSource.set(reservation.bookingSource ?? '');
+
     this.editExternalBookingNumber.set(
       reservation.externalBookingNumber ?? ''
     );
@@ -375,7 +476,10 @@ export class ReservationTab implements OnInit {
   }
 
   onRoomCategoryChange(categoryId: number | null): void {
-    if (categoryId === null || this.editRoomCategoryId() === categoryId) {
+    if (
+      categoryId === null ||
+      this.editRoomCategoryId() === categoryId
+    ) {
       return;
     }
 
@@ -404,7 +508,10 @@ export class ReservationTab implements OnInit {
   save(): void {
     const reservation = this.reservation();
 
-    if (!reservation || this.saving()) {
+    if (
+      (!this.isCreateMode() && !reservation) ||
+      this.saving()
+    ) {
       return;
     }
 
@@ -497,13 +604,22 @@ export class ReservationTab implements OnInit {
         this.editExternalBookingNumber().trim() || null
     };
 
-    this.reservationService.update(reservation.id, request).pipe(
+    const saveRequest = this.isCreateMode()
+      ? this.reservationService.create(request)
+      : this.reservationService.update(reservation!.id, request);
+
+    saveRequest.pipe(
       finalize(() => this.saving.set(false))
     ).subscribe({
-      next: updatedReservation => {
-        this.reservation.set(updatedReservation);
-        this.initializeForm(updatedReservation);
+      next: savedReservation => {
+        this.reservation.set(savedReservation);
+        this.isCreateMode.set(false);
+        this.isCopyMode.set(false);
+
+        this.initializeForm(savedReservation);
         this.saved.set(true);
+
+        this.router.navigate(['/reservations', savedReservation.id]);
       },
       error: error => {
         this.saveError.set(
@@ -511,6 +627,20 @@ export class ReservationTab implements OnInit {
           error?.message ||
           `Не вдалося зберегти бронювання. HTTP ${error?.status || ''}`
         );
+      }
+    });
+  }
+
+  copyReservation(): void {
+    const reservation = this.reservation();
+
+    if (!reservation) {
+      return;
+    }
+
+    this.router.navigate(['/reservations', 'new'], {
+      queryParams: {
+        copyFrom: reservation.id
       }
     });
   }
@@ -580,7 +710,9 @@ export class ReservationTab implements OnInit {
   }
 
   removeAdditionalGuest(profileId: number): void {
-    this.editGuestIds.update(ids => ids.filter(id => id !== profileId));
+    this.editGuestIds.update(ids =>
+      ids.filter(id => id !== profileId)
+    );
   }
 
   getProfileById(id: number): ProfileResponse | undefined {
@@ -602,7 +734,8 @@ export class ReservationTab implements OnInit {
         next: comments => this.comments.set(comments),
         error: error => {
           this.saveError.set(
-            error?.error?.message || 'Не вдалося завантажити коментарі.'
+            error?.error?.message ||
+            'Не вдалося завантажити коментарі.'
           );
         }
       });
@@ -628,7 +761,8 @@ export class ReservationTab implements OnInit {
         },
         error: error => {
           this.saveError.set(
-            error?.error?.message || 'Не вдалося додати коментар.'
+            error?.error?.message ||
+            'Не вдалося додати коментар.'
           );
         }
       });
@@ -638,7 +772,11 @@ export class ReservationTab implements OnInit {
     const reservation = this.reservation();
     const commentId = this.selectedCommentId();
 
-    if (!reservation || commentId === null || this.commentBusy()) {
+    if (
+      !reservation ||
+      commentId === null ||
+      this.commentBusy()
+    ) {
       return;
     }
 
@@ -659,7 +797,8 @@ export class ReservationTab implements OnInit {
         },
         error: error => {
           this.saveError.set(
-            error?.error?.message || 'Не вдалося видалити коментар.'
+            error?.error?.message ||
+            'Не вдалося видалити коментар.'
           );
         }
       });
