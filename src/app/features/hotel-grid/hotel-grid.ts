@@ -3,8 +3,9 @@ import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { catchError, finalize, of } from 'rxjs';
 import { HotelGridService } from '../../core/services/hotel-grid.service';
-import { HotelGridRoom } from '../../core/models/reservation/hotel-grid-room.model';
 import { HotelGridReservationResponse } from '../../core/models/hotel-grid/hotel-grid-reservation-response.model';
+import {HotelGridRoomResponse} from '../../core/models/hotel-grid/hotel-grid-room-response.model';
+
 
 @Component({
   selector: 'app-hotel-grid',
@@ -22,7 +23,7 @@ export class HotelGrid implements OnInit {
   readonly shiftDays = 10;
 
   days: Date[] = [];
-  rooms: HotelGridRoom[] = [];
+  rooms: HotelGridRoomResponse[] = [];
 
   startDateValue = '';
   endDateValue = '';
@@ -142,7 +143,7 @@ export class HotelGrid implements OnInit {
   }
 
   getReservationsForRoom(
-    room: HotelGridRoom
+    room: HotelGridRoomResponse
   ): HotelGridReservationResponse[] {
     return room.reservations ?? [];
   }
