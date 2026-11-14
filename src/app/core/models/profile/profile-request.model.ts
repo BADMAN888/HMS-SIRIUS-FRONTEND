@@ -1,4 +1,4 @@
-import { GuestDocumentRequest } from './guest-document-request.model';
+
 import { Gender } from '../enums/gender.enum';
 
 export interface ProfileRequest {
@@ -8,6 +8,10 @@ export interface ProfileRequest {
   phoneNumber?: string | null;
   email?: string | null;
   gender?: Gender | null;
+  dateOfBirth?: string | null;
+  placeOfBirth?: string | null;
+  citizenship?: string | null;
+  taxNumber?: string | null;
   address?: string | null;
-  guestDocument?: GuestDocumentRequest | null;
+  registrationAddress?: string | null;
 }

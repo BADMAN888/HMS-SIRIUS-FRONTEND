@@ -2,6 +2,7 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+
 import { GuestDocumentRequest } from '../models/profile/guest-document-request.model';
 import { GuestDocumentResponse } from '../models/profile/guest-document-response.model';
 
@@ -20,8 +21,14 @@ export class GuestDocumentService {
     return this.http.get<GuestDocumentResponse[]>(this.apiUrl);
   }
 
-  create(request: GuestDocumentRequest): Observable<GuestDocumentResponse> {
-    return this.http.post<GuestDocumentResponse>(this.apiUrl, request);
+  create(
+    profileId: number,
+    request: GuestDocumentRequest
+  ): Observable<GuestDocumentResponse> {
+    return this.http.post<GuestDocumentResponse>(
+      `${this.apiUrl}/profile/${profileId}`,
+      request
+    );
   }
 
   update(
@@ -34,9 +41,7 @@ export class GuestDocumentService {
     );
   }
 
-  delete(id: number): Observable<string> {
-    return this.http.delete(`${this.apiUrl}/${id}`, {
-      responseType: 'text'
-    });
+  delete(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/${id}`);
   }
 }
