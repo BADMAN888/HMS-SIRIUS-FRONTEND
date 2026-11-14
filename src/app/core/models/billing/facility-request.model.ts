@@ -4,7 +4,7 @@ import { TaxStatus } from '../enums/tax-status.enum';
 export interface FacilityRequest {
   hotelId: number;
   name: string;
-  description: string | null;
+  description?: string | null;
   unit: string;
   active: boolean;
   type: FacilityType;
