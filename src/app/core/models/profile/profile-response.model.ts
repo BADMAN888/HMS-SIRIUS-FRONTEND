@@ -1,4 +1,3 @@
-
 import { GuestDocumentResponse } from './guest-document-response.model';
 import { Gender } from '../enums/gender.enum';
 

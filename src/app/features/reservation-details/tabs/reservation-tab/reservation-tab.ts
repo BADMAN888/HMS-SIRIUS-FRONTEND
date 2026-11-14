@@ -18,6 +18,8 @@ import { ReservationService } from '../../../../core/services/reservation.servic
 
 import { ReservationResponse } from '../../../../core/models/reservation/reservation-response.model';
 import { ProfileResponse } from '../../../../core/models/profile/profile-response.model';
+import { ProfileRequest } from '../../../../core/models/profile/profile-request.model';
+import { Gender } from '../../../../core/models/enums/gender.enum';
 import { RoomResponse } from '../../../../core/models/hotel/room-response.model';
 import { RoomCategoryResponse } from '../../../../core/models/hotel/room-category-response.model';
 import { RateResponse } from '../../../../core/models/billing/rate-response.model';
@@ -25,6 +27,16 @@ import { ReservationRequest } from '../../../../core/models/reservation/reservat
 import { ReservationCommentResponse } from '../../../../core/models/reservation/reservation-comment-response.model';
 import { CompanyResponse } from '../../../../core/models/company-response.model';
 import { TaxStatus } from '../../../../core/models/enums/tax-status.enum';
+
+interface NewGuestForm {
+  firstName: string;
+  lastName: string;
+  middleName: string;
+  phoneNumber: string;
+  email: string;
+  gender: Gender | null;
+  address: string;
+}
 
 @Component({
   selector: 'app-reservation-tab',
@@ -133,6 +145,25 @@ export class ReservationTab implements OnInit {
   readonly commentBusy = signal(false);
 
   readonly additionalGuestSearch = signal('');
+
+  readonly showNewGuestModal = signal(false);
+  readonly creatingGuest = signal(false);
+  readonly newGuestError = signal('');
+
+  readonly newGuest = signal<NewGuestForm>({
+    firstName: '',
+    lastName: '',
+    middleName: '',
+    phoneNumber: '',
+    email: '',
+    gender: null,
+    address: ''
+  });
+
+  readonly genderOptions = [
+    { value: Gender.MALE, label: 'Чоловіча' },
+    { value: Gender.FEMALE, label: 'Жіноча' }
+  ];
 
   readonly filteredAdditionalGuests = computed(() => {
     const query = this.additionalGuestSearch()
@@ -381,7 +412,6 @@ export class ReservationTab implements OnInit {
           this.comments.set([]);
           this.newComment.set('');
           this.selectedCommentId.set(null);
-
           this.editExternalBookingNumber.set('');
         }
       },
@@ -503,6 +533,115 @@ export class ReservationTab implements OnInit {
     ) {
       this.editRoomCategoryId.set(room.categoryId);
     }
+  }
+
+  openNewGuestModal(): void {
+    this.newGuest.set({
+      firstName: '',
+      lastName: '',
+      middleName: '',
+      phoneNumber: '',
+      email: '',
+      gender: null,
+      address: ''
+    });
+
+    this.newGuestError.set('');
+    this.showNewGuestModal.set(true);
+  }
+
+  closeNewGuestModal(): void {
+    if (this.creatingGuest()) {
+      return;
+    }
+
+    this.showNewGuestModal.set(false);
+    this.newGuestError.set('');
+  }
+
+  updateNewGuest(
+    field: 'firstName' | 'lastName' | 'middleName' |
+      'phoneNumber' | 'email' | 'address',
+    value: string
+  ): void {
+    this.newGuest.update(current => ({
+      ...current,
+      [field]: value
+    }));
+  }
+
+  onGenderChange(event: Event): void {
+    const gender = (event.target as HTMLSelectElement).value;
+
+    this.newGuest.update(guest => ({
+      ...guest,
+      gender: gender ? gender as Gender : null
+    }));
+  }
+
+  saveNewGuest(): void {
+    if (this.creatingGuest()) {
+      return;
+    }
+
+    const guest = this.newGuest();
+
+    if (!guest.firstName.trim() || !guest.lastName.trim()) {
+      this.newGuestError.set('Вкажіть ім’я та прізвище гостя.');
+      return;
+    }
+
+    const phoneNumber = guest.phoneNumber.trim();
+
+    if (phoneNumber && !/^\+?[0-9]{7,15}$/.test(phoneNumber)) {
+      this.newGuestError.set(
+        'Невірний формат телефону. Використовуйте 7–15 цифр.'
+      );
+      return;
+    }
+
+    const email = guest.email.trim();
+
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      this.newGuestError.set('Вкажіть коректну електронну адресу.');
+      return;
+    }
+
+    const request: ProfileRequest = {
+      firstName: guest.firstName.trim(),
+      lastName: guest.lastName.trim(),
+      middleName: guest.middleName.trim() || null,
+      phoneNumber: phoneNumber || null,
+      email: email || null,
+      gender: guest.gender,
+      address: guest.address.trim() || null,
+      guestDocument: null
+    };
+
+    this.creatingGuest.set(true);
+    this.newGuestError.set('');
+
+    this.profileService.create(request)
+      .pipe(finalize(() => this.creatingGuest.set(false)))
+      .subscribe({
+        next: profile => {
+          this.profiles.update(profiles => [
+            ...profiles,
+            profile
+          ]);
+
+          this.addAdditionalGuest(profile);
+          this.showNewGuestModal.set(false);
+          this.additionalGuestSearch.set('');
+        },
+        error: error => {
+          this.newGuestError.set(
+            error?.error?.message ||
+            error?.message ||
+            `Не вдалося створити профіль. HTTP ${error?.status || ''}`
+          );
+        }
+      });
   }
 
   save(): void {
