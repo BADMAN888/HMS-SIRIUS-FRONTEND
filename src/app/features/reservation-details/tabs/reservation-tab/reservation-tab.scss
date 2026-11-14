@@ -44,6 +44,9 @@ $color-tab-active: #3b9bea;
   color: $color-text-main;
 }
 
+.reservation-tab {
+  min-width: 0;
+}
 
 .container {
   display: grid;
@@ -54,8 +57,6 @@ $color-tab-active: #3b9bea;
   min-width: 0;
   width: 100%;
 }
-
-
 
 .block {
   min-width: 0;
@@ -293,6 +294,7 @@ $color-tab-active: #3b9bea;
 .comment-input {
   resize: vertical;
   margin-bottom: 12px;
+  min-height: 90px;
 }
 
 .comments-list {
@@ -448,7 +450,7 @@ $color-tab-active: #3b9bea;
 .action-bar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   flex-wrap: wrap;
   gap: 12px;
   margin-top: 22px;

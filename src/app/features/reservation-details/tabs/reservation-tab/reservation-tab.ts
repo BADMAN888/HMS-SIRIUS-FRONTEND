@@ -1,5 +1,6 @@
+
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
-import { DatePipe } from '@angular/common';
+import {DatePipe, DecimalPipe} from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
@@ -9,12 +10,12 @@ import { MatOptionModule } from '@angular/material/core';
 import { MatSelectModule } from '@angular/material/select';
 import { finalize, forkJoin } from 'rxjs';
 
-
 import { ProfileService } from '../../../../core/services/profile.service';
 import { RoomService } from '../../../../core/services/room.service';
 import { RateService } from '../../../../core/services/rate.service';
 import { RoomCategoryService } from '../../../../core/services/room-category.service';
 import { CompanyService } from '../../../../core/services/company.service';
+import { ReservationService } from '../../../../core/services/reservation.service';
 
 import { ReservationResponse } from '../../../../core/models/reservation/reservation-response.model';
 import { ProfileResponse } from '../../../../core/models/profile/profile-response.model';
@@ -23,9 +24,8 @@ import { RoomCategoryResponse } from '../../../../core/models/hotel/room-categor
 import { RateResponse } from '../../../../core/models/billing/rate-response.model';
 import { ReservationRequest } from '../../../../core/models/reservation/reservation-request.model';
 import { ReservationCommentResponse } from '../../../../core/models/reservation/reservation-comment-response.model';
-import {CompanyResponse} from '../../../../core/models/company-response.model';
-import {ReservationService} from '../../../../core/services/reservation.service';
-
+import { CompanyResponse } from '../../../../core/models/company-response.model';
+import { TaxStatus } from '../../../../core/models/enums/tax-status.enum';
 
 @Component({
   selector: 'app-reservation-tab',
@@ -38,6 +38,7 @@ import {ReservationService} from '../../../../core/services/reservation.service'
     MatOptionModule,
     MatSelectModule,
     DatePipe,
+    DecimalPipe,
   ],
   templateUrl: './reservation-tab.html',
   styleUrl: './reservation-tab.scss'
@@ -88,6 +89,9 @@ export class ReservationTab implements OnInit {
   readonly editCheckOut = signal('');
   readonly editAdults = signal(1);
   readonly editChildren = signal(0);
+  readonly editTaxStatus = signal<TaxStatus>(TaxStatus.RESIDENT);
+
+  readonly taxStatuses = TaxStatus;
 
   readonly editSourceCompanyId = signal<number | null>(null);
   readonly editOperatorCompanyId = signal<number | null>(null);
@@ -156,6 +160,12 @@ export class ReservationTab implements OnInit {
           phone.toLocaleLowerCase().includes(query);
       })
       .slice(0, 10);
+  });
+
+  readonly filteredRates = computed(() => {
+    const categoryId = this.editPaymentCategoryId();
+
+    return this.rates().filter(rate => rate.categoryId === categoryId);
   });
 
   ngOnInit(): void {
@@ -331,6 +341,7 @@ export class ReservationTab implements OnInit {
 
     this.editAdults.set(reservation.adults ?? 1);
     this.editChildren.set(reservation.children ?? 0);
+    this.editTaxStatus.set(reservation.taxStatus ?? TaxStatus.RESIDENT);
 
     this.editSourceCompanyId.set(reservation.sourceCompany?.id ?? null);
     this.editOperatorCompanyId.set(reservation.operatorCompany?.id ?? null);
@@ -338,6 +349,9 @@ export class ReservationTab implements OnInit {
     this.editExternalBookingNumber.set(
       reservation.externalBookingNumber ?? ''
     );
+
+    this.comments.set(reservation.comments ?? []);
+    this.selectedCommentId.set(null);
 
     if (reservation.primaryGuest) {
       this.selectedGuest.set(reservation.primaryGuest);
@@ -475,6 +489,7 @@ export class ReservationTab implements OnInit {
       checkOut: this.toLocalDateTime(this.editCheckOut()),
       adults: this.editAdults(),
       children: this.editChildren(),
+      taxStatus: this.editTaxStatus(),
       bookingSource: this.editBookingSource().trim() || null,
       sourceCompanyId: this.editSourceCompanyId(),
       operatorCompanyId: this.editOperatorCompanyId(),
@@ -665,11 +680,7 @@ export class ReservationTab implements OnInit {
   increaseChildren(): void {
     this.editChildren.update(current => current + 1);
   }
-  readonly filteredRates = computed(() => {
-    const categoryId = this.editPaymentCategoryId();
 
-    return this.rates().filter(rate => rate.categoryId === categoryId);
-  });
   async copyReservationNumber(): Promise<void> {
     const confirmationNumber = this.reservation()?.confirmationNumber;
 

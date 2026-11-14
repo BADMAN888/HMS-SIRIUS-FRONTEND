@@ -1,3 +1,4 @@
+
 <section class="accrual-page">
   @if (loading()) {
     <div class="state-message">Завантаження фінансових даних…</div>
@@ -13,30 +14,21 @@
     <section class="service-card">
       <form class="service-form" (ngSubmit)="addAccrual()">
         <div class="form-field service-field">
-          <label for="serviceType">Послуга</label>
+          <label for="facilityId">Послуга</label>
           <select
-            id="serviceType"
-            name="serviceType"
-            [(ngModel)]="serviceType"
-            [disabled]="!selectedFolio() || saving()"
+            id="facilityId"
+            name="facilityId"
+            [ngModel]="selectedFacilityId()"
+            (ngModelChange)="selectFacility($event)"
+            [disabled]="facilities().length === 0 || saving()"
+            required
           >
-            @for (type of accrualTypes; track type) {
-              <option [ngValue]="type">{{ formatAccrualType(type) }}</option>
+            @for (facility of facilities(); track trackFacility($index, facility)) {
+              <option [ngValue]="facility.id">
+                {{ facility.name }} ({{ facility.unit }})
+              </option>
             }
           </select>
-        </div>
-
-        <div class="form-field service-name-field">
-          <label for="serviceName">Назва послуги</label>
-          <input
-            id="serviceName"
-            name="serviceName"
-            type="text"
-            [(ngModel)]="serviceName"
-            placeholder="Наприклад, сніданок"
-            [disabled]="!selectedFolio() || saving()"
-            required
-          />
         </div>
 
         <div class="form-field quantity-field">
@@ -45,63 +37,62 @@
             id="quantity"
             name="quantity"
             type="number"
-            min="1"
-            step="1"
+            min="0.01"
+            step="0.01"
             [(ngModel)]="quantity"
             [disabled]="!selectedFolio() || saving()"
             required
           />
         </div>
 
-        <div class="form-field price-field">
-          <label for="unitPrice">Вартість за одиницю</label>
-          <div class="input-with-suffix">
-            <input
-              id="unitPrice"
-              name="unitPrice"
-              type="number"
-              min="0"
-              step="0.01"
-              [(ngModel)]="unitPrice"
-              placeholder="0,00"
-              [disabled]="!selectedFolio() || saving()"
-              required
-            />
-            <span>₴</span>
-          </div>
-        </div>
-
         <div class="form-field date-field">
-          <label>Дата послуги</label>
-          <div class="readonly-value">
-            {{ today | date: 'dd.MM.yyyy' }}
-          </div>
-        </div>
-
-        <div class="form-field notes-field">
-          <label for="notes">Примітки</label>
+          <label for="serviceDate">Дата послуги</label>
           <input
-            id="notes"
-            name="notes"
-            type="text"
-            [(ngModel)]="notes"
-            placeholder="Додаткова інформація"
-            [disabled]="!selectedFolio() || saving()"
+            id="serviceDate"
+            name="serviceDate"
+            type="date"
+            [ngModel]="selectedServiceDate()"
+            (ngModelChange)="selectServiceDate($event)"
+            [disabled]="saving()"
+            required
           />
         </div>
+
+        <div class="form-field price-field">
+          <label>Вартість за одиницю</label>
+          <div class="readonly-value">
+            @if (priceLoading()) {
+              Завантаження ціни…
+            } @else if (facilityPrice() !== null) {
+              {{ facilityPrice() | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}
+            } @else {
+              Не визначена
+            }
+          </div>
+        </div>
+
+        @if (priceError()) {
+          <div class="price-error">{{ priceError() }}</div>
+        }
 
         <div class="service-form-footer">
           <div class="calculated-total">
             <span>Загальна вартість</span>
             <strong>
-              {{ (unitPrice ?? 0) * quantity | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}
+              {{ estimatedTotal() | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}
             </strong>
           </div>
 
           <button
             class="primary-button"
             type="submit"
-            [disabled]="!selectedFolio() || saving()"
+            [disabled]="
+              !selectedFolio() ||
+              !selectedFacilityId() ||
+              facilityPrice() === null ||
+              priceLoading() ||
+              saving()
+            "
           >
             {{ saving() ? 'Збереження…' : 'Додати нарахування' }}
           </button>
@@ -125,10 +116,10 @@
             <tr>
               <th>Найменування</th>
               <th>Рахунок</th>
-              <th>Дата</th>
+              <th>Дата послуги</th>
               <th>Кількість</th>
+              <th>Ціна</th>
               <th>Сума</th>
-              <th aria-label="Дії"></th>
             </tr>
             </thead>
 
@@ -139,35 +130,23 @@
                     <div class="accrual-name">
                       <span class="type-indicator"></span>
                       <div>
-                        <strong>{{ accrual.name || accrual.description || 'Нарахування' }}</strong>
-                        <span>{{ formatAccrualType(accrual.type) }}</span>
-                        @if (accrual.description && accrual.name) {
-                          <span>{{ accrual.description }}</span>
+                        <strong>{{ accrual.name }}</strong>
+                        @if (accrual.reversed) {
+                          <span>Сторновано</span>
                         }
                       </div>
                     </div>
                   </td>
                   <td>№{{ accrual.folioId }}</td>
                   <td class="date-cell">
-                    {{ accrual.accruedAt | date: 'dd.MM.yyyy' }}
+                    {{ accrual.serviceDate | date: 'dd.MM.yyyy' : '' : 'uk-UA' }}
                   </td>
                   <td>{{ accrual.quantity }}</td>
+                  <td>
+                    {{ accrual.unitPrice | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}
+                  </td>
                   <td class="amount-cell">
                     {{ accrual.amount | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}
-                  </td>
-                  <td class="actions-cell">
-                    <button
-                      class="icon-button delete-button"
-                      type="button"
-                      title="Видалити нарахування"
-                      aria-label="Видалити нарахування"
-                      [disabled]="saving() || !canDeleteAccrual(accrual)"
-                      (click)="deleteAccrual(accrual)"
-                    >
-                      <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3" />
-                      </svg>
-                    </button>
                   </td>
                 </tr>
               } @empty {
@@ -254,15 +233,6 @@
                 </div>
               </div>
 
-              @if (invoice.advanceAmount > 0) {
-                <div class="advance-note">
-                  Передоплата / переплата:
-                  <strong>
-                    {{ invoice.advanceAmount | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}
-                  </strong>
-                </div>
-              }
-
               <form class="payment-form" (ngSubmit)="addPayment()">
                 <h3>Додати оплату</h3>
 
@@ -290,10 +260,11 @@
                       name="paymentAmount"
                       type="number"
                       min="0.01"
+                      [max]="invoice.balance"
                       step="0.01"
                       [(ngModel)]="paymentAmount"
                       placeholder="0,00"
-                      [disabled]="saving()"
+                      [disabled]="saving() || invoice.balance <= 0"
                       required
                     />
                   </div>
@@ -314,7 +285,7 @@
                 <button
                   class="secondary-button"
                   type="submit"
-                  [disabled]="saving()"
+                  [disabled]="saving() || invoice.balance <= 0"
                 >
                   Зареєструвати оплату
                 </button>
@@ -410,20 +381,6 @@
             </div>
           }
         </section>
-
-        <section class="panel cancelled-panel">
-          <div class="panel-heading">
-            <div>
-              <h2>Анульовані нарахування</h2>
-              <p>Скасовані фінансові записи</p>
-            </div>
-            <span class="status-dot cancelled-dot"></span>
-          </div>
-
-          <div class="compact-empty">
-            Окремий список анульованих нарахувань поки не підтримується API.
-          </div>
-        </section>
       </div>
     </div>
 
@@ -444,12 +401,6 @@
         <span>Загальний баланс</span>
         <strong>
           {{ balance() | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}
-        </strong>
-      </div>
-      <div>
-        <span>Передоплата / переплата</span>
-        <strong>
-          {{ advanceAmount() | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}
         </strong>
       </div>
     </section>

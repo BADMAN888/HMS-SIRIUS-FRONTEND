@@ -5,17 +5,21 @@ import { ActivatedRoute } from '@angular/router';
 
 import { AccrualRequest } from '../../../../core/models/billing/accrual-request.model';
 import { AccrualResponse } from '../../../../core/models/billing/accrual-response.model';
+import { FacilityResponse } from '../../../../core/models/billing/facility-response.model';
 import { FolioResponse } from '../../../../core/models/billing/folio-response.model';
 import { PaymentRequest } from '../../../../core/models/billing/payment-request.model';
 import { PaymentResponse } from '../../../../core/models/billing/payment-response.model';
-import { AccrualType } from '../../../../core/models/enums/accrual-type.enum';
+import { FacilityType } from '../../../../core/models/enums/facility-type.enum';
 import { FolioStatus } from '../../../../core/models/enums/folio-status.enum';
 import { PaymentMethod } from '../../../../core/models/enums/payment-method.enum';
 
-import { FolioService } from '../../../../core/services/folio.service';
 import { AccrualService } from '../../../../core/services/accrual.service';
+
+import { FacilityPriceService } from '../../../../core/services/facility-price.service';
+import { FolioService } from '../../../../core/services/folio.service';
 import { PaymentService } from '../../../../core/services/payment.service';
 import { ReservationService } from '../../../../core/services/reservation.service';
+import {FacilityService} from '../../../../core/services/ facility.service';
 
 @Component({
   selector: 'app-accrual-tab',
@@ -26,20 +30,29 @@ import { ReservationService } from '../../../../core/services/reservation.servic
 })
 export class AccrualTab implements OnInit {
   private readonly route = inject(ActivatedRoute);
+  private readonly reservationService = inject(ReservationService);
+  private readonly facilityService = inject(FacilityService);
+  private readonly facilityPriceService = inject(FacilityPriceService);
   private readonly folioService = inject(FolioService);
   private readonly accrualService = inject(AccrualService);
   private readonly paymentService = inject(PaymentService);
-  private readonly reservationService = inject(ReservationService);
-
-  readonly today = new Date();
 
   readonly loading = signal(true);
   readonly saving = signal(false);
+  readonly priceLoading = signal(false);
+
   readonly error = signal('');
   readonly success = signal('');
+  readonly priceError = signal('');
 
   readonly reservationId = signal<number | null>(null);
   readonly hotelId = signal<number | null>(null);
+
+  readonly facilities = signal<FacilityResponse[]>([]);
+  readonly selectedFacilityId = signal<number | null>(null);
+  readonly selectedServiceDate = signal(this.getLocalDate());
+
+  readonly facilityPrice = signal<number | null>(null);
 
   readonly folios = signal<FolioResponse[]>([]);
   readonly selectedFolioId = signal<number | null>(null);
@@ -53,8 +66,27 @@ export class AccrualTab implements OnInit {
   );
 
   readonly selectedFolio = computed(() =>
-    this.openFolios().find(folio => folio.id === this.selectedFolioId()) ?? null
+    this.openFolios().find(
+      folio => folio.id === this.selectedFolioId()
+    ) ?? null
   );
+
+  readonly selectedFacility = computed(() =>
+    this.facilities().find(
+      facility => facility.id === this.selectedFacilityId()
+    ) ?? null
+  );
+
+  readonly estimatedTotal = computed(() => {
+    const price = this.facilityPrice();
+    const quantity = this.quantity;
+
+    if (price === null || !Number.isFinite(quantity) || quantity <= 0) {
+      return 0;
+    }
+
+    return price * quantity;
+  });
 
   readonly accruals = computed(() =>
     this.folios()
@@ -97,37 +129,16 @@ export class AccrualTab implements OnInit {
     )
   );
 
-  readonly advanceAmount = computed(() =>
-    this.folios().reduce(
-      (total, folio) => total + Number(folio.advanceAmount ?? 0),
-      0
-    )
-  );
-
-  readonly accrualTypes = Object.values(AccrualType);
   readonly paymentMethods = Object.values(PaymentMethod);
-
-  readonly accrualLabels: Record<AccrualType, string> = {
-    [AccrualType.ROOM]: 'Проживання',
-    [AccrualType.BREAKFAST]: 'Сніданок',
-    [AccrualType.SERVICE]: 'Послуга',
-    [AccrualType.MINIBAR]: 'Мінібар',
-    [AccrualType.LAUNDRY]: 'Прання',
-    [AccrualType.PARKING]: 'Паркування',
-    [AccrualType.OTHER]: 'Інше'
-  };
 
   readonly paymentLabels: Record<PaymentMethod, string> = {
     [PaymentMethod.CASH]: 'Готівка',
     [PaymentMethod.CARD]: 'Картка',
-    [PaymentMethod.BANK_TRANSFER]: 'Банківський переказ'
+    [PaymentMethod.BANK_TRANSFER]: 'Банківський переказ',
+    [PaymentMethod.BALANCE]: 'З балансу'
   };
 
-  serviceType: AccrualType = AccrualType.SERVICE;
-  serviceName = '';
   quantity = 1;
-  unitPrice: number | null = null;
-  notes = '';
 
   paymentMethod: PaymentMethod = PaymentMethod.CASH;
   paymentAmount: number | null = null;
@@ -144,11 +155,11 @@ export class AccrualTab implements OnInit {
       }
 
       this.reservationId.set(id);
-      this.loadData(id);
+      this.loadReservation(id);
     });
   }
 
-  loadData(reservationId: number): void {
+  private loadReservation(reservationId: number): void {
     this.loading.set(true);
     this.error.set('');
 
@@ -165,7 +176,7 @@ export class AccrualTab implements OnInit {
         }
 
         this.hotelId.set(hotelId);
-        this.loadFolios(reservationId);
+        this.loadFacilities(hotelId, reservationId);
       },
       error: () => {
         this.error.set('Не вдалося завантажити дані бронювання.');
@@ -174,7 +185,42 @@ export class AccrualTab implements OnInit {
     });
   }
 
-  loadFolios(reservationId: number): void {
+  private loadFacilities(
+    hotelId: number,
+    reservationId: number
+  ): void {
+    this.facilityService.getActiveByHotelId(hotelId).subscribe({
+      next: facilities => {
+        const standardFacilities = (facilities ?? []).filter(
+          facility => facility.type === FacilityType.STANDARD
+        );
+
+        this.facilities.set(standardFacilities);
+
+        if (standardFacilities.length > 0) {
+          this.selectedFacilityId.set(standardFacilities[0].id);
+          this.loadFacilityPrice();
+        } else {
+          this.selectedFacilityId.set(null);
+          this.facilityPrice.set(null);
+          this.priceError.set(
+            'Для цього готелю немає активних звичайних послуг.'
+          );
+        }
+
+        this.loadFolios(reservationId);
+      },
+      error: () => {
+        this.facilities.set([]);
+        this.selectedFacilityId.set(null);
+        this.facilityPrice.set(null);
+        this.priceError.set('Не вдалося завантажити список послуг.');
+        this.loadFolios(reservationId);
+      }
+    });
+  }
+
+  private loadFolios(reservationId: number): void {
     this.folioService.getByReservationId(reservationId).subscribe({
       next: folios => {
         this.setFolioData(folios ?? []);
@@ -184,11 +230,68 @@ export class AccrualTab implements OnInit {
         this.folios.set([]);
         this.selectedFolioId.set(null);
         this.error.set(
-          'Не вдалося завантажити рахунки. Перевір, чи створене фоліо для цього бронювання.'
+          'Не вдалося завантажити рахунки цього бронювання.'
         );
         this.loading.set(false);
       }
     });
+  }
+
+  selectFacility(facilityId: number | null): void {
+    this.selectedFacilityId.set(
+      facilityId === null ? null : Number(facilityId)
+    );
+
+    this.loadFacilityPrice();
+  }
+
+  selectServiceDate(date: string): void {
+    this.selectedServiceDate.set(date);
+    this.loadFacilityPrice();
+  }
+
+  private loadFacilityPrice(): void {
+    const facilityId = this.selectedFacilityId();
+    const serviceDate = this.selectedServiceDate();
+
+    this.facilityPrice.set(null);
+    this.priceError.set('');
+
+    if (!facilityId || !serviceDate) {
+      return;
+    }
+
+    this.priceLoading.set(true);
+
+    this.facilityPriceService
+      .getPriceForDate(facilityId, serviceDate)
+      .subscribe({
+        next: response => {
+          if (
+            this.selectedFacilityId() !== facilityId ||
+            this.selectedServiceDate() !== serviceDate
+          ) {
+            return;
+          }
+
+          this.facilityPrice.set(Number(response.price));
+          this.priceLoading.set(false);
+        },
+        error: () => {
+          if (
+            this.selectedFacilityId() !== facilityId ||
+            this.selectedServiceDate() !== serviceDate
+          ) {
+            return;
+          }
+
+          this.facilityPrice.set(null);
+          this.priceLoading.set(false);
+          this.priceError.set(
+            'Для цієї послуги немає ціни на вибрану дату.'
+          );
+        }
+      });
   }
 
   selectFolio(folioId: number): void {
@@ -200,37 +303,34 @@ export class AccrualTab implements OnInit {
   addAccrual(): void {
     const folio = this.selectedFolio();
     const reservationId = this.reservationId();
-    const hotelId = this.hotelId();
+    const facilityId = this.selectedFacilityId();
+    const serviceDate = this.selectedServiceDate();
+    const price = this.facilityPrice();
 
-    if (!folio || !reservationId || !hotelId || this.saving()) {
+    if (!folio || !reservationId || !facilityId || this.saving()) {
       return;
     }
 
-    const name = this.serviceName.trim();
+    if (!serviceDate) {
+      this.error.set('Вкажи дату надання послуги.');
+      return;
+    }
 
-    if (
-      !name ||
-      this.unitPrice === null ||
-      !Number.isFinite(this.unitPrice) ||
-      this.unitPrice < 0 ||
-      !Number.isInteger(this.quantity) ||
-      this.quantity < 1
-    ) {
-      this.error.set(
-        'Вкажи назву послуги, коректну вартість і кількість.'
-      );
-      this.success.set('');
+    if (price === null || !Number.isFinite(price) || price <= 0) {
+      this.error.set('Неможливо додати послугу без чинної ціни.');
+      return;
+    }
+
+    if (!Number.isFinite(this.quantity) || this.quantity <= 0) {
+      this.error.set('Кількість повинна бути більшою за нуль.');
       return;
     }
 
     const request: AccrualRequest = {
-      hotelId,
+      facilityId,
       reservationId,
       folioId: folio.id,
-      type: this.serviceType,
-      name,
-      description: this.notes.trim() || null,
-      unitPrice: this.unitPrice,
+      serviceDate,
       quantity: this.quantity
     };
 
@@ -240,47 +340,15 @@ export class AccrualTab implements OnInit {
 
     this.accrualService.create(request).subscribe({
       next: () => {
-        this.serviceName = '';
         this.quantity = 1;
-        this.unitPrice = null;
-        this.notes = '';
-
         this.success.set('Нарахування успішно додано.');
         this.refreshFolios();
       },
       error: () => {
         this.saving.set(false);
-        this.error.set('Не вдалося додати нарахування.');
-      }
-    });
-  }
-
-  deleteAccrual(accrual: AccrualResponse): void {
-    const folio = this.folios().find(item => item.id === accrual.folioId);
-
-    if (!folio || folio.status === FolioStatus.CLOSED || this.saving()) {
-      return;
-    }
-
-    const name = accrual.name || accrual.description || 'нарахування';
-    const confirmed = window.confirm(`Видалити нарахування «${name}»?`);
-
-    if (!confirmed) {
-      return;
-    }
-
-    this.saving.set(true);
-    this.error.set('');
-    this.success.set('');
-
-    this.accrualService.delete(accrual.id).subscribe({
-      next: () => {
-        this.success.set('Нарахування видалено.');
-        this.refreshFolios();
-      },
-      error: () => {
-        this.saving.set(false);
-        this.error.set('Не вдалося видалити нарахування.');
+        this.error.set(
+          'Не вдалося додати нарахування. Перевір послугу, дату та стан рахунку.'
+        );
       }
     });
   }
@@ -298,6 +366,14 @@ export class AccrualTab implements OnInit {
       this.paymentAmount <= 0
     ) {
       this.error.set('Вкажи суму платежу, більшу за нуль.');
+      this.success.set('');
+      return;
+    }
+
+    if (this.paymentAmount > Number(folio.balance)) {
+      this.error.set(
+        'Сума платежу не може перевищувати поточний баланс рахунку.'
+      );
       this.success.set('');
       return;
     }
@@ -324,14 +400,10 @@ export class AccrualTab implements OnInit {
       error: () => {
         this.saving.set(false);
         this.error.set(
-          'Не вдалося додати платіж. Перевір стан рахунку та відповідь API.'
+          'Не вдалося додати платіж. Перевір стан рахунку та суму.'
         );
       }
     });
-  }
-
-  formatAccrualType(type: AccrualType): string {
-    return this.accrualLabels[type] ?? type;
   }
 
   formatPaymentMethod(method: PaymentMethod): string {
@@ -340,6 +412,10 @@ export class AccrualTab implements OnInit {
 
   trackAccrual(_: number, accrual: AccrualResponse): number {
     return accrual.id;
+  }
+
+  trackFacility(_: number, facility: FacilityResponse): number {
+    return facility.id;
   }
 
   trackFolio(_: number, folio: FolioResponse): number {
@@ -388,7 +464,13 @@ export class AccrualTab implements OnInit {
       }
     });
   }
-  canDeleteAccrual(accrual: AccrualResponse): boolean {
-    return this.openFolios().some(folio => folio.id === accrual.folioId);
+
+  private getLocalDate(): string {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
   }
 }

@@ -8,7 +8,7 @@
     @if (reservation(); as reservation) {
       <div class="container">
         <section class="block">
-          <h2>Guest name</h2>
+          <h2>Інформація про гостя</h2>
 
           <label class="field-label">ПІБ гостя</label>
 
@@ -124,6 +124,7 @@
           <div class="guest-counts">
             <div class="guest-count">
               <span class="field-label">Дорослі</span>
+
               <div class="counter">
                 <button
                   class="counter-button"
@@ -134,7 +135,11 @@
                 >
                   −
                 </button>
-                <span class="counter-value" aria-live="polite">{{ editAdults() }}</span>
+
+                <span class="counter-value" aria-live="polite">
+                  {{ editAdults() }}
+                </span>
+
                 <button
                   class="counter-button"
                   type="button"
@@ -148,6 +153,7 @@
 
             <div class="guest-count">
               <span class="field-label">Діти</span>
+
               <div class="counter">
                 <button
                   class="counter-button"
@@ -158,7 +164,11 @@
                 >
                   −
                 </button>
-                <span class="counter-value" aria-live="polite">{{ editChildren() }}</span>
+
+                <span class="counter-value" aria-live="polite">
+                  {{ editChildren() }}
+                </span>
+
                 <button
                   class="counter-button"
                   type="button"
@@ -198,7 +208,10 @@
             [ngModelOptions]="{ standalone: true }"
             (ngModelChange)="onRoomCategoryChange(+$event)"
           >
-            <option [ngValue]="0" disabled>Оберіть категорію номера</option>
+            <option [ngValue]="0" disabled>
+              Оберіть категорію номера
+            </option>
+
             @for (category of roomCategories(); track category.id) {
               <option [ngValue]="category.id">
                 {{ category.name }}
@@ -213,7 +226,10 @@
             [ngModelOptions]="{ standalone: true }"
             (ngModelChange)="onPaymentCategoryChange(+$event)"
           >
-            <option [ngValue]="0" disabled>Оберіть категорію оплати</option>
+            <option [ngValue]="0" disabled>
+              Оберіть категорію оплати
+            </option>
+
             @for (category of roomCategories(); track category.id) {
               <option [ngValue]="category.id">
                 {{ category.name }}
@@ -228,7 +244,10 @@
             [ngModelOptions]="{ standalone: true }"
             (ngModelChange)="onRoomChange(+$event)"
           >
-            <option [ngValue]="0" disabled>Оберіть номер кімнати</option>
+            <option [ngValue]="0" disabled>
+              Оберіть номер кімнати
+            </option>
+
             @for (room of filteredRooms(); track room.id) {
               <option [ngValue]="room.id">
                 {{ room.roomNumber }}
@@ -244,11 +263,31 @@
           >
             @for (rate of filteredRates(); track rate.id) {
               <option [value]="rate.id">
-                {{ rate.name }} · {{ rate.price }} {{ rate.currency }}
+                {{ rate.name }} · {{ rate.currentPrice | number:'1.2-2' }}
+                {{ rate.currency }}
               </option>
             } @empty {
-              <option value="0" disabled>Немає доступних тарифів</option>
+              <option value="0" disabled>
+                Немає доступних тарифів
+              </option>
             }
+          </select>
+
+          <label class="field-label">Статус туристичного збору</label>
+          <select
+            class="text-input"
+            [value]="editTaxStatus()"
+            (change)="editTaxStatus.set($any($event.target).value)"
+          >
+            <option [value]="taxStatuses.RESIDENT">
+              Резидент
+            </option>
+            <option [value]="taxStatuses.NON_RESIDENT">
+              Нерезидент
+            </option>
+            <option [value]="taxStatuses.EXEMPT">
+              Звільнений від збору
+            </option>
           </select>
         </section>
 
@@ -282,9 +321,11 @@
             (ngModelChange)="editSourceCompanyId.set($event === null ? null : +$event)"
           >
             <option [ngValue]="null">Без компанії-джерела</option>
+
             @for (company of companies(); track company.id) {
               <option [ngValue]="company.id">
-                {{ company.shortName || company.fullName }} · {{ company.edrpou }}
+                {{ company.shortName || company.fullName }}
+                · {{ company.edrpou }}
               </option>
             }
           </select>
@@ -297,9 +338,11 @@
             (ngModelChange)="editOperatorCompanyId.set($event === null ? null : +$event)"
           >
             <option [ngValue]="null">Без компанії-оператора</option>
+
             @for (company of companies(); track company.id) {
               <option [ngValue]="company.id">
-                {{ company.shortName || company.fullName }} · {{ company.edrpou }}
+                {{ company.shortName || company.fullName }}
+                · {{ company.edrpou }}
               </option>
             }
           </select>
@@ -310,7 +353,7 @@
             [value]="editBookingSource()"
             (input)="editBookingSource.set($any($event.target).value)"
             placeholder="Наприклад, walk-in"
-            maxlength="150"
+            maxlength="100"
           />
 
           <label class="field-label">Зовнішній номер бронювання</label>
@@ -319,6 +362,7 @@
             [value]="editExternalBookingNumber()"
             (input)="editExternalBookingNumber.set($any($event.target).value)"
             placeholder="Необов'язково"
+            maxlength="100"
           />
 
           <div class="info-row">
@@ -368,7 +412,9 @@
                   (click)="selectedCommentId.set(comment.id)"
                 >
                   <span>{{ comment.text }}</span>
-                  <small>{{ comment.createdAt | date:'dd.MM.yyyy HH:mm' }}</small>
+                  <small>
+                    {{ comment.createdAt | date:'dd.MM.yyyy HH:mm' }}
+                  </small>
                 </button>
               } @empty {
                 <p class="muted">Коментарів поки немає.</p>
@@ -391,6 +437,7 @@
 
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Знайти гостя</mat-label>
+
             <input
               matInput
               [value]="additionalGuestSearch()"
@@ -419,8 +466,11 @@
                 <div class="additional-guest">
                   <div>
                     <strong>{{ getProfileFullName(guest) }}</strong>
-                    <small>{{ guest.phoneNumber || 'Телефон не вказаний' }}</small>
+                    <small>
+                      {{ guest.phoneNumber || 'Телефон не вказаний' }}
+                    </small>
                   </div>
+
                   <button
                     class="remove-button"
                     type="button"
@@ -447,10 +497,6 @@
       }
 
       <footer class="action-bar">
-        <button class="secondary-button" type="button" disabled>
-          Історія
-        </button>
-
         <div class="action-group">
           <button
             class="primary-button"
