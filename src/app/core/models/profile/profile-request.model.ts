@@ -1,5 +1,6 @@
 
 import { Gender } from '../enums/gender.enum';
+import { Nationality } from '../enums/nationality.enum';
 
 export interface ProfileRequest {
   firstName: string;
@@ -10,8 +11,7 @@ export interface ProfileRequest {
   gender?: Gender | null;
   dateOfBirth?: string | null;
   placeOfBirth?: string | null;
-  citizenship?: string | null;
-  taxNumber?: string | null;
+  nationality?: Nationality | null;
   address?: string | null;
   registrationAddress?: string | null;
 }

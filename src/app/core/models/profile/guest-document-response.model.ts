@@ -1,4 +1,3 @@
-
 import { DocumentType } from '../enums/document-type.enum';
 
 export interface GuestDocumentResponse {

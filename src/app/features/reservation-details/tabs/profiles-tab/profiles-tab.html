@@ -48,7 +48,6 @@
       @if (selectedProfile(); as profile) {
         <section class="profile-content">
 
-          <!-- Персональні дані -->
           <section class="content-card">
             <header class="section-header">
               <div>
@@ -118,19 +117,19 @@
               </div>
 
               <div class="form-field">
-                <label>Громадянство</label>
-                <input
-                  [ngModel]="profileForm().citizenship"
-                  (ngModelChange)="updateProfileField('citizenship', $event)"
-                />
-              </div>
+                <label>Національність</label>
+                <select
+                  [ngModel]="profileForm().nationality ?? ''"
+                  (ngModelChange)="updateProfileField('nationality', $event)"
+                >
+                  <option value="">Не вказано</option>
 
-              <div class="form-field">
-                <label>ІПН / РНОКПП</label>
-                <input
-                  [ngModel]="profileForm().taxNumber"
-                  (ngModelChange)="updateProfileField('taxNumber', $event)"
-                />
+                  @for (option of nationalityOptions; track option.value) {
+                    <option [value]="option.value">
+                      {{ option.label }}
+                    </option>
+                  }
+                </select>
               </div>
 
               <div class="form-field">
@@ -180,7 +179,6 @@
             </footer>
           </section>
 
-          <!-- Документи -->
           <section class="content-card">
             <header class="section-header">
               <div>
@@ -333,7 +331,6 @@
             </div>
           </section>
 
-          <!-- Історія проживання -->
           <section class="content-card">
             <header class="section-header">
               <div>

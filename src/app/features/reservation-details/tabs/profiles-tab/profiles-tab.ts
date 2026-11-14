@@ -1,8 +1,9 @@
+
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
-import { forkJoin, of } from 'rxjs';
+import { forkJoin } from 'rxjs';
 import { finalize } from 'rxjs/operators';
 
 import { ProfileService } from '../../../../core/services/profile.service';
@@ -16,6 +17,7 @@ import { GuestDocumentResponse } from '../../../../core/models/profile/guest-doc
 import { GuestDocumentRequest } from '../../../../core/models/profile/guest-document-request.model';
 
 import { Gender } from '../../../../core/models/enums/gender.enum';
+import { Nationality } from '../../../../core/models/enums/nationality.enum';
 import { DocumentType } from '../../../../core/models/enums/document-type.enum';
 
 type ProfileField =
@@ -27,8 +29,7 @@ type ProfileField =
   | 'gender'
   | 'dateOfBirth'
   | 'placeOfBirth'
-  | 'citizenship'
-  | 'taxNumber'
+  | 'nationality'
   | 'address'
   | 'registrationAddress';
 
@@ -41,8 +42,7 @@ interface ProfileForm {
   gender: Gender | null;
   dateOfBirth: string;
   placeOfBirth: string;
-  citizenship: string;
-  taxNumber: string;
+  nationality: Nationality | null;
   address: string;
   registrationAddress: string;
 }
@@ -90,6 +90,11 @@ export class ProfilesTab implements OnInit {
     { value: Gender.MALE, label: 'Чоловіча' },
     { value: Gender.FEMALE, label: 'Жіноча' }
   ];
+
+  readonly nationalityOptions = Object.values(Nationality).map(value => ({
+    value,
+    label: this.formatNationality(value)
+  }));
 
   readonly documentTypes = [
     { value: DocumentType.PASSPORT, label: 'Паспорт' },
@@ -166,6 +171,13 @@ export class ProfilesTab implements OnInit {
     });
   }
 
+  private formatNationality(value: Nationality): string {
+    return value
+      .split('_')
+      .map(part => part.charAt(0) + part.slice(1).toLowerCase())
+      .join(' ');
+  }
+
   getFullName(profile: ProfileResponse): string {
     return [
       profile.lastName,
@@ -181,6 +193,7 @@ export class ProfilesTab implements OnInit {
     this.success.set('');
     this.error.set('');
 
+    this.cancelDocumentForm();
     this.loadHistory(profile.id);
   }
 
@@ -196,12 +209,26 @@ export class ProfilesTab implements OnInit {
   }
 
   updateProfileField(field: ProfileField, value: string): void {
-    this.profileForm.update(form => ({
-      ...form,
-      [field]: field === 'gender'
-        ? (value ? value as Gender : null)
-        : value
-    }));
+    this.profileForm.update(form => {
+      if (field === 'gender') {
+        return {
+          ...form,
+          gender: value ? value as Gender : null
+        };
+      }
+
+      if (field === 'nationality') {
+        return {
+          ...form,
+          nationality: value ? value as Nationality : null
+        };
+      }
+
+      return {
+        ...form,
+        [field]: value
+      };
+    });
   }
 
   saveProfile(): void {
@@ -227,8 +254,7 @@ export class ProfilesTab implements OnInit {
       gender: form.gender,
       dateOfBirth: form.dateOfBirth || null,
       placeOfBirth: form.placeOfBirth.trim() || null,
-      citizenship: form.citizenship.trim() || null,
-      taxNumber: form.taxNumber.trim() || null,
+      nationality: form.nationality,
       address: form.address.trim() || null,
       registrationAddress: form.registrationAddress.trim() || null
     };
@@ -358,6 +384,7 @@ export class ProfilesTab implements OnInit {
     }
 
     this.error.set('');
+
     this.guestDocumentService.delete(document.id).subscribe({
       next: () => {
         this.refreshSelectedProfile();
@@ -405,8 +432,7 @@ export class ProfilesTab implements OnInit {
       gender: profile.gender ?? null,
       dateOfBirth: profile.dateOfBirth ?? '',
       placeOfBirth: profile.placeOfBirth ?? '',
-      citizenship: profile.citizenship ?? '',
-      taxNumber: profile.taxNumber ?? '',
+      nationality: profile.nationality ?? null,
       address: profile.address ?? '',
       registrationAddress: profile.registrationAddress ?? ''
     };
@@ -422,8 +448,7 @@ export class ProfilesTab implements OnInit {
       gender: null,
       dateOfBirth: '',
       placeOfBirth: '',
-      citizenship: '',
-      taxNumber: '',
+      nationality: null,
       address: '',
       registrationAddress: ''
     };

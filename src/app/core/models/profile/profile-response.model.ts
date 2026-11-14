@@ -1,5 +1,5 @@
-
 import { Gender } from '../enums/gender.enum';
+import { Nationality } from '../enums/nationality.enum';
 import { GuestDocumentResponse } from './guest-document-response.model';
 
 export interface ProfileResponse {
@@ -12,8 +12,7 @@ export interface ProfileResponse {
   gender: Gender | null;
   dateOfBirth: string | null;
   placeOfBirth: string | null;
-  citizenship: string | null;
-  taxNumber: string | null;
+  nationality: Nationality | null;
   address: string | null;
   registrationAddress: string | null;
   guestDocuments: GuestDocumentResponse[];
