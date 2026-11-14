@@ -1,6 +1,4 @@
-
 <div class="reservation-details-page">
-
   <nav class="details-tabs" aria-label="Вкладки бронювання">
     <button
       type="button"
@@ -9,6 +7,15 @@
     >
       <mat-icon>event_note</mat-icon>
       <span>Бронювання</span>
+    </button>
+
+    <button
+      type="button"
+      [class.active]="activeTab() === 'profiles'"
+      (click)="selectTab('profiles')"
+    >
+      <mat-icon>groups</mat-icon>
+      <span>Профайли</span>
     </button>
 
     <button
@@ -52,6 +59,10 @@
     @switch (activeTab()) {
       @case ('reservation') {
         <app-reservation-tab />
+      }
+
+      @case ('profiles') {
+        <app-profiles-tab />
       }
 
       @case ('accrual') {

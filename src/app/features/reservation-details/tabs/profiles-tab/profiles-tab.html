@@ -1,1 +1,396 @@
-<p>profiles-tab works!</p>
+
+<div class="profiles-tab">
+  <header class="profiles-header">
+    <div>
+      <h2>Профайли гостей</h2>
+      <p>Персональні дані, документи та історія проживання</p>
+    </div>
+
+    <span class="profiles-count">
+      {{ profiles().length }} гостей
+    </span>
+  </header>
+
+  @if (loading()) {
+    <div class="state-message">Завантаження профайлів...</div>
+  } @else if (error() && profiles().length === 0) {
+    <div class="state-message error">{{ error() }}</div>
+  } @else if (profiles().length === 0) {
+    <div class="state-message">
+      До цього бронювання ще не додано профайлів.
+    </div>
+  } @else {
+    <div class="profiles-layout">
+      <aside class="profiles-sidebar">
+        <h3>Гості бронювання</h3>
+
+        @for (profile of profiles(); track profile.id) {
+          <button
+            type="button"
+            class="profile-list-item"
+            [class.selected]="selectedProfileId() === profile.id"
+            (click)="selectProfile(profile)"
+          >
+            <span class="profile-avatar">
+              {{ profile.firstName.charAt(0) }}{{ profile.lastName.charAt(0) }}
+            </span>
+
+            <span class="profile-list-info">
+              <strong>{{ getFullName(profile) }}</strong>
+              <small>{{ profile.phoneNumber || 'Телефон не вказаний' }}</small>
+            </span>
+
+            <span class="profile-arrow">›</span>
+          </button>
+        }
+      </aside>
+
+      @if (selectedProfile(); as profile) {
+        <section class="profile-content">
+
+          <!-- Персональні дані -->
+          <section class="content-card">
+            <header class="section-header">
+              <div>
+                <h3>Персональні дані</h3>
+                <p>Основна інформація про гостя</p>
+              </div>
+
+              <span class="profile-id">ID: {{ profile.id }}</span>
+            </header>
+
+            <div class="profile-form">
+              <div class="form-field">
+                <label>Прізвище *</label>
+                <input
+                  [ngModel]="profileForm().lastName"
+                  (ngModelChange)="updateProfileField('lastName', $event)"
+                />
+              </div>
+
+              <div class="form-field">
+                <label>Ім’я *</label>
+                <input
+                  [ngModel]="profileForm().firstName"
+                  (ngModelChange)="updateProfileField('firstName', $event)"
+                />
+              </div>
+
+              <div class="form-field">
+                <label>По батькові</label>
+                <input
+                  [ngModel]="profileForm().middleName"
+                  (ngModelChange)="updateProfileField('middleName', $event)"
+                />
+              </div>
+
+              <div class="form-field">
+                <label>Стать</label>
+                <select
+                  [ngModel]="profileForm().gender ?? ''"
+                  (ngModelChange)="updateProfileField('gender', $event)"
+                >
+                  <option value="">Не вказано</option>
+
+                  @for (option of genderOptions; track option.value) {
+                    <option [value]="option.value">
+                      {{ option.label }}
+                    </option>
+                  }
+                </select>
+              </div>
+
+              <div class="form-field">
+                <label>Дата народження</label>
+                <input
+                  type="date"
+                  [ngModel]="profileForm().dateOfBirth"
+                  (ngModelChange)="updateProfileField('dateOfBirth', $event)"
+                />
+              </div>
+
+              <div class="form-field">
+                <label>Місце народження</label>
+                <input
+                  [ngModel]="profileForm().placeOfBirth"
+                  (ngModelChange)="updateProfileField('placeOfBirth', $event)"
+                />
+              </div>
+
+              <div class="form-field">
+                <label>Громадянство</label>
+                <input
+                  [ngModel]="profileForm().citizenship"
+                  (ngModelChange)="updateProfileField('citizenship', $event)"
+                />
+              </div>
+
+              <div class="form-field">
+                <label>ІПН / РНОКПП</label>
+                <input
+                  [ngModel]="profileForm().taxNumber"
+                  (ngModelChange)="updateProfileField('taxNumber', $event)"
+                />
+              </div>
+
+              <div class="form-field">
+                <label>Телефон</label>
+                <input
+                  type="tel"
+                  [ngModel]="profileForm().phoneNumber"
+                  (ngModelChange)="updateProfileField('phoneNumber', $event)"
+                />
+              </div>
+
+              <div class="form-field">
+                <label>Email</label>
+                <input
+                  type="email"
+                  [ngModel]="profileForm().email"
+                  (ngModelChange)="updateProfileField('email', $event)"
+                />
+              </div>
+
+              <div class="form-field full-width">
+                <label>Адреса проживання</label>
+                <input
+                  [ngModel]="profileForm().address"
+                  (ngModelChange)="updateProfileField('address', $event)"
+                />
+              </div>
+
+              <div class="form-field full-width">
+                <label>Адреса реєстрації</label>
+                <input
+                  [ngModel]="profileForm().registrationAddress"
+                  (ngModelChange)="updateProfileField('registrationAddress', $event)"
+                />
+              </div>
+            </div>
+
+            <footer class="section-footer">
+              <button
+                type="button"
+                class="primary-button"
+                [disabled]="savingProfile()"
+                (click)="saveProfile()"
+              >
+                {{ savingProfile() ? 'Збереження...' : 'Зберегти профайл' }}
+              </button>
+            </footer>
+          </section>
+
+          <!-- Документи -->
+          <section class="content-card">
+            <header class="section-header">
+              <div>
+                <h3>Документи</h3>
+                <p>Паспортні та інші документи гостя</p>
+              </div>
+
+              <button
+                type="button"
+                class="secondary-button"
+                (click)="openNewDocumentForm()"
+              >
+                <span>+</span>
+                Додати документ
+              </button>
+            </header>
+
+            @if (showDocumentForm()) {
+              <div class="document-form">
+                <h4>
+                  {{ editingDocumentId() ? 'Редагування документа' : 'Новий документ' }}
+                </h4>
+
+                <div class="document-form-grid">
+                  <div class="form-field">
+                    <label>Тип документа</label>
+                    <select
+                      [ngModel]="documentForm().documentType"
+                      (ngModelChange)="updateDocumentField('documentType', $event)"
+                    >
+                      @for (type of documentTypes; track type.value) {
+                        <option [value]="type.value">
+                          {{ type.label }}
+                        </option>
+                      }
+                    </select>
+                  </div>
+
+                  <div class="form-field">
+                    <label>Номер документа *</label>
+                    <input
+                      [ngModel]="documentForm().documentNumber"
+                      (ngModelChange)="updateDocumentField('documentNumber', $event)"
+                    />
+                  </div>
+
+                  <div class="form-field">
+                    <label>Дата видачі</label>
+                    <input
+                      type="date"
+                      [ngModel]="documentForm().issueDate"
+                      (ngModelChange)="updateDocumentField('issueDate', $event)"
+                    />
+                  </div>
+
+                  <div class="form-field">
+                    <label>Дійсний до</label>
+                    <input
+                      type="date"
+                      [ngModel]="documentForm().expiryDate"
+                      (ngModelChange)="updateDocumentField('expiryDate', $event)"
+                    />
+                  </div>
+
+                  <div class="form-field">
+                    <label>Орган видачі</label>
+                    <input
+                      [ngModel]="documentForm().issuingAuthority"
+                      (ngModelChange)="updateDocumentField('issuingAuthority', $event)"
+                    />
+                  </div>
+
+                  <div class="form-field">
+                    <label>Номер запису</label>
+                    <input
+                      [ngModel]="documentForm().recordNumber"
+                      (ngModelChange)="updateDocumentField('recordNumber', $event)"
+                    />
+                  </div>
+                </div>
+
+                <div class="document-form-actions">
+                  <button
+                    type="button"
+                    class="secondary-button"
+                    (click)="cancelDocumentForm()"
+                  >
+                    Скасувати
+                  </button>
+
+                  <button
+                    type="button"
+                    class="primary-button"
+                    [disabled]="savingDocument()"
+                    (click)="saveDocument()"
+                  >
+                    {{ savingDocument() ? 'Збереження...' : 'Зберегти документ' }}
+                  </button>
+                </div>
+              </div>
+            }
+
+            <div class="documents-list">
+              @for (document of profile.guestDocuments ?? []; track document.id) {
+                <article class="document-item">
+                  <div class="document-icon">▤</div>
+
+                  <div class="document-info">
+                    <strong>
+                      {{ documentTypeLabels[document.documentType] }}
+                    </strong>
+
+                    <span>№ {{ document.documentNumber }}</span>
+
+                    <small>
+                      @if (document.issueDate) {
+                        Виданий: {{ document.issueDate | date:'dd.MM.yyyy' }}
+                      }
+
+                      @if (document.expiryDate) {
+                        · Дійсний до: {{ document.expiryDate | date:'dd.MM.yyyy' }}
+                      }
+                    </small>
+
+                    @if (document.issuingAuthority) {
+                      <small>{{ document.issuingAuthority }}</small>
+                    }
+                  </div>
+
+                  <div class="document-actions">
+                    <button
+                      type="button"
+                      (click)="editDocument(document)"
+                    >
+                      Редагувати
+                    </button>
+
+                    <button
+                      type="button"
+                      class="delete-action"
+                      (click)="deleteDocument(document)"
+                    >
+                      Видалити
+                    </button>
+                  </div>
+                </article>
+              } @empty {
+                <p class="empty-message">Документи ще не додані.</p>
+              }
+            </div>
+          </section>
+
+          <!-- Історія проживання -->
+          <section class="content-card">
+            <header class="section-header">
+              <div>
+                <h3>Історія проживання</h3>
+                <p>Попередні та поточні бронювання цього гостя</p>
+              </div>
+            </header>
+
+            @if (loadingHistory()) {
+              <p class="empty-message">Завантаження історії...</p>
+            } @else {
+              <div class="history-table-wrapper">
+                <table class="history-table">
+                  <thead>
+                  <tr>
+                    <th>Бронювання</th>
+                    <th>Заїзд</th>
+                    <th>Виїзд</th>
+                    <th>Категорія</th>
+                    <th>Номер</th>
+                    <th>Тариф</th>
+                  </tr>
+                  </thead>
+
+                  <tbody>
+                    @for (item of history(); track item.confirmationNumber) {
+                      <tr>
+                        <td>{{ item.confirmationNumber }}</td>
+                        <td>{{ item.checkIn | date:'dd.MM.yyyy HH:mm' }}</td>
+                        <td>{{ item.checkOut | date:'dd.MM.yyyy HH:mm' }}</td>
+                        <td>{{ item.roomCategory }}</td>
+                        <td>{{ item.roomNumber }}</td>
+                        <td>{{ item.rateName }}</td>
+                      </tr>
+                    } @empty {
+                      <tr>
+                        <td colspan="6" class="empty-cell">
+                          Історія проживання відсутня.
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+          </section>
+
+        </section>
+      }
+    </div>
+  }
+
+  @if (error() && profiles().length > 0) {
+    <div class="feedback error">{{ error() }}</div>
+  }
+
+  @if (success()) {
+    <div class="feedback success">{{ success() }}</div>
+  }
+</div>
