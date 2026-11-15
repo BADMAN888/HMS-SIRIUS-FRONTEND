@@ -95,7 +95,7 @@
         </div>
 
         @for (room of rooms; track room.id) {
-          <div class="room-row">
+          <div class="room-row" [attr.data-room-id]="room.id">
             <div class="room-cell">
               <div class="room-number">{{ room.roomNumber }}</div>
               <div class="room-info">
@@ -105,19 +105,22 @@
             </div>
 
             <div class="room-days">
-              @for (day of days; track day.getTime()) {
+              @for (day of days; track day.getTime(); let dayIndex = $index) {
                 <div
                   class="room-day"
-                  [class.today]="isToday(day)"
+                  [class.selected]="isCellSelected(room.id, dayIndex)"
+                  [attr.data-day-index]="dayIndex"
+                  (pointerdown)="startCellSelection($event, room, dayIndex)"
                 ></div>
               }
 
               @for (reservation of getReservationsForRoom(room); track reservation.id) {
                 <div
                   class="reservation"
-                  [routerLink]="['/reservations', reservation.id]"
                   role="link"
                   tabindex="0"
+                  (pointerdown)="startReservationMove($event, reservation, room)"
+                  (click)="openReservation(reservation)"
                   [class.reserved]="reservation.status === 'RESERVED'"
                   [class.confirmed]="reservation.status === 'CONFIRMED'"
                   [class.in-house]="reservation.status === 'IN_HOUSE'"

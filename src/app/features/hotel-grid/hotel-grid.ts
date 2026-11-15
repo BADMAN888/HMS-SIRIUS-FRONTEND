@@ -1,10 +1,13 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { ChangeDetectorRef, Component, HostListener, OnInit, inject } from '@angular/core';
+import { Router, RouterLink } from '@angular/router';
 import { catchError, finalize, of } from 'rxjs';
 import { HotelGridService } from '../../core/services/hotel-grid.service';
 import { HotelGridReservationResponse } from '../../core/models/hotel-grid/hotel-grid-reservation-response.model';
 import {HotelGridRoomResponse} from '../../core/models/hotel-grid/hotel-grid-room-response.model';
+import { ReservationService } from '../../core/services/reservation.service';
+import { ReservationRequest } from '../../core/models/reservation/reservation-request.model';
+import { ReservationResponse } from '../../core/models/reservation/reservation-response.model';
 
 
 @Component({
@@ -16,6 +19,8 @@ import {HotelGridRoomResponse} from '../../core/models/hotel-grid/hotel-grid-roo
 })
 export class HotelGrid implements OnInit {
   private readonly hotelGridService = inject(HotelGridService);
+  private readonly reservationService = inject(ReservationService);
+  private readonly router = inject(Router);
   private readonly cdr = inject(ChangeDetectorRef);
 
   readonly dayWidth = 92;
@@ -33,6 +38,9 @@ export class HotelGrid implements OnInit {
 
   private gridStart!: Date;
   private gridEnd!: Date;
+  private cellSelection: { roomId: number; startIndex: number; endIndex: number } | null = null;
+  private reservationMove: { reservation: HotelGridReservationResponse; fromRoomId: number; startX: number; startY: number; moved: boolean } | null = null;
+  private suppressReservationClick = false;
 
   get numberOfDays(): number {
     return this.days.length;
@@ -148,14 +156,138 @@ export class HotelGrid implements OnInit {
     return room.reservations ?? [];
   }
 
+  startCellSelection(event: PointerEvent, room: HotelGridRoomResponse, dayIndex: number): void {
+    if (event.button !== 0) return;
+    this.cellSelection = { roomId: room.id, startIndex: dayIndex, endIndex: dayIndex };
+  }
+
+  isCellSelected(roomId: number, dayIndex: number): boolean {
+    const selection = this.cellSelection;
+    if (!selection || selection.roomId !== roomId) return false;
+    const low = Math.min(selection.startIndex, selection.endIndex);
+    const high = Math.max(selection.startIndex, selection.endIndex);
+    return dayIndex >= low && dayIndex <= high;
+  }
+
+  startReservationMove(event: PointerEvent, reservation: HotelGridReservationResponse, room: HotelGridRoomResponse): void {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    this.reservationMove = {
+      reservation,
+      fromRoomId: room.id,
+      startX: event.clientX,
+      startY: event.clientY,
+      moved: false
+    };
+  }
+
+  openReservation(reservation: HotelGridReservationResponse): void {
+    if (this.suppressReservationClick) {
+      this.suppressReservationClick = false;
+      return;
+    }
+    void this.router.navigate(['/reservations', reservation.id]);
+  }
+
+  @HostListener('document:pointermove', ['$event'])
+  onDocumentPointerMove(event: PointerEvent): void {
+    if (this.cellSelection) {
+      const target = document.elementFromPoint(event.clientX, event.clientY) as HTMLElement | null;
+      const row = target?.closest<HTMLElement>('.room-row');
+      const cell = target?.closest<HTMLElement>('.room-day');
+      const index = Number(cell?.dataset['dayIndex']);
+      const roomId = Number(row?.dataset['roomId']);
+      if (cell && roomId === this.cellSelection.roomId && Number.isInteger(index)) {
+        this.cellSelection.endIndex = index;
+        this.cdr.detectChanges();
+      }
+    }
+
+    if (this.reservationMove) {
+      const distance = Math.hypot(event.clientX - this.reservationMove.startX, event.clientY - this.reservationMove.startY);
+      if (distance > 6) this.reservationMove.moved = true;
+    }
+  }
+
+  @HostListener('document:pointerup', ['$event'])
+  onDocumentPointerUp(event: PointerEvent): void {
+    if (this.cellSelection) {
+      const selection = this.cellSelection;
+      this.cellSelection = null;
+      const first = Math.min(selection.startIndex, selection.endIndex);
+      let last = Math.max(selection.startIndex, selection.endIndex);
+      if (first === last) last += 1;
+      const checkInDate = this.days[first];
+      const checkOutDate = this.days[last] ?? (this.days.length ? this.addDays(this.days[this.days.length - 1], 1) : undefined);
+      if (checkInDate && checkOutDate) {
+        void this.router.navigate(['/reservations/new'], {
+          queryParams: {
+            roomId: selection.roomId,
+            checkIn: `${this.formatDate(checkInDate)}T14:00`,
+            checkOut: `${this.formatDate(checkOutDate)}T12:00`
+          }
+        });
+      }
+    }
+
+    if (this.reservationMove) {
+      const move = this.reservationMove;
+      this.reservationMove = null;
+      if (move.moved) {
+        this.suppressReservationClick = true;
+        const target = document.elementFromPoint(event.clientX, event.clientY) as HTMLElement | null;
+        const roomId = Number(target?.closest<HTMLElement>('.room-row')?.dataset['roomId']);
+        if (roomId && roomId !== move.fromRoomId) this.moveReservation(move.reservation, roomId);
+        window.setTimeout(() => this.suppressReservationClick = false, 0);
+      }
+    }
+  }
+
+  private moveReservation(reservation: HotelGridReservationResponse, roomId: number): void {
+    this.reservationService.getById(reservation.id).subscribe({
+      next: details => {
+        const request: ReservationRequest = this.toReservationRequest(details, roomId);
+        this.reservationService.update(details.id, request).subscribe({
+          next: () => this.loadGrid(),
+          error: error => {
+            this.error = error?.error?.message || error?.message || 'Не вдалося перемістити бронювання.';
+            this.cdr.detectChanges();
+          }
+        });
+      },
+      error: error => {
+        this.error = error?.error?.message || error?.message || 'Не вдалося завантажити бронювання.';
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  private toReservationRequest(details: ReservationResponse, roomId: number): ReservationRequest {
+    return {
+      roomId,
+      rateId: details.rate.id,
+      paymentCategoryId: details.paymentCategoryId,
+      primaryGuestId: details.primaryGuest.id,
+      guestIds: Array.from(new Set([...(details.guestIds ?? []), details.primaryGuest.id])),
+      checkIn: details.checkIn,
+      checkOut: details.checkOut,
+      adults: details.adults,
+      children: details.children,
+      taxStatus: details.taxStatus,
+      externalBookingNumber: details.externalBookingNumber,
+      bookingSource: details.bookingSource,
+      sourceCompanyId: details.sourceCompany?.id ?? null,
+      operatorCompanyId: details.operatorCompany?.id ?? null
+    };
+  }
+
   getReservationLeft(
     reservation: HotelGridReservationResponse
   ): number {
     const checkIn = this.parseDateTime(reservation.checkIn);
     const visibleStart = checkIn < this.gridStart ? this.gridStart : checkIn;
-
-    return this.roomColumnWidth +
-      this.getDaysBetween(this.gridStart, visibleStart) * this.dayWidth;
+    return this.roomColumnWidth + this.getTimelineOffset(visibleStart) * this.dayWidth;
   }
 
   getReservationWidth(
@@ -167,9 +299,9 @@ export class HotelGrid implements OnInit {
     const visibleStart = checkIn < this.gridStart ? this.gridStart : checkIn;
     const visibleEnd = checkOut > this.gridEnd ? this.gridEnd : checkOut;
 
-    const visibleNights = this.getDaysBetween(visibleStart, visibleEnd);
+    const visibleDuration = this.getTimelineOffset(visibleEnd) - this.getTimelineOffset(visibleStart);
 
-    return Math.max(this.dayWidth - 6, visibleNights * this.dayWidth - 6);
+    return Math.max(14, visibleDuration * this.dayWidth - 6);
   }
 
   getReservationLabel(
@@ -217,6 +349,13 @@ export class HotelGrid implements OnInit {
     );
 
     return Math.round((endUtc - startUtc) / (1000 * 60 * 60 * 24));
+  }
+
+  private getTimelineOffset(date: Date): number {
+    const dayStart = this.startOfDay(date);
+    const dayOffset = this.getDaysBetween(this.gridStart, dayStart);
+    const minutes = date.getHours() * 60 + date.getMinutes();
+    return dayOffset + minutes / 1440;
   }
 
   private parseInputDate(value: string): Date {

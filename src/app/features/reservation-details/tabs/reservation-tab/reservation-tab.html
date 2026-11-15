@@ -184,21 +184,44 @@
       <section class="block">
         <h2>Інформація про проживання</h2>
 
-        <label class="field-label">Заїзд</label>
-        <input
-          class="text-input"
-          type="datetime-local"
-          [value]="editCheckIn()"
-          (input)="editCheckIn.set($any($event.target).value)"
-        />
+        <label class="field-label">Період проживання</label>
+        <button class="stay-period-input" type="button" (click)="toggleStayPicker()" [attr.aria-expanded]="stayPickerOpen()">
+          <span aria-hidden="true">▦</span>
+          <span>{{ stayPeriodLabel() }}</span>
+          <span class="stay-period-chevron">{{ stayPickerOpen() ? '⌃' : '⌄' }}</span>
+        </button>
 
-        <label class="field-label">Виїзд</label>
-        <input
-          class="text-input"
-          type="datetime-local"
-          [value]="editCheckOut()"
-          (input)="editCheckOut.set($any($event.target).value)"
-        />
+        @if (stayPickerOpen()) {
+          <div class="stay-picker">
+            <div class="stay-time-controls">
+              <label>
+                <span>Час заїзду</span>
+                <input class="text-input" type="time" [ngModel]="checkInTime()" [ngModelOptions]="{ standalone: true }" (ngModelChange)="setStayTime('checkIn', $event)" />
+              </label>
+              <label>
+                <span>Час виїзду</span>
+                <input class="text-input" type="time" [ngModel]="checkOutTime()" [ngModelOptions]="{ standalone: true }" (ngModelChange)="setStayTime('checkOut', $event)" />
+              </label>
+            </div>
+            <div class="stay-calendar-header">
+              <button type="button" aria-label="Попередній місяць" (click)="shiftStayMonth(-1)">‹</button>
+              <strong>{{ stayCalendarMonth() | date:'LLLL yyyy':'':'uk' }}</strong>
+              <button type="button" aria-label="Наступний місяць" (click)="shiftStayMonth(1)">›</button>
+            </div>
+            <div class="stay-calendar-grid">
+              @for (weekday of ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд']; track weekday) {
+                <span class="stay-weekday">{{ weekday }}</span>
+              }
+              @for (day of stayCalendarDays(); track day.iso) {
+                <button type="button" class="stay-day" [class.other-month]="!day.currentMonth" [class.selected]="isStayDateSelected(day.iso)" [class.in-range]="isStayDateInRange(day.iso)" (click)="selectStayDate(day.iso)">
+                  {{ day.date | date:'d' }}
+                </button>
+              }
+            </div>
+            <div class="stay-picker-hint">Оберіть дату заїзду, потім дату виїзду</div>
+            <button class="stay-picker-done" type="button" (click)="stayPickerOpen.set(false)">Готово</button>
+          </div>
+        }
 
         <label class="field-label">Категорія номера</label>
         <select

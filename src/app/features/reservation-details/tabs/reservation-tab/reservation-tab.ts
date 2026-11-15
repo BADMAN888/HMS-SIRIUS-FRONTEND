@@ -104,6 +104,28 @@ export class ReservationTab implements OnInit {
   readonly editGuestIds = signal<number[]>([]);
   readonly editCheckIn = signal('');
   readonly editCheckOut = signal('');
+  readonly stayPickerOpen = signal(false);
+  readonly stayCalendarMonth = signal(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+  readonly stayCalendarDays = computed(() => {
+    const month = this.stayCalendarMonth();
+    const first = new Date(month.getFullYear(), month.getMonth(), 1);
+    const start = new Date(first);
+    start.setDate(1 - ((first.getDay() + 6) % 7));
+    return Array.from({ length: 42 }, (_, index) => {
+      const day = new Date(start);
+      day.setDate(start.getDate() + index);
+      return { date: day, iso: this.formatIsoDate(day), currentMonth: day.getMonth() === month.getMonth() };
+    });
+  });
+  readonly stayPeriodLabel = computed(() => {
+    const start = this.editCheckIn();
+    const end = this.editCheckOut();
+    if (!start && !end) return 'Оберіть дати проживання';
+    return `${this.formatStayDate(start)} ${start.slice(11, 16) || '14:00'} — ${this.formatStayDate(end)} ${end.slice(11, 16) || '12:00'}`;
+  });
+  readonly checkInTime = computed(() => this.editCheckIn().slice(11, 16) || '14:00');
+  readonly checkOutTime = computed(() => this.editCheckOut().slice(11, 16) || '12:00');
+  private stayDateSelection: 'checkIn' | 'checkOut' = 'checkIn';
   readonly editAdults = signal(1);
   readonly editChildren = signal(0);
   readonly editTaxStatus = signal<TaxStatus>(TaxStatus.RESIDENT);
@@ -548,6 +570,18 @@ export class ReservationTab implements OnInit {
 
         this.newComment.set('');
         this.selectedCommentId.set(null);
+
+        const query = this.route.snapshot.queryParamMap;
+        const roomId = Number(query.get('roomId'));
+        const room = this.rooms().find(item => item.id === roomId);
+        if (room) {
+          this.editRoomId.set(room.id);
+          this.editRoomCategoryId.set(room.categoryId ?? 0);
+        }
+        const checkIn = query.get('checkIn');
+        const checkOut = query.get('checkOut');
+        if (checkIn) this.editCheckIn.set(this.toDateTimeLocal(checkIn));
+        if (checkOut) this.editCheckOut.set(this.toDateTimeLocal(checkOut));
       },
       error: error => {
         this.error.set(
@@ -684,6 +718,77 @@ export class ReservationTab implements OnInit {
 
   private toLocalDateTime(value: string): string {
     return value.length === 16 ? `${value}:00` : value;
+  }
+
+  toggleStayPicker(): void {
+    if (!this.stayPickerOpen()) {
+      const current = this.editCheckIn() || this.editCheckOut();
+      if (current) {
+        const [year, month] = current.slice(0, 10).split('-').map(Number);
+        this.stayCalendarMonth.set(new Date(year, month - 1, 1));
+      }
+      this.stayDateSelection = this.editCheckIn() && !this.editCheckOut() ? 'checkOut' : 'checkIn';
+    }
+    this.stayPickerOpen.update(open => !open);
+  }
+
+  shiftStayMonth(offset: number): void {
+    const month = this.stayCalendarMonth();
+    this.stayCalendarMonth.set(new Date(month.getFullYear(), month.getMonth() + offset, 1));
+  }
+
+  selectStayDate(iso: string): void {
+    const selection = this.stayDateSelection;
+    if (selection === 'checkIn') {
+      const time = this.checkInTime();
+      this.editCheckIn.set(`${iso}T${time}`);
+      const end = this.editCheckOut();
+      if (end && end.slice(0, 10) <= iso) this.editCheckOut.set('');
+      this.stayDateSelection = 'checkOut';
+      return;
+    }
+
+    const start = this.editCheckIn();
+    if (start && iso < start.slice(0, 10)) {
+      this.editCheckIn.set(`${iso}T${this.checkInTime()}`);
+      this.editCheckOut.set('');
+      this.stayDateSelection = 'checkOut';
+      return;
+    }
+    this.editCheckOut.set(`${iso}T${this.checkOutTime()}`);
+    this.stayDateSelection = 'checkIn';
+  }
+
+  isStayDateSelected(iso: string): boolean {
+    return iso === this.editCheckIn().slice(0, 10) || iso === this.editCheckOut().slice(0, 10);
+  }
+
+  isStayDateInRange(iso: string): boolean {
+    const start = this.editCheckIn().slice(0, 10);
+    const end = this.editCheckOut().slice(0, 10);
+    return Boolean(start && end && iso > start && iso < end);
+  }
+
+  setStayTime(which: 'checkIn' | 'checkOut', value: string): void {
+    const isCheckIn = which === 'checkIn';
+    const current = isCheckIn ? this.editCheckIn() : this.editCheckOut();
+    const date = current.slice(0, 10);
+    const next = date ? `${date}T${value}` : '';
+    if (isCheckIn) this.editCheckIn.set(next);
+    else this.editCheckOut.set(next);
+  }
+
+  private formatIsoDate(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  private formatStayDate(value: string): string {
+    if (!value) return '—';
+    const [year, month, day] = value.slice(0, 10).split('-');
+    return `${day}.${month}.${year}`;
   }
 
   onRoomCategoryChange(categoryId: number | null): void {
