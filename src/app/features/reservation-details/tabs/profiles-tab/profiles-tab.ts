@@ -1,24 +1,40 @@
 
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
-import { DatePipe } from '@angular/common';
+import {
+  Component,
+  computed,
+  effect,
+  EventEmitter,
+  inject,
+  OnInit,
+  Output,
+  signal
+} from '@angular/core';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { finalize } from 'rxjs/operators';
 
 import { ProfileService } from '../../../../core/services/profile.service';
+import { GuestProfileWorkflowService } from '../../../../core/services/guest-profile-workflow.service';
 import { GuestDocumentService } from '../../../../core/services/guest-document.service';
 import { ReservationService } from '../../../../core/services/reservation.service';
+import { BalanceAccountService } from '../../../../core/services/balance-account.service';
 
 import { ProfileResponse } from '../../../../core/models/profile/profile-response.model';
 import { ProfileRequest } from '../../../../core/models/profile/profile-request.model';
 import { ProfileReservationResponse } from '../../../../core/models/profile/profile-reservation-response.model';
 import { GuestDocumentResponse } from '../../../../core/models/profile/guest-document-response.model';
 import { GuestDocumentRequest } from '../../../../core/models/profile/guest-document-request.model';
+import { ReservationResponse } from '../../../../core/models/reservation/reservation-response.model';
+import { BalanceAccountResponse } from '../../../../core/models/billing/balance-account-response.model';
+import { BalanceTransactionResponse } from '../../../../core/models/billing/balance-transaction-response.model';
 
 import { Gender } from '../../../../core/models/enums/gender.enum';
 import { Nationality } from '../../../../core/models/enums/nationality.enum';
 import { DocumentType } from '../../../../core/models/enums/document-type.enum';
+import { BalanceAccountStatus } from '../../../../core/models/enums/balance-account-status.enum';
+import { BalanceTransactionType } from '../../../../core/models/enums/balance-transaction-type.enum';
 
 type ProfileField =
   | 'firstName'
@@ -63,7 +79,7 @@ interface DocumentForm {
 @Component({
   selector: 'app-profiles-tab',
   standalone: true,
-  imports: [FormsModule, DatePipe],
+  imports: [FormsModule, DatePipe, DecimalPipe],
   templateUrl: './profiles-tab.html',
   styleUrl: './profiles-tab.scss'
 })
@@ -72,20 +88,61 @@ export class ProfilesTab implements OnInit {
   private readonly profileService = inject(ProfileService);
   private readonly guestDocumentService = inject(GuestDocumentService);
   private readonly reservationService = inject(ReservationService);
+  private readonly guestProfileWorkflow = inject(GuestProfileWorkflowService);
+  private readonly balanceAccountService = inject(BalanceAccountService);
 
+  @Output() readonly returnToReservation = new EventEmitter<void>();
+
+  readonly reservation = signal<ReservationResponse | null>(null);
   readonly profiles = signal<ProfileResponse[]>([]);
   readonly selectedProfileId = signal<number | null>(null);
 
   readonly selectedProfile = computed(
     () => this.profiles().find(p => p.id === this.selectedProfileId()) ?? null
   );
+  readonly profileToDisplay = computed<ProfileResponse | null>(() => {
+    const profile = this.selectedProfile();
+
+    if (profile || !this.creatingProfile()) {
+      return profile;
+    }
+
+    return {
+      id: 0,
+      firstName: '',
+      lastName: '',
+      middleName: null,
+      phoneNumber: null,
+      email: null,
+      gender: null,
+      dateOfBirth: null,
+      nationality: null,
+      address: null,
+      registrationAddress: null,
+      comment: null,
+      vip: false,
+      inBlackList: false,
+      guestDocuments: []
+    };
+  });
 
   readonly history = signal<ProfileReservationResponse[]>([]);
 
   readonly loading = signal(true);
   readonly savingProfile = signal(false);
+  readonly creatingProfile = signal(false);
   readonly savingDocument = signal(false);
   readonly loadingHistory = signal(false);
+  readonly balanceAccounts = signal<BalanceAccountResponse[]>([]);
+  readonly balanceTransactions = signal<Record<number, BalanceTransactionResponse[]>>({});
+  readonly accountAmounts = signal<Record<number, string>>({});
+  readonly accountDescriptions = signal<Record<number, string>>({});
+  readonly expandedAccountId = signal<number | null>(null);
+  readonly editingAccountId = signal<number | null>(null);
+  readonly loadingBalanceAccounts = signal(false);
+  readonly balanceActionBusy = signal(false);
+  readonly balanceError = signal('');
+  readonly balanceSuccess = signal('');
 
   readonly error = signal('');
   readonly success = signal('');
@@ -110,7 +167,45 @@ export class ProfilesTab implements OnInit {
     { value: DocumentType.OTHER, label: 'Інший документ' }
   ];
 
+  readonly balanceAccountStatuses = BalanceAccountStatus;
+
   readonly profileForm = signal<ProfileForm>(this.emptyProfileForm());
+  readonly createTargetLabel = signal('');
+
+  private activeCreateRequestId: number | null = null;
+  private createReturnToReservation = true;
+  private createTarget: 'primary' | 'additional' = 'additional';
+
+  private readonly createDraftEffect = effect(() => {
+    const intent = this.guestProfileWorkflow.pendingDraft();
+
+    if (!intent || intent.requestId === this.activeCreateRequestId) {
+      return;
+    }
+
+    this.activeCreateRequestId = intent.requestId;
+    this.createReturnToReservation = intent.returnToReservation;
+    this.createTarget = intent.target;
+    this.creatingProfile.set(true);
+    this.selectedProfileId.set(null);
+    this.history.set([]);
+    this.cancelDocumentForm();
+    this.error.set('');
+    this.success.set('');
+    this.createTargetLabel.set(
+      intent.target === 'primary'
+        ? 'Основний гість бронювання'
+        : 'Додатковий гість бронювання'
+    );
+    this.profileForm.set({
+      ...this.emptyProfileForm(),
+      firstName: intent.firstName,
+      lastName: intent.lastName,
+      middleName: intent.middleName,
+      phoneNumber: intent.phoneNumber,
+      email: intent.email
+    });
+  });
 
   readonly documentForm = signal<DocumentForm>(this.emptyDocumentForm());
   readonly editingDocumentId = signal<number | null>(null);
@@ -127,8 +222,18 @@ export class ProfilesTab implements OnInit {
   };
 
   ngOnInit(): void {
-    const idParam = this.route.snapshot.paramMap.get('id');
+    this.route.paramMap.subscribe(params => this.loadRoute(params.get('id')));
+  }
+
+  private loadRoute(idParam: string | null): void {
     const reservationId = Number(idParam);
+
+    if (idParam === 'new') {
+      this.reservation.set(null);
+      this.profiles.set([]);
+      this.loading.set(false);
+      return;
+    }
 
     if (!idParam || !Number.isInteger(reservationId) || reservationId <= 0) {
       this.loading.set(false);
@@ -150,6 +255,7 @@ export class ProfilesTab implements OnInit {
       finalize(() => this.loading.set(false))
     ).subscribe({
       next: ({ reservation, allProfiles }) => {
+        this.reservation.set(reservation);
         const guestIds = new Set<number>([
           ...(reservation.primaryGuest ? [reservation.primaryGuest.id] : []),
           ...(reservation.guestIds ?? [])
@@ -199,6 +305,7 @@ export class ProfilesTab implements OnInit {
 
     this.cancelDocumentForm();
     this.loadHistory(profile.id);
+    this.loadBalanceAccounts(profile.id);
   }
 
   private loadHistory(profileId: number): void {
@@ -242,7 +349,7 @@ export class ProfilesTab implements OnInit {
   saveProfile(): void {
     const profile = this.selectedProfile();
 
-    if (!profile || this.savingProfile()) {
+    if ((!profile && !this.creatingProfile()) || this.savingProfile()) {
       return;
     }
 
@@ -273,14 +380,56 @@ export class ProfilesTab implements OnInit {
     this.error.set('');
     this.success.set('');
 
-    this.profileService.update(profile.id, request).pipe(
+    const saveRequest = profile
+      ? this.profileService.update(profile.id, request)
+      : this.profileService.create(request);
+
+    saveRequest.pipe(
       finalize(() => this.savingProfile.set(false))
     ).subscribe({
       next: updated => {
+        if (!profile && this.reservation()) {
+          const reservation = this.reservation()!;
+          const guestIds = new Set<number>([
+            ...(reservation.guestIds ?? []),
+            reservation.primaryGuest.id,
+            updated.id
+          ]);
+          const primaryGuestId = this.createTarget === 'primary'
+            ? updated.id
+            : reservation.primaryGuest.id;
+
+          this.reservationService.updateGuests(
+            reservation.id,
+            primaryGuestId,
+            [...guestIds]
+          ).subscribe({
+            next: updatedReservation => {
+              this.reservation.set(updatedReservation);
+              this.finishCreatedProfile(updated);
+            },
+            error: error => {
+              this.profiles.update(items => [...items, updated]);
+              this.creatingProfile.set(false);
+              this.selectedProfileId.set(updated.id);
+              this.profileForm.set(this.toProfileForm(updated));
+              this.error.set(
+                error?.error?.message ||
+                'Профайл створено, але його не вдалося прив’язати до бронювання.'
+              );
+            }
+          });
+          return;
+        }
+
+        if (!profile) {
+          this.finishCreatedProfile(updated);
+          return;
+        }
+
         this.profiles.update(items =>
           items.map(item => item.id === updated.id ? updated : item)
         );
-
         this.profileForm.set(this.toProfileForm(updated));
         this.success.set('Профайл успішно оновлено.');
       },
@@ -292,6 +441,330 @@ export class ProfilesTab implements OnInit {
         );
       }
     });
+  }
+
+  private finishCreatedProfile(profile: ProfileResponse): void {
+    this.profiles.update(items => [
+      ...items.filter(item => item.id !== profile.id),
+      profile
+    ]);
+    this.creatingProfile.set(false);
+    this.selectProfile(profile);
+    this.success.set('Профайл створено та додано до бронювання.');
+
+    if (this.activeCreateRequestId !== null) {
+      const requestId = this.activeCreateRequestId;
+      this.guestProfileWorkflow.complete(profile, requestId);
+      this.activeCreateRequestId = null;
+
+      if (this.createReturnToReservation) {
+        this.returnToReservation.emit();
+      }
+    }
+  }
+
+  addProfile(): void {
+    this.guestProfileWorkflow.start({
+      target: 'additional',
+      returnToReservation: false,
+      firstName: '',
+      lastName: '',
+      middleName: '',
+      phoneNumber: '',
+      email: ''
+    });
+  }
+
+  cancelCreateProfile(): void {
+    const shouldReturn = this.createReturnToReservation;
+
+    if (this.activeCreateRequestId !== null) {
+      this.guestProfileWorkflow.cancel(this.activeCreateRequestId);
+      this.activeCreateRequestId = null;
+    }
+
+    this.creatingProfile.set(false);
+    this.profileForm.set(this.emptyProfileForm());
+    if (shouldReturn) {
+      this.returnToReservation.emit();
+    }
+  }
+
+  removeProfileFromReservation(profile: ProfileResponse): void {
+    if (!window.confirm(`Відв’язати профайл ${this.getFullName(profile)} від бронювання?`)) {
+      return;
+    }
+
+    const reservation = this.reservation();
+
+    if (!reservation) {
+      this.guestProfileWorkflow.removeFromDraft(profile.id);
+      this.removeProfileFromLocalList(profile.id);
+      return;
+    }
+
+    const guestIds = new Set<number>([
+      ...(reservation.guestIds ?? []),
+      reservation.primaryGuest.id
+    ]);
+
+    if (!guestIds.has(profile.id)) {
+      return;
+    }
+
+    if (guestIds.size <= 1) {
+      this.error.set('У бронюванні має залишитися хоча б один гість.');
+      return;
+    }
+
+    guestIds.delete(profile.id);
+    const primaryGuestId = reservation.primaryGuest.id === profile.id
+      ? [...guestIds][0]
+      : reservation.primaryGuest.id;
+
+    this.savingProfile.set(true);
+    this.error.set('');
+    this.reservationService.updateGuests(
+      reservation.id,
+      primaryGuestId,
+      [...guestIds]
+    ).pipe(
+      finalize(() => this.savingProfile.set(false))
+    ).subscribe({
+      next: updatedReservation => {
+        this.reservation.set(updatedReservation);
+        this.guestProfileWorkflow.syncReservationGuests(
+          updatedReservation.primaryGuest.id,
+          updatedReservation.guestIds ?? []
+        );
+        this.removeProfileFromLocalList(profile.id);
+        this.success.set('Профайл відв’язано від бронювання.');
+      },
+      error: error => {
+        this.error.set(
+          error?.error?.message ||
+          'Не вдалося відв’язати профайл від бронювання.'
+        );
+      }
+    });
+  }
+
+  private removeProfileFromLocalList(profileId: number): void {
+    const nextProfiles = this.profiles().filter(item => item.id !== profileId);
+    this.profiles.set(nextProfiles);
+
+    if (this.selectedProfileId() === profileId) {
+      if (nextProfiles.length > 0) {
+        this.selectProfile(nextProfiles[0]);
+      } else {
+        this.selectedProfileId.set(null);
+        this.profileForm.set(this.emptyProfileForm());
+        this.history.set([]);
+        this.balanceAccounts.set([]);
+      }
+    }
+  }
+
+  private loadBalanceAccounts(profileId: number): void {
+    const hotelId = this.reservation()?.room?.hotelId;
+
+    this.balanceError.set('');
+    this.balanceSuccess.set('');
+
+    if (!hotelId) {
+      this.balanceAccounts.set([]);
+      return;
+    }
+
+    this.loadingBalanceAccounts.set(true);
+    this.balanceAccountService.getAllByProfileAndHotel(profileId, hotelId).pipe(
+      finalize(() => this.loadingBalanceAccounts.set(false))
+    ).subscribe({
+      next: accounts => this.balanceAccounts.set(accounts),
+      error: error => {
+        this.balanceAccounts.set([]);
+        this.balanceError.set(
+          error?.error?.message ||
+          'Не вдалося завантажити авансові рахунки.'
+        );
+      }
+    });
+  }
+
+  createBalanceAccount(): void {
+    const profile = this.selectedProfile();
+    const hotelId = this.reservation()?.room?.hotelId;
+
+    if (!profile || !hotelId || this.balanceActionBusy()) {
+      return;
+    }
+
+    this.balanceActionBusy.set(true);
+    this.balanceError.set('');
+    this.balanceAccountService.createNew(profile.id, hotelId).pipe(
+      finalize(() => this.balanceActionBusy.set(false))
+    ).subscribe({
+      next: account => {
+        this.balanceAccounts.update(accounts => [account, ...accounts]);
+        this.editingAccountId.set(account.id);
+        this.balanceSuccess.set('Авансовий рахунок створено.');
+      },
+      error: error => {
+        this.balanceError.set(
+          error?.error?.message ||
+          'Не вдалося створити авансовий рахунок.'
+        );
+      }
+    });
+  }
+
+  setAccountAmount(accountId: number, value: string): void {
+    this.accountAmounts.update(values => ({ ...values, [accountId]: value }));
+  }
+
+  setAccountDescription(accountId: number, value: string): void {
+    this.accountDescriptions.update(values => ({ ...values, [accountId]: value }));
+  }
+
+  depositToAccount(account: BalanceAccountResponse): void {
+    const amount = Number(this.accountAmounts()[account.id]);
+
+    if (!Number.isFinite(amount) || amount <= 0 || this.balanceActionBusy()) {
+      this.balanceError.set('Вкажіть суму депозиту, більшу за нуль.');
+      return;
+    }
+
+    this.runBalanceOperation(
+      account,
+      'deposit',
+      'Депозит внесено.'
+    );
+  }
+
+  refundDeposit(account: BalanceAccountResponse): void {
+    const amount = Number(this.accountAmounts()[account.id]);
+
+    if (
+      !Number.isFinite(amount) ||
+      amount <= 0 ||
+      amount > account.balance ||
+      this.balanceActionBusy()
+    ) {
+      this.balanceError.set('Вкажіть суму повернення в межах доступного залишку.');
+      return;
+    }
+
+    this.runBalanceOperation(
+      account,
+      'refund',
+      'Депозит повернуто.'
+    );
+  }
+
+  private runBalanceOperation(
+    account: BalanceAccountResponse,
+    operation: 'deposit' | 'refund',
+    successMessage: string
+  ): void {
+    const request = {
+      amount: Number(this.accountAmounts()[account.id]),
+      description: this.accountDescriptions()[account.id]?.trim() || null
+    };
+    const operation$ = operation === 'deposit'
+      ? this.balanceAccountService.depositToAccount(account.id, request)
+      : this.balanceAccountService.debit(account.id, request);
+
+    this.balanceActionBusy.set(true);
+    this.balanceError.set('');
+    operation$.pipe(
+      finalize(() => this.balanceActionBusy.set(false))
+    ).subscribe({
+      next: updated => {
+        this.updateBalanceAccount(updated);
+        this.accountAmounts.update(values => ({ ...values, [account.id]: '' }));
+        this.accountDescriptions.update(values => ({ ...values, [account.id]: '' }));
+        this.balanceSuccess.set(successMessage);
+
+        if (this.expandedAccountId() === account.id) {
+          this.loadAccountTransactions(account.id);
+        }
+      },
+      error: error => {
+        this.balanceError.set(
+          error?.error?.message ||
+          'Не вдалося виконати операцію з авансовим рахунком.'
+        );
+      }
+    });
+  }
+
+  closeBalanceAccount(account: BalanceAccountResponse): void {
+    if (account.balance !== 0 || this.balanceActionBusy()) {
+      return;
+    }
+
+    if (!window.confirm('Закрити порожній авансовий рахунок?')) {
+      return;
+    }
+
+    this.balanceActionBusy.set(true);
+    this.balanceError.set('');
+    this.balanceAccountService.close(account.id).pipe(
+      finalize(() => this.balanceActionBusy.set(false))
+    ).subscribe({
+      next: updated => {
+        this.updateBalanceAccount(updated);
+        this.balanceSuccess.set('Авансовий рахунок закрито.');
+      },
+      error: error => {
+        this.balanceError.set(
+          error?.error?.message ||
+          'Не вдалося закрити авансовий рахунок.'
+        );
+      }
+    });
+  }
+
+  toggleAccountTransactions(accountId: number): void {
+    if (this.expandedAccountId() === accountId) {
+      this.expandedAccountId.set(null);
+      return;
+    }
+
+    this.expandedAccountId.set(accountId);
+    this.loadAccountTransactions(accountId);
+  }
+
+  toggleAccountEditor(accountId: number): void {
+    this.editingAccountId.update(current => current === accountId ? null : accountId);
+  }
+
+  private loadAccountTransactions(accountId: number): void {
+    this.balanceAccountService.getTransactions(accountId).subscribe({
+      next: transactions => this.balanceTransactions.update(items => ({
+        ...items,
+        [accountId]: transactions
+      })),
+      error: () => this.balanceError.set('Не вдалося завантажити рух коштів.')
+    });
+  }
+
+  private updateBalanceAccount(account: BalanceAccountResponse): void {
+    this.balanceAccounts.update(accounts =>
+      accounts.map(item => item.id === account.id ? account : item)
+    );
+  }
+
+  getBalanceTransactionLabel(type: BalanceTransactionType): string {
+    const labels: Record<BalanceTransactionType, string> = {
+      [BalanceTransactionType.DEPOSIT]: 'Депозит',
+      [BalanceTransactionType.FOLIO_PAYMENT]: 'Оплата рахунку',
+      [BalanceTransactionType.REFUND]: 'Повернення на баланс',
+      [BalanceTransactionType.ADJUSTMENT_CREDIT]: 'Коригування зі збільшенням',
+      [BalanceTransactionType.ADJUSTMENT_DEBIT]: 'Повернення або списання'
+    };
+
+    return labels[type];
   }
 
   openNewDocumentForm(): void {

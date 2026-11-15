@@ -5,6 +5,11 @@
   color: #e2e8f0;
 }
 
+.reservation-details-page app-reservation-tab[hidden],
+.reservation-details-page app-profiles-tab[hidden] {
+  display: none !important;
+}
+
 .reservation-details-page {
   display: flex;
   flex-direction: column;

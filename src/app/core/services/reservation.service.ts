@@ -40,6 +40,17 @@ export class ReservationService {
     return this.http.put<ReservationResponse>(`${this.apiUrl}/${id}`, request);
   }
 
+  updateGuests(
+    id: number,
+    primaryGuestId: number,
+    guestIds: number[]
+  ): Observable<ReservationResponse> {
+    return this.http.patch<ReservationResponse>(`${this.apiUrl}/${id}/guests`, {
+      primaryGuestId,
+      guestIds
+    });
+  }
+
   delete(id: number): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/${id}`);
   }

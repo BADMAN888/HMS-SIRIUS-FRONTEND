@@ -23,6 +23,25 @@ export class BalanceAccountService {
     );
   }
 
+  getAllByProfileAndHotel(
+    profileId: number,
+    hotelId: number
+  ): Observable<BalanceAccountResponse[]> {
+    return this.http.get<BalanceAccountResponse[]>(
+      `${this.apiUrl}/profile/${profileId}/hotel/${hotelId}/accounts`
+    );
+  }
+
+  createNew(
+    profileId: number,
+    hotelId: number
+  ): Observable<BalanceAccountResponse> {
+    return this.http.post<BalanceAccountResponse>(
+      `${this.apiUrl}/profile/${profileId}/hotel/${hotelId}/accounts`,
+      null
+    );
+  }
+
   getOrCreate(
     profileId: number,
     hotelId: number
@@ -41,6 +60,23 @@ export class BalanceAccountService {
     return this.http.post<BalanceAccountResponse>(
       `${this.apiUrl}/profile/${profileId}/hotel/${hotelId}/deposit`,
       request
+    );
+  }
+
+  depositToAccount(
+    accountId: number,
+    request: BalanceOperationRequest
+  ): Observable<BalanceAccountResponse> {
+    return this.http.post<BalanceAccountResponse>(
+      `${this.apiUrl}/${accountId}/deposit`,
+      request
+    );
+  }
+
+  close(accountId: number): Observable<BalanceAccountResponse> {
+    return this.http.patch<BalanceAccountResponse>(
+      `${this.apiUrl}/${accountId}/close`,
+      null
     );
   }
 

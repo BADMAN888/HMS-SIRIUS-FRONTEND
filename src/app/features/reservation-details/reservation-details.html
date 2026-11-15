@@ -56,15 +56,16 @@
   </nav>
 
   <main class="tab-content">
+    <app-reservation-tab
+      [hidden]="activeTab() !== 'reservation'"
+      (createGuestProfile)="createGuestProfile($event)"
+    />
+    <app-profiles-tab
+      [hidden]="activeTab() !== 'profiles'"
+      (returnToReservation)="returnToReservation()"
+    />
+
     @switch (activeTab()) {
-      @case ('reservation') {
-        <app-reservation-tab />
-      }
-
-      @case ('profiles') {
-        <app-profiles-tab />
-      }
-
       @case ('accrual') {
         <app-accrual-tab />
       }

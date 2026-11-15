@@ -1,4 +1,5 @@
 export enum BalanceAccountStatus {
   ACTIVE = 'ACTIVE',
-  BLOCKED = 'BLOCKED'
+  BLOCKED = 'BLOCKED',
+  CLOSED = 'CLOSED'
 }

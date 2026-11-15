@@ -13,49 +13,90 @@
 
   @if (loading()) {
     <div class="state-message">Завантаження профайлів...</div>
-  } @else if (error() && profiles().length === 0) {
+  } @else if (!creatingProfile() && error() && profiles().length === 0) {
     <div class="state-message error">{{ error() }}</div>
-  } @else if (profiles().length === 0) {
-    <div class="state-message">
-      До цього бронювання ще не додано профайлів.
-    </div>
   } @else {
-    <div class="profiles-layout">
-      <aside class="profiles-sidebar">
-        <h3>Гості бронювання</h3>
+    <div class="profiles-layout" [class.create-mode]="creatingProfile()">
+      <aside class="profiles-sidebar guests-card">
+        <header class="section-header guests-header">
+          <div>
+            <h3>{{ creatingProfile() ? 'Новий профайл' : 'Гості бронювання' }}</h3>
+            @if (!creatingProfile()) {
+              <p>Профайли, прив’язані до цього бронювання</p>
+            }
+          </div>
+        </header>
+
+        @if (creatingProfile()) {
+          <p class="create-profile-context">{{ createTargetLabel() }}</p>
+        }
 
         @for (profile of profiles(); track profile.id) {
-          <button
-            type="button"
-            class="profile-list-item"
-            [class.selected]="selectedProfileId() === profile.id"
-            (click)="selectProfile(profile)"
-          >
-            <span class="profile-avatar">
-              {{ profile.firstName.charAt(0) }}{{ profile.lastName.charAt(0) }}
-            </span>
+          <div class="profile-list-row">
+            <button
+              type="button"
+              class="profile-list-item"
+              [class.selected]="selectedProfileId() === profile.id"
+              (click)="selectProfile(profile)"
+            >
+              <span class="profile-avatar">
+                {{ profile.firstName.charAt(0) }}{{ profile.lastName.charAt(0) }}
+              </span>
 
-            <span class="profile-list-info">
-              <strong>{{ getFullName(profile) }}</strong>
-              <small>{{ profile.phoneNumber || 'Телефон не вказаний' }}</small>
-            </span>
+              <span class="profile-list-info">
+                <strong>{{ getFullName(profile) }}</strong>
+                <small>{{ profile.phoneNumber || 'Телефон не вказаний' }}</small>
+              </span>
 
-            <span class="profile-arrow">›</span>
-          </button>
+              <span class="profile-arrow">›</span>
+            </button>
+
+            @if (!creatingProfile()) {
+              <button
+                type="button"
+                class="remove-profile-button"
+                [disabled]="savingProfile()"
+                [attr.aria-label]="'Відв’язати ' + getFullName(profile)"
+                title="Відв’язати профайл від бронювання"
+                (click)="removeProfileFromReservation(profile)"
+              >
+                ×
+              </button>
+            }
+          </div>
+        } @empty {
+          @if (!creatingProfile()) {
+            <p class="empty-message">Профайли до бронювання ще не додані.</p>
+          }
+        }
+
+        @if (!creatingProfile()) {
+          <footer class="guests-footer">
+            <button
+              type="button"
+              class="secondary-button add-profile-button"
+              (click)="addProfile()"
+            >
+              <span>+</span>
+              Додати профайл
+            </button>
+          </footer>
         }
       </aside>
 
-      @if (selectedProfile(); as profile) {
-        <section class="profile-content">
-
-          <section class="content-card">
+      @if (profileToDisplay(); as profile) {
+          <section class="content-card personal-card">
             <header class="section-header">
               <div>
                 <h3>Персональні дані</h3>
                 <p>Основна інформація про гостя</p>
               </div>
 
-              <span class="profile-id">ID: {{ profile.id }}</span>
+                @if (creatingProfile()) {
+                  <span class="profile-id">Новий профайл</span>
+                } @else {
+                  <span class="profile-id">ID: {{ profile.id }}</span>
+                }
             </header>
 
             <div class="profile-form">
@@ -158,47 +199,202 @@
                 />
               </div>
 
-              <div class="form-field full-width">
-                <label>Коментар</label>
-                <textarea
-                  rows="3"
-                  [ngModel]="profileForm().comment"
-                  (ngModelChange)="updateProfileField('comment', $event)"
-                ></textarea>
+              <div class="profile-flags full-width">
+                <label class="profile-flag vip-flag">
+                  <input
+                    type="checkbox"
+                    [ngModel]="profileForm().vip"
+                    (ngModelChange)="updateProfileField('vip', $event)"
+                  />
+                  <span class="switch-track" aria-hidden="true"></span>
+                  <span class="flag-copy">
+                    <strong>VIP-гість</strong>
+                    <small>Особливе обслуговування</small>
+                  </span>
+                </label>
+
+                <label class="profile-flag blacklist-flag">
+                  <input
+                    type="checkbox"
+                    [ngModel]="profileForm().inBlackList"
+                    (ngModelChange)="updateProfileField('inBlackList', $event)"
+                  />
+                  <span class="switch-track" aria-hidden="true"></span>
+                  <span class="flag-copy">
+                    <strong>Чорний список</strong>
+                    <small>Позначити профайл</small>
+                  </span>
+                </label>
               </div>
-
-              <label class="profile-flag">
-                <input
-                  type="checkbox"
-                  [ngModel]="profileForm().vip"
-                  (ngModelChange)="updateProfileField('vip', $event)"
-                />
-                VIP гість
-              </label>
-
-              <label class="profile-flag">
-                <input
-                  type="checkbox"
-                  [ngModel]="profileForm().inBlackList"
-                  (ngModelChange)="updateProfileField('inBlackList', $event)"
-                />
-                У чорному списку
-              </label>
             </div>
+          </section>
 
+          <section class="content-card comment-card">
+            <header class="section-header">
+              <div>
+                <h3>Коментар</h3>
+                <p>Внутрішня примітка до профайлу гостя</p>
+              </div>
+            </header>
+            <textarea
+              class="comment-input"
+              rows="3"
+              placeholder="Додайте коментар..."
+              [ngModel]="profileForm().comment"
+              (ngModelChange)="updateProfileField('comment', $event)"
+            ></textarea>
             <footer class="section-footer">
+              @if (creatingProfile()) {
+                <button
+                  type="button"
+                  class="secondary-button"
+                  [disabled]="savingProfile()"
+                  (click)="cancelCreateProfile()"
+                >
+                  Скасувати
+                </button>
+              }
               <button
                 type="button"
                 class="primary-button"
                 [disabled]="savingProfile()"
                 (click)="saveProfile()"
               >
-                {{ savingProfile() ? 'Збереження...' : 'Зберегти профайл' }}
+                @if (savingProfile()) {
+                  Збереження...
+                } @else if (creatingProfile()) {
+                  Створити профайл
+                } @else {
+                  Зберегти профайл
+                }
               </button>
             </footer>
           </section>
 
-          <section class="content-card">
+          @if (!creatingProfile()) {
+          <section class="content-card balance-card">
+            <header class="section-header">
+              <div>
+                <h3>Авансові рахунки</h3>
+              </div>
+              <button
+                type="button"
+                class="secondary-button"
+                [disabled]="!reservation()?.room?.hotelId || balanceActionBusy()"
+                (click)="createBalanceAccount()"
+              >
+                + Новий рахунок
+              </button>
+            </header>
+
+            @if (!reservation()?.room?.hotelId) {
+              <p class="empty-message">Балансові рахунки доступні після збереження бронювання.</p>
+            } @else if (loadingBalanceAccounts()) {
+              <p class="empty-message">Завантаження рахунків...</p>
+            } @else if (balanceAccounts().length > 0) {
+              <div class="balance-accounts">
+                @for (account of balanceAccounts(); track account.id) {
+                  <article class="balance-account" [class.editing]="editingAccountId() === account.id">
+                    <header class="balance-account-header">
+                      <div>
+                        <strong>Рахунок №{{ account.id }}</strong>
+                        <small>{{ account.status === balanceAccountStatuses.ACTIVE ? 'Активний' : account.status === balanceAccountStatuses.CLOSED ? 'Закритий' : 'Заблокований' }}</small>
+                      </div>
+                      <strong class="balance-amount">
+                        {{ account.balance | number:'1.2-2' }} {{ account.currency }}
+                      </strong>
+                      <button
+                        type="button"
+                        class="account-open-button"
+                        (click)="toggleAccountEditor(account.id)"
+                      >
+                        {{ editingAccountId() === account.id ? 'Згорнути' : 'Відкрити' }}
+                      </button>
+                    </header>
+
+                    @if (account.status === balanceAccountStatuses.ACTIVE && editingAccountId() === account.id) {
+                      <div class="balance-operation-form">
+                        <input
+                          type="number"
+                          min="0.01"
+                          step="0.01"
+                          placeholder="Сума"
+                          [ngModel]="accountAmounts()[account.id] ?? ''"
+                          [ngModelOptions]="{ standalone: true }"
+                          (ngModelChange)="setAccountAmount(account.id, $event)"
+                        />
+                        <input
+                          placeholder="Коментар до операції"
+                          [ngModel]="accountDescriptions()[account.id] ?? ''"
+                          [ngModelOptions]="{ standalone: true }"
+                          (ngModelChange)="setAccountDescription(account.id, $event)"
+                        />
+                        <div class="balance-actions">
+                          <button
+                            type="button"
+                            class="secondary-button"
+                            [disabled]="balanceActionBusy()"
+                            (click)="depositToAccount(account)"
+                          >
+                            Внести депозит
+                          </button>
+                          <button
+                            type="button"
+                            class="secondary-button"
+                            [disabled]="balanceActionBusy() || account.balance <= 0"
+                            (click)="refundDeposit(account)"
+                          >
+                            Повернути депозит
+                          </button>
+                          <button
+                            type="button"
+                            class="danger-button"
+                            [disabled]="balanceActionBusy() || account.balance !== 0"
+                            (click)="closeBalanceAccount(account)"
+                          >
+                            Закрити рахунок
+                          </button>
+                        </div>
+                      </div>
+                    }
+
+                    <button
+                      type="button"
+                      class="transactions-toggle"
+                      (click)="toggleAccountTransactions(account.id)"
+                    >
+                      {{ expandedAccountId() === account.id ? 'Сховати рух коштів' : 'Історія операцій' }}
+                    </button>
+
+                    @if (expandedAccountId() === account.id) {
+                      <div class="balance-transactions">
+                        @for (transaction of balanceTransactions()[account.id] ?? []; track transaction.id) {
+                          <div class="balance-transaction">
+                            <span>
+                              {{ getBalanceTransactionLabel(transaction.type) }}
+                              · {{ transaction.description || 'Без коментаря' }}
+                            </span>
+                            <strong>{{ transaction.amount | number:'1.2-2' }} {{ account.currency }}</strong>
+                          </div>
+                        } @empty {
+                          <p class="empty-message">Операцій ще немає.</p>
+                        }
+                      </div>
+                    }
+                  </article>
+                }
+              </div>
+            }
+
+            @if (balanceError()) {
+              <p class="feedback error">{{ balanceError() }}</p>
+            }
+            @if (balanceSuccess()) {
+              <p class="feedback success">{{ balanceSuccess() }}</p>
+            }
+          </section>
+
+          <section class="content-card documents-card">
             <header class="section-header">
               <div>
                 <h3>Документи</h3>
@@ -350,7 +546,7 @@
             </div>
           </section>
 
-          <section class="content-card">
+          <section class="content-card history-card">
             <header class="section-header">
               <div>
                 <h3>Історія проживання</h3>
@@ -396,13 +592,13 @@
               </div>
             }
           </section>
+          }
 
-        </section>
       }
     </div>
   }
 
-  @if (error() && profiles().length > 0) {
+  @if (error() && (profiles().length > 0 || creatingProfile())) {
     <div class="feedback error">{{ error() }}</div>
   }
 

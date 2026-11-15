@@ -1,5 +1,14 @@
 
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import {
+  Component,
+  computed,
+  effect,
+  EventEmitter,
+  inject,
+  OnInit,
+  Output,
+  signal
+} from '@angular/core';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -11,6 +20,10 @@ import { MatSelectModule } from '@angular/material/select';
 import { finalize, forkJoin } from 'rxjs';
 
 import { ProfileService } from '../../../../core/services/profile.service';
+import {
+  GuestProfileTarget,
+  GuestProfileWorkflowService
+} from '../../../../core/services/guest-profile-workflow.service';
 import { RoomService } from '../../../../core/services/room.service';
 import { RateService } from '../../../../core/services/rate.service';
 import { RoomCategoryService } from '../../../../core/services/room-category.service';
@@ -49,6 +62,7 @@ export class ReservationTab implements OnInit {
 
   private readonly reservationService = inject(ReservationService);
   private readonly profileService = inject(ProfileService);
+  private readonly guestProfileWorkflow = inject(GuestProfileWorkflowService);
   private readonly roomService = inject(RoomService);
   private readonly rateService = inject(RateService);
   private readonly roomCategoryService = inject(RoomCategoryService);
@@ -135,6 +149,75 @@ export class ReservationTab implements OnInit {
 
   readonly additionalGuestSearch = signal('');
 
+  @Output() readonly createGuestProfile = new EventEmitter<{
+    target: GuestProfileTarget;
+    firstName: string;
+    lastName: string;
+    middleName: string;
+    phoneNumber: string;
+    email: string;
+  }>();
+
+  private handledCreatedProfileRequestId = 0;
+  private handledRemovedProfileEventId = 0;
+  private handledGuestListEventId = 0;
+
+  private readonly createdProfileEffect = effect(() => {
+    const event = this.guestProfileWorkflow.createdProfile();
+
+    if (!event || event.requestId <= this.handledCreatedProfileRequestId) {
+      return;
+    }
+
+    this.handledCreatedProfileRequestId = event.requestId;
+    this.profiles.update(profiles => [
+      ...profiles.filter(profile => profile.id !== event.profile.id),
+      event.profile
+    ]);
+
+    if (event.target === 'primary') {
+      this.selectPrimaryGuest(event.profile);
+    } else {
+      this.addAdditionalGuest(event.profile);
+    }
+  });
+
+  private readonly removedDraftProfileEffect = effect(() => {
+    const event = this.guestProfileWorkflow.removedDraftProfile();
+
+    if (!event || event.eventId <= this.handledRemovedProfileEventId) {
+      return;
+    }
+
+    this.handledRemovedProfileEventId = event.eventId;
+    this.editGuestIds.update(ids => ids.filter(id => id !== event.profileId));
+
+    if (this.editPrimaryGuestId() === event.profileId) {
+      this.editPrimaryGuestId.set(0);
+      this.selectedGuest.set(null);
+      this.guestSearch.set('');
+      this.guestPhoneSearch.set('');
+      this.guestEmailSearch.set('');
+    }
+  });
+
+  private readonly reservationGuestsEffect = effect(() => {
+    const event = this.guestProfileWorkflow.reservationGuests();
+
+    if (!event || event.eventId <= this.handledGuestListEventId) {
+      return;
+    }
+
+    this.handledGuestListEventId = event.eventId;
+    this.editPrimaryGuestId.set(event.primaryGuestId);
+    this.editGuestIds.set(event.guestIds.filter(id => id !== event.primaryGuestId));
+
+    const primaryGuest = this.getProfileById(event.primaryGuestId);
+    if (primaryGuest) {
+      this.selectPrimaryGuest(primaryGuest);
+    }
+  });
+
   readonly filteredAdditionalGuests = computed(() => {
     const query = this.additionalGuestSearch()
       .trim()
@@ -163,6 +246,34 @@ export class ReservationTab implements OnInit {
           phone.toLocaleLowerCase().includes(query);
       })
       .slice(0, 10);
+  });
+
+  readonly hasPrimaryGuestDraft = computed(() =>
+    Boolean(
+      this.guestSearch().trim() ||
+      this.guestPhoneSearch().trim() ||
+      this.guestEmailSearch().trim()
+    ) && !this.selectedGuest()
+  );
+
+  readonly hasAdditionalGuestMatch = computed(() => {
+    const query = this.additionalGuestSearch().trim().toLocaleLowerCase('uk-UA');
+
+    if (query.length < 3) {
+      return false;
+    }
+
+    const normalizedQuery = query.replace(/\D/g, '');
+
+    return this.profiles().some(profile => {
+      const name = this.getProfileFullName(profile).toLocaleLowerCase('uk-UA');
+      const phone = profile.phoneNumber ?? '';
+      const normalizedPhone = phone.replace(/\D/g, '');
+
+      return name.includes(query) ||
+        phone.toLocaleLowerCase('uk-UA').includes(query) ||
+        (normalizedQuery.length > 0 && normalizedPhone.includes(normalizedQuery));
+    });
   });
 
   readonly filteredRates = computed(() => {
@@ -260,21 +371,119 @@ export class ReservationTab implements OnInit {
   onGuestSearch(value: string): void {
     this.guestSearch.set(value);
     this.resetSelectedGuest();
+
+    const normalized = this.normalizeName(value);
+    const exactMatch = normalized
+      ? this.profiles().find(
+          profile => this.normalizeName(this.getProfileFullName(profile)) === normalized
+        )
+      : undefined;
+
+    if (exactMatch) {
+      this.selectPrimaryGuest(exactMatch);
+    }
   }
 
   onGuestPhoneSearch(value: string): void {
     this.guestPhoneSearch.set(value);
     this.resetSelectedGuest();
+
+    const normalizedPhone = value.replace(/\D/g, '');
+    const exactMatch = normalizedPhone.length >= 7
+      ? this.profiles().find(
+          profile => (profile.phoneNumber ?? '').replace(/\D/g, '') === normalizedPhone
+        )
+      : undefined;
+
+    if (exactMatch) {
+      this.selectPrimaryGuest(exactMatch);
+    }
   }
 
   onGuestEmailSearch(value: string): void {
     this.guestEmailSearch.set(value);
     this.resetSelectedGuest();
+
+    const normalizedEmail = value.trim().toLocaleLowerCase('uk-UA');
+    const exactMatch = normalizedEmail
+      ? this.profiles().find(
+          profile => (profile.email ?? '').trim().toLocaleLowerCase('uk-UA') === normalizedEmail
+        )
+      : undefined;
+
+    if (exactMatch) {
+      this.selectPrimaryGuest(exactMatch);
+    }
+  }
+
+  onAdditionalGuestSearch(value: string): void {
+    this.additionalGuestSearch.set(value);
+    const query = value.trim();
+
+    if (query.length < 3) {
+      return;
+    }
+
+    const normalizedName = this.normalizeName(query);
+    const normalizedPhone = query.replace(/\D/g, '');
+    const exactMatch = this.profiles().find(profile =>
+      this.normalizeName(this.getProfileFullName(profile)) === normalizedName ||
+      (
+        normalizedPhone.length >= 7 &&
+        (profile.phoneNumber ?? '').replace(/\D/g, '') === normalizedPhone
+      )
+    );
+
+    if (exactMatch) {
+      this.addAdditionalGuest(exactMatch);
+    }
   }
 
   private resetSelectedGuest(): void {
     this.selectedGuest.set(null);
     this.editPrimaryGuestId.set(0);
+  }
+
+  private normalizeName(value: string): string {
+    return value.trim().replace(/\s+/g, ' ').toLocaleLowerCase('uk-UA');
+  }
+
+  createPrimaryGuestProfile(): void {
+    if (!this.hasPrimaryGuestDraft()) {
+      return;
+    }
+
+    const name = this.guestSearch().trim().split(/\s+/).filter(Boolean);
+
+    this.createGuestProfile.emit({
+      target: 'primary',
+      lastName: name[0] ?? '',
+      firstName: name[1] ?? '',
+      middleName: name.slice(2).join(' '),
+      phoneNumber: this.guestPhoneSearch().trim(),
+      email: this.guestEmailSearch().trim()
+    });
+  }
+
+  createAdditionalGuestProfile(): void {
+    const query = this.additionalGuestSearch().trim();
+
+    if (query.length < 2) {
+      return;
+    }
+
+    const digits = query.replace(/\D/g, '');
+    const isPhone = digits.length >= 7 && digits.length / query.length > 0.5;
+    const name = isPhone ? [] : query.split(/\s+/).filter(Boolean);
+
+    this.createGuestProfile.emit({
+      target: 'additional',
+      lastName: name[0] ?? '',
+      firstName: name[1] ?? '',
+      middleName: name.slice(2).join(' '),
+      phoneNumber: isPhone ? query : '',
+      email: ''
+    });
   }
 
   selectPrimaryGuest(profile: ProfileResponse): void {

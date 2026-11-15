@@ -1,6 +1,10 @@
 import { Component, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
+import {
+  GuestProfileDraftIntent,
+  GuestProfileWorkflowService
+} from '../../core/services/guest-profile-workflow.service';
 
 import { ReservationTab } from './tabs/reservation-tab/reservation-tab';
 import { ProfilesTab } from './tabs/profiles-tab/profiles-tab';
@@ -34,10 +38,22 @@ type ReservationDetailsTab =
 })
 export class ReservationDetails {
   readonly router = inject(Router);
+  private readonly guestProfileWorkflow = inject(GuestProfileWorkflowService);
 
   readonly activeTab = signal<ReservationDetailsTab>('reservation');
 
   selectTab(tab: ReservationDetailsTab): void {
     this.activeTab.set(tab);
+  }
+
+  createGuestProfile(
+    intent: Omit<GuestProfileDraftIntent, 'requestId' | 'returnToReservation'>
+  ): void {
+    this.guestProfileWorkflow.start(intent);
+    this.activeTab.set('profiles');
+  }
+
+  returnToReservation(): void {
+    this.activeTab.set('reservation');
   }
 }

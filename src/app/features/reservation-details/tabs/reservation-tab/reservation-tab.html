@@ -439,13 +439,23 @@
       <section class="block">
         <h2>Додаткові гості</h2>
 
+        @if (hasPrimaryGuestDraft()) {
+          <button
+            class="secondary-button full-width"
+            type="button"
+            (click)="createPrimaryGuestProfile()"
+          >
+            Додати профайл основного гостя
+          </button>
+        }
+
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Знайти гостя</mat-label>
 
           <input
             matInput
             [value]="additionalGuestSearch()"
-            (input)="additionalGuestSearch.set($any($event.target).value)"
+            (input)="onAdditionalGuestSearch($any($event.target).value)"
             [matAutocomplete]="additionalGuestAutocomplete"
             placeholder="ПІБ або телефон"
           />
@@ -463,6 +473,19 @@
             }
           </mat-autocomplete>
         </mat-form-field>
+
+        @if (
+          additionalGuestSearch().trim().length >= 2 &&
+          !hasAdditionalGuestMatch()
+        ) {
+          <button
+            class="secondary-button full-width"
+            type="button"
+            (click)="createAdditionalGuestProfile()"
+          >
+            Додати профайл нового додаткового гостя
+          </button>
+        }
 
         <div class="additional-guests">
           @for (guestId of editGuestIds(); track guestId) {
