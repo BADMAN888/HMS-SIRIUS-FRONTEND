@@ -28,10 +28,12 @@ type ProfileField =
   | 'email'
   | 'gender'
   | 'dateOfBirth'
-  | 'placeOfBirth'
   | 'nationality'
   | 'address'
-  | 'registrationAddress';
+  | 'registrationAddress'
+  | 'comment'
+  | 'vip'
+  | 'inBlackList';
 
 interface ProfileForm {
   firstName: string;
@@ -41,10 +43,12 @@ interface ProfileForm {
   email: string;
   gender: Gender | null;
   dateOfBirth: string;
-  placeOfBirth: string;
   nationality: Nationality | null;
   address: string;
   registrationAddress: string;
+  comment: string;
+  vip: boolean;
+  inBlackList: boolean;
 }
 
 interface DocumentForm {
@@ -208,7 +212,7 @@ export class ProfilesTab implements OnInit {
     });
   }
 
-  updateProfileField(field: ProfileField, value: string): void {
+  updateProfileField(field: ProfileField, value: string | boolean): void {
     this.profileForm.update(form => {
       if (field === 'gender') {
         return {
@@ -224,9 +228,13 @@ export class ProfilesTab implements OnInit {
         };
       }
 
+      if (field === 'vip' || field === 'inBlackList') {
+        return { ...form, [field]: Boolean(value) };
+      }
+
       return {
         ...form,
-        [field]: value
+        [field]: value as string
       };
     });
   }
@@ -253,10 +261,12 @@ export class ProfilesTab implements OnInit {
       email: form.email.trim() || null,
       gender: form.gender,
       dateOfBirth: form.dateOfBirth || null,
-      placeOfBirth: form.placeOfBirth.trim() || null,
       nationality: form.nationality,
       address: form.address.trim() || null,
-      registrationAddress: form.registrationAddress.trim() || null
+      registrationAddress: form.registrationAddress.trim() || null,
+      comment: form.comment.trim() || null,
+      vip: form.vip,
+      inBlackList: form.inBlackList
     };
 
     this.savingProfile.set(true);
@@ -431,10 +441,12 @@ export class ProfilesTab implements OnInit {
       email: profile.email ?? '',
       gender: profile.gender ?? null,
       dateOfBirth: profile.dateOfBirth ?? '',
-      placeOfBirth: profile.placeOfBirth ?? '',
       nationality: profile.nationality ?? null,
       address: profile.address ?? '',
-      registrationAddress: profile.registrationAddress ?? ''
+      registrationAddress: profile.registrationAddress ?? '',
+      comment: profile.comment ?? '',
+      vip: profile.vip ?? false,
+      inBlackList: profile.inBlackList ?? false
     };
   }
 
@@ -447,10 +459,12 @@ export class ProfilesTab implements OnInit {
       email: '',
       gender: null,
       dateOfBirth: '',
-      placeOfBirth: '',
       nationality: null,
       address: '',
-      registrationAddress: ''
+      registrationAddress: '',
+      comment: '',
+      vip: false,
+      inBlackList: false
     };
   }
 

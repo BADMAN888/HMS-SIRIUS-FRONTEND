@@ -10,8 +10,10 @@ export interface ProfileRequest {
   email?: string | null;
   gender?: Gender | null;
   dateOfBirth?: string | null;
-  placeOfBirth?: string | null;
   nationality?: Nationality | null;
   address?: string | null;
   registrationAddress?: string | null;
+  comment?: string | null;
+  vip: boolean;
+  inBlackList: boolean;
 }

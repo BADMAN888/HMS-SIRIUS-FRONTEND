@@ -182,8 +182,9 @@
     font-weight: 600;
   }
 
-  input,
-  select {
+  input:not([type='checkbox']),
+  select,
+  textarea {
     width: 100%;
     min-width: 0;
     height: 40px;
@@ -209,6 +210,27 @@
 
   select {
     cursor: pointer;
+  }
+
+  textarea {
+    min-height: 80px;
+    padding: 10px 11px;
+    resize: vertical;
+  }
+}
+
+.profile-flag {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 40px;
+  color: #9bb1c8;
+  font-size: 12px;
+
+  input {
+    width: 16px;
+    height: 16px;
+    accent-color: #3987c5;
   }
 }
 

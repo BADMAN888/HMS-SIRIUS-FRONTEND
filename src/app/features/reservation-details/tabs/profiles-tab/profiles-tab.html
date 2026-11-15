@@ -109,14 +109,6 @@
               </div>
 
               <div class="form-field">
-                <label>Місце народження</label>
-                <input
-                  [ngModel]="profileForm().placeOfBirth"
-                  (ngModelChange)="updateProfileField('placeOfBirth', $event)"
-                />
-              </div>
-
-              <div class="form-field">
                 <label>Національність</label>
                 <select
                   [ngModel]="profileForm().nationality ?? ''"
@@ -165,6 +157,33 @@
                   (ngModelChange)="updateProfileField('registrationAddress', $event)"
                 />
               </div>
+
+              <div class="form-field full-width">
+                <label>Коментар</label>
+                <textarea
+                  rows="3"
+                  [ngModel]="profileForm().comment"
+                  (ngModelChange)="updateProfileField('comment', $event)"
+                ></textarea>
+              </div>
+
+              <label class="profile-flag">
+                <input
+                  type="checkbox"
+                  [ngModel]="profileForm().vip"
+                  (ngModelChange)="updateProfileField('vip', $event)"
+                />
+                VIP гість
+              </label>
+
+              <label class="profile-flag">
+                <input
+                  type="checkbox"
+                  [ngModel]="profileForm().inBlackList"
+                  (ngModelChange)="updateProfileField('inBlackList', $event)"
+                />
+                У чорному списку
+              </label>
             </div>
 
             <footer class="section-footer">
