@@ -405,7 +405,18 @@
         }
       </section>
 
-      @if (!isCreateMode()) {
+      @if (isCreateMode()) {
+        <section class="block">
+          <h2>Коментар</h2>
+          <textarea
+            class="text-input comment-input"
+            [value]="autoComment()"
+            (input)="autoComment.set($any($event.target).value)"
+            placeholder="Додайте коментар до бронювання..."
+            rows="4"
+          ></textarea>
+        </section>
+      } @else {
         <section class="block">
           <h2>Коментарі</h2>
 

@@ -17,7 +17,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatOptionModule } from '@angular/material/core';
 import { MatSelectModule } from '@angular/material/select';
-import { finalize, forkJoin } from 'rxjs';
+import { catchError, finalize, forkJoin, map, of, switchMap } from 'rxjs';
 
 import { ProfileService } from '../../../../core/services/profile.service';
 import {
@@ -39,6 +39,7 @@ import { ReservationRequest } from '../../../../core/models/reservation/reservat
 import { ReservationCommentResponse } from '../../../../core/models/reservation/reservation-comment-response.model';
 import { CompanyResponse } from '../../../../core/models/company-response.model';
 import { TaxStatus } from '../../../../core/models/enums/tax-status.enum';
+import { RoomStatus } from '../../../../core/models/enums/room-status.enum';
 
 @Component({
   selector: 'app-reservation-tab',
@@ -129,6 +130,9 @@ export class ReservationTab implements OnInit {
   readonly editAdults = signal(1);
   readonly editChildren = signal(0);
   readonly editTaxStatus = signal<TaxStatus>(TaxStatus.RESIDENT);
+  readonly autoComment = signal('');
+  private paymentCategoryAutoSelected = false;
+  private launchedFromGrid = false;
 
   readonly taxStatuses = TaxStatus;
 
@@ -151,6 +155,8 @@ export class ReservationTab implements OnInit {
       room =>
         room.categoryId === categoryId ||
         room.id === currentRoomId
+    ).sort(
+      (a, b) => Number(b.status === RoomStatus.AVAILABLE) - Number(a.status === RoomStatus.AVAILABLE)
     );
   });
 
@@ -560,6 +566,9 @@ export class ReservationTab implements OnInit {
         this.editOperatorCompanyId.set(null);
         this.editBookingSource.set('');
         this.editExternalBookingNumber.set('');
+        this.autoComment.set('');
+        this.paymentCategoryAutoSelected = false;
+        this.launchedFromGrid = false;
 
         this.selectedGuest.set(null);
         this.guestSearch.set('');
@@ -575,8 +584,12 @@ export class ReservationTab implements OnInit {
         const roomId = Number(query.get('roomId'));
         const room = this.rooms().find(item => item.id === roomId);
         if (room) {
+          this.launchedFromGrid = true;
           this.editRoomId.set(room.id);
           this.editRoomCategoryId.set(room.categoryId ?? 0);
+          this.editPaymentCategoryId.set(room.categoryId ?? 0);
+          this.paymentCategoryAutoSelected = true;
+          this.selectFirstRate(room.categoryId ?? 0);
         }
         const checkIn = query.get('checkIn');
         const checkOut = query.get('checkOut');
@@ -800,8 +813,25 @@ export class ReservationTab implements OnInit {
     }
 
     this.editRoomCategoryId.set(categoryId);
-    this.editRoomId.set(0);
+    if (this.launchedFromGrid || !this.paymentCategoryAutoSelected) {
+      this.editPaymentCategoryId.set(categoryId);
+      this.paymentCategoryAutoSelected = true;
+    }
+    const room = this.rooms()
+      .filter(item => item.categoryId === categoryId)
+      .sort(
+        (a, b) => Number(b.status === RoomStatus.AVAILABLE) - Number(a.status === RoomStatus.AVAILABLE)
+      )[0];
+    this.editRoomId.set(room?.id ?? 0);
+    this.selectFirstRate(this.editPaymentCategoryId());
     this.saveError.set('');
+  }
+
+  private selectFirstRate(categoryId: number): void {
+    const firstRate = this.rates().find(
+      rate => rate.categoryId === categoryId && rate.active
+    );
+    this.editRateId.set(firstRate?.id ?? 0);
   }
 
   onPaymentCategoryChange(categoryId: number): void {
@@ -881,7 +911,19 @@ export class ReservationTab implements OnInit {
       return;
     }
 
-    const checkInTime = new Date(this.editCheckIn()).getTime();
+    let checkIn = this.editCheckIn();
+    const now = new Date();
+    const today = this.formatIsoDate(now);
+    if (
+      this.isCreateMode() &&
+      checkIn.slice(0, 10) === today &&
+      new Date(checkIn).getTime() < now.getTime()
+    ) {
+      const adjustedCheckIn = new Date(now.getTime() + 2 * 60 * 1000);
+      checkIn = `${this.formatIsoDate(adjustedCheckIn)}T${String(adjustedCheckIn.getHours()).padStart(2, '0')}:${String(adjustedCheckIn.getMinutes()).padStart(2, '0')}:${String(adjustedCheckIn.getSeconds()).padStart(2, '0')}`;
+      this.editCheckIn.set(checkIn.slice(0, 16));
+    }
+    const checkInTime = new Date(checkIn).getTime();
     const checkOutTime = new Date(this.editCheckOut()).getTime();
 
     if (
@@ -908,7 +950,7 @@ export class ReservationTab implements OnInit {
       paymentCategoryId: this.editPaymentCategoryId(),
       primaryGuestId: this.editPrimaryGuestId(),
       guestIds,
-      checkIn: this.toLocalDateTime(this.editCheckIn()),
+      checkIn: this.toLocalDateTime(checkIn),
       checkOut: this.toLocalDateTime(this.editCheckOut()),
       adults: this.editAdults(),
       children: this.editChildren(),
@@ -925,9 +967,26 @@ export class ReservationTab implements OnInit {
       : this.reservationService.update(reservation!.id, request);
 
     saveRequest.pipe(
+      switchMap(savedReservation => {
+        const comment = this.autoComment().trim();
+        if (this.isCreateMode() && comment) {
+          return this.reservationService.createComment(
+            savedReservation.id,
+            { text: comment }
+          ).pipe(
+            map(() => savedReservation),
+            catchError(error => {
+              this.saveError.set(error?.error?.message || 'Бронювання створене, але коментар не вдалося зберегти.');
+              return of(savedReservation);
+            })
+          );
+        }
+        return of(savedReservation);
+      }),
       finalize(() => this.saving.set(false))
     ).subscribe({
       next: savedReservation => {
+        this.autoComment.set('');
         this.reservation.set(savedReservation);
         this.isCreateMode.set(false);
         this.isCopyMode.set(false);
