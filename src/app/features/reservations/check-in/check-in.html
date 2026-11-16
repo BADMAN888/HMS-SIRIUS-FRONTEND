@@ -150,26 +150,7 @@
                 </span>
               </td>
 
-              <td class="actions">
-                <button
-                  type="button"
-                  class="check-in-button"
-                  [disabled]="
-                    checkingInId() !== null ||
-                    (reservation.status !== 'RESERVED' &&
-                     reservation.status !== 'CONFIRMED')
-                  "
-                  (click)="$event.stopPropagation(); checkIn(reservation)"
-                >
-                  @if (checkingInId() === reservation.id) {
-                    Реєстрація…
-                  } @else if (reservation.status === 'IN_HOUSE') {
-                    Уже заселений
-                  } @else {
-                    Зареєструвати заїзд
-                  }
-                </button>
-              </td>
+              <td class="actions"></td>
             </tr>
           }
         </tbody>

@@ -25,7 +25,6 @@ export class CheckIn implements OnInit {
   readonly loading = signal(false);
   readonly error = signal('');
   readonly rooms = signal<RoomResponse[]>([]);
-  readonly checkingInId = signal<number | null>(null);
 
   readonly pendingCheckIns = computed(() =>
     this.reservations().filter(
@@ -81,31 +80,6 @@ export class CheckIn implements OnInit {
             error?.error?.message ||
             error?.message ||
             `Не вдалося завантажити список заїздів. Код відповіді: ${error?.status || 'невідомий'}`
-          );
-        }
-      });
-  }
-
-  checkIn(reservation: ReservationCheckInResponse): void {
-    if (this.checkingInId() !== null) {
-      return;
-    }
-
-    this.checkingInId.set(reservation.id);
-    this.error.set('');
-
-    this.reservationService
-      .checkIn(reservation.id)
-      .pipe(
-        finalize(() => this.checkingInId.set(null))
-      )
-      .subscribe({
-        next: () => this.loadCheckIns(),
-        error: error => {
-          this.error.set(
-            error?.error?.message ||
-            error?.message ||
-            `Не вдалося зареєструвати заїзд. Код відповіді: ${error?.status || 'невідомий'}`
           );
         }
       });

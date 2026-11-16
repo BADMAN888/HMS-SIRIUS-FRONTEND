@@ -298,8 +298,9 @@
         <label class="field-label">Статус туристичного збору</label>
         <select
           class="text-input"
-          [value]="editTaxStatus()"
-          (change)="editTaxStatus.set($any($event.target).value)"
+          [ngModel]="editTaxStatus()"
+          [ngModelOptions]="{ standalone: true }"
+          (ngModelChange)="editTaxStatus.set($event)"
         >
           <option [value]="taxStatuses.RESIDENT">Резидент</option>
           <option [value]="taxStatuses.NON_RESIDENT">Нерезидент</option>
@@ -575,6 +576,17 @@
         </button>
 
         @if (!isCreateMode()) {
+          @if (canCheckIn()) {
+            <button
+              class="primary-button"
+              type="button"
+              [disabled]="actionBusy()"
+              (click)="checkInReservation()"
+            >
+              Зареєструвати заїзд
+            </button>
+          }
+
           <button
             class="secondary-button"
             type="button"
@@ -593,14 +605,16 @@
             Скасувати бронювання
           </button>
 
-          <button
-            class="secondary-button"
-            type="button"
-            [disabled]="actionBusy()"
-            (click)="markNoShow()"
-          >
-            No-show
-          </button>
+          @if (canMarkNoShow()) {
+            <button
+              class="secondary-button"
+              type="button"
+              [disabled]="actionBusy()"
+              (click)="markNoShow()"
+            >
+              No-show
+            </button>
+          }
         }
 
         <button

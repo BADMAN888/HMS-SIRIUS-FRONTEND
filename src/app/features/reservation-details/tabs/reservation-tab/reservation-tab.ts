@@ -40,6 +40,7 @@ import { ReservationCommentResponse } from '../../../../core/models/reservation/
 import { CompanyResponse } from '../../../../core/models/company-response.model';
 import { TaxStatus } from '../../../../core/models/enums/tax-status.enum';
 import { RoomStatus } from '../../../../core/models/enums/room-status.enum';
+import { ReservationStatus } from '../../../../core/models/enums/reservation-status.enum';
 
 @Component({
   selector: 'app-reservation-tab',
@@ -556,8 +557,11 @@ export class ReservationTab implements OnInit {
         this.editPrimaryGuestId.set(0);
         this.editGuestIds.set([]);
 
-        this.editCheckIn.set('');
-        this.editCheckOut.set('');
+        const today = new Date();
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        this.editCheckIn.set(`${this.formatIsoDate(today)}T14:00`);
+        this.editCheckOut.set(`${this.formatIsoDate(tomorrow)}T12:00`);
         this.editAdults.set(1);
         this.editChildren.set(0);
         this.editTaxStatus.set(TaxStatus.RESIDENT);
@@ -1026,6 +1030,55 @@ export class ReservationTab implements OnInit {
 
   markNoShow(): void {
     this.runLifecycleAction('no-show');
+  }
+
+  canCheckIn(): boolean {
+    const reservation = this.reservation();
+    return !!reservation &&
+      this.isToday(reservation.checkIn) &&
+      (reservation.status === ReservationStatus.RESERVED ||
+        reservation.status === ReservationStatus.CONFIRMED);
+  }
+
+  canMarkNoShow(): boolean {
+    const reservation = this.reservation();
+    return !!reservation &&
+      this.isBeforeToday(reservation.checkIn) &&
+      (reservation.status === ReservationStatus.RESERVED ||
+        reservation.status === ReservationStatus.CONFIRMED);
+  }
+
+  checkInReservation(): void {
+    const reservation = this.reservation();
+    if (!reservation || !this.canCheckIn() || this.actionBusy()) return;
+
+    this.actionBusy.set(true);
+    this.saveError.set('');
+    this.reservationService.checkIn(reservation.id).pipe(
+      finalize(() => this.actionBusy.set(false))
+    ).subscribe({
+      next: () => this.loadDataAndReservation(reservation.id),
+      error: error => this.saveError.set(
+        error?.error?.message || error?.message ||
+        `Не вдалося зареєструвати заїзд. HTTP ${error?.status || ''}`
+      )
+    });
+  }
+
+  private isToday(value: string): boolean {
+    return this.toLocalDateKey(value) === this.toLocalDateKey(new Date().toISOString());
+  }
+
+  private isBeforeToday(value: string): boolean {
+    return this.toLocalDateKey(value) < this.toLocalDateKey(new Date().toISOString());
+  }
+
+  private toLocalDateKey(value: string): string {
+    const date = new Date(value);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 
   private runLifecycleAction(action: 'cancel' | 'no-show'): void {
