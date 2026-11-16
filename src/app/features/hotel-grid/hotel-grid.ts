@@ -153,7 +153,9 @@ export class HotelGrid implements OnInit {
   getReservationsForRoom(
     room: HotelGridRoomResponse
   ): HotelGridReservationResponse[] {
-    return room.reservations ?? [];
+    return (room.reservations ?? []).filter(reservation =>
+      reservation.status !== 'CANCELLED' && reservation.status !== 'NO_SHOW'
+    );
   }
 
   startCellSelection(event: PointerEvent, room: HotelGridRoomResponse, dayIndex: number): void {

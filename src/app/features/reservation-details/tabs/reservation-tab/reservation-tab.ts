@@ -941,18 +941,7 @@ export class ReservationTab implements OnInit {
       return;
     }
 
-    let checkIn = this.editCheckIn();
-    const now = new Date();
-    const today = this.formatIsoDate(now);
-    if (
-      this.isCreateMode() &&
-      checkIn.slice(0, 10) === today &&
-      new Date(checkIn).getTime() < now.getTime()
-    ) {
-      const adjustedCheckIn = new Date(now.getTime() + 2 * 60 * 1000);
-      checkIn = `${this.formatIsoDate(adjustedCheckIn)}T${String(adjustedCheckIn.getHours()).padStart(2, '0')}:${String(adjustedCheckIn.getMinutes()).padStart(2, '0')}:${String(adjustedCheckIn.getSeconds()).padStart(2, '0')}`;
-      this.editCheckIn.set(checkIn.slice(0, 16));
-    }
+    const checkIn = this.editCheckIn();
     const checkInTime = new Date(checkIn).getTime();
     const checkOutTime = new Date(this.editCheckOut()).getTime();
 

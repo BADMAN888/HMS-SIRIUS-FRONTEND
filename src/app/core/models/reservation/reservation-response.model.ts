@@ -17,6 +17,7 @@ export interface ReservationResponse {
   roomLocked: boolean;
   guestIds: number[];
   checkIn: string;
+  actualCheckIn: string | null;
   checkOut: string;
   adults: number;
   children: number;
