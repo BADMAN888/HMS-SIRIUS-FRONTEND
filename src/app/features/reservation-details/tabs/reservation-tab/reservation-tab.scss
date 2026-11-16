@@ -121,6 +121,34 @@ $color-tab-active: #3b9bea;
   }
 }
 
+.room-selection-control {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+
+  .text-input { flex: 1; }
+}
+
+.room-lock-button {
+  flex: 0 0 44px;
+  border: 1px solid $color-border-input;
+  border-radius: 7px;
+  background: $color-button-secondary-bg;
+  color: $color-text-button;
+  font-size: 18px;
+  cursor: pointer;
+
+  &:hover, &:focus-visible {
+    border-color: $color-border-focus;
+    outline: none;
+  }
+
+  &.locked {
+    border-color: $color-border-primary;
+    background: $color-button-primary-bg;
+  }
+}
+
 .stay-period-input {
   display: flex;
   align-items: center;

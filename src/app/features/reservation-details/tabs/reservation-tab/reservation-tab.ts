@@ -77,6 +77,7 @@ export class ReservationTab implements OnInit {
 
   readonly profiles = signal<ProfileResponse[]>([]);
   readonly rooms = signal<RoomResponse[]>([]);
+  readonly allReservations = signal<ReservationResponse[]>([]);
   readonly rates = signal<RateResponse[]>([]);
   readonly roomCategories = signal<RoomCategoryResponse[]>([]);
   readonly companies = signal<CompanyResponse[]>([]);
@@ -101,6 +102,7 @@ export class ReservationTab implements OnInit {
   readonly editRoomCategoryId = signal(0);
   readonly editPaymentCategoryId = signal(0);
   readonly editRoomId = signal(0);
+  readonly editRoomLocked = signal(false);
   readonly editRateId = signal(0);
   readonly editPrimaryGuestId = signal(0);
   readonly editGuestIds = signal<number[]>([]);
@@ -147,16 +149,26 @@ export class ReservationTab implements OnInit {
   readonly filteredRooms = computed(() => {
     const categoryId = this.editRoomCategoryId();
     const currentRoomId = this.editRoomId();
+    const checkIn = this.editCheckIn();
+    const checkOut = this.editCheckOut();
+    return this.rooms().filter(room => {
+      if (room.id === currentRoomId) return true;
+      if ((categoryId && room.categoryId !== categoryId) || room.status !== RoomStatus.AVAILABLE) return false;
+      if (!checkIn || !checkOut) return true;
 
-    if (!categoryId) {
-      return this.rooms();
-    }
+      const overlaps = this.allReservations().filter(reservation =>
+        reservation.room.id === room.id &&
+        reservation.id !== this.reservation()?.id &&
+        this.isActiveReservation(reservation) &&
+        reservation.checkIn < checkOut && reservation.checkOut > checkIn
+      );
 
-    return this.rooms().filter(
-      room =>
-        room.categoryId === categoryId ||
-        room.id === currentRoomId
-    ).sort(
+      return overlaps.every(reservation =>
+        !reservation.roomLocked &&
+        (reservation.status === ReservationStatus.RESERVED ||
+          reservation.status === ReservationStatus.CONFIRMED)
+      );
+    }).sort(
       (a, b) => Number(b.status === RoomStatus.AVAILABLE) - Number(a.status === RoomStatus.AVAILABLE)
     );
   });
@@ -241,7 +253,9 @@ export class ReservationTab implements OnInit {
     this.editPrimaryGuestId.set(event.primaryGuestId ?? 0);
     this.editGuestIds.set(event.guestIds.filter(id => id !== event.primaryGuestId));
 
-    const primaryGuest = this.getProfileById(event.primaryGuestId);
+    const primaryGuest = event.primaryGuestId === null
+      ? undefined
+      : this.getProfileById(event.primaryGuestId);
     if (primaryGuest) {
       this.selectPrimaryGuest(primaryGuest);
     }
@@ -533,7 +547,8 @@ export class ReservationTab implements OnInit {
       rates: this.rateService.getAll(),
       roomCategories: this.roomCategoryService.getAll(),
       companies: this.companyService.getAll(),
-      rooms: this.roomService.getAll()
+      rooms: this.roomService.getAll(),
+      reservations: this.reservationService.getAll()
     }).pipe(
       finalize(() => {
         this.loading.set(false);
@@ -546,6 +561,7 @@ export class ReservationTab implements OnInit {
         this.roomCategories.set(data.roomCategories);
         this.companies.set(data.companies.filter(company => company.active));
         this.rooms.set(data.rooms);
+        this.allReservations.set(data.reservations);
 
         this.reservation.set(null);
         this.comments.set([]);
@@ -553,6 +569,7 @@ export class ReservationTab implements OnInit {
         this.editRoomCategoryId.set(0);
         this.editPaymentCategoryId.set(0);
         this.editRoomId.set(0);
+        this.editRoomLocked.set(false);
         this.editRateId.set(0);
         this.editPrimaryGuestId.set(0);
         this.editGuestIds.set([]);
@@ -623,7 +640,8 @@ export class ReservationTab implements OnInit {
       rates: this.rateService.getAll(),
       roomCategories: this.roomCategoryService.getAll(),
       companies: this.companyService.getAll(),
-      allRooms: this.roomService.getAll()
+      allRooms: this.roomService.getAll(),
+      reservations: this.reservationService.getAll()
     }).pipe(
       finalize(() => {
         this.loading.set(false);
@@ -636,6 +654,7 @@ export class ReservationTab implements OnInit {
         this.roomCategories.set(data.roomCategories);
         this.companies.set(data.companies.filter(company => company.active));
         this.rooms.set(data.allRooms);
+        this.allReservations.set(data.reservations);
 
         this.reservation.set(data.reservation);
         this.initializeForm(data.reservation);
@@ -666,6 +685,7 @@ export class ReservationTab implements OnInit {
       0;
 
     this.editRoomId.set(roomId);
+    this.editRoomLocked.set(this.isCopyMode() ? false : reservation.roomLocked);
 
     if (roomCategoryId) {
       this.editRoomCategoryId.set(roomCategoryId);
@@ -855,6 +875,16 @@ export class ReservationTab implements OnInit {
     }
   }
 
+  toggleRoomLock(): void {
+    this.editRoomLocked.update(locked => !locked);
+  }
+
+  private isActiveReservation(reservation: ReservationResponse): boolean {
+    return reservation.status !== ReservationStatus.CANCELLED &&
+      reservation.status !== ReservationStatus.COMPLETED &&
+      reservation.status !== ReservationStatus.NO_SHOW;
+  }
+
   save(): void {
     const reservation = this.reservation();
 
@@ -949,6 +979,7 @@ export class ReservationTab implements OnInit {
       rateId: this.editRateId(),
       paymentCategoryId: this.editPaymentCategoryId(),
       primaryGuestId: this.editPrimaryGuestId() || null,
+      roomLocked: this.editRoomLocked(),
       guestIds,
       checkIn: this.toLocalDateTime(checkIn),
       checkOut: this.toLocalDateTime(this.editCheckOut()),

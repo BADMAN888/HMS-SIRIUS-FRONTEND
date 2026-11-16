@@ -7,7 +7,8 @@ export interface HotelGridReservationResponse {
   checkIn: string;
   checkOut: string;
   status: ReservationStatus;
-  guestFirstName: string;
-  guestLastName: string;
-  guestPhone: string;
+  roomLocked: boolean;
+  guestFirstName: string | null;
+  guestLastName: string | null;
+  guestPhone: string | null;
 }

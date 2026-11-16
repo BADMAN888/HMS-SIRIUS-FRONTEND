@@ -14,6 +14,7 @@ export interface ReservationResponse {
   paymentCategoryId: number;
   paymentCategoryName: string;
   primaryGuest: ProfileResponse | null;
+  roomLocked: boolean;
   guestIds: number[];
   checkIn: string;
   checkOut: string;

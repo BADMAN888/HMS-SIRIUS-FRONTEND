@@ -170,6 +170,7 @@ export class HotelGrid implements OnInit {
   }
 
   startReservationMove(event: PointerEvent, reservation: HotelGridReservationResponse, room: HotelGridRoomResponse): void {
+    if (reservation.roomLocked) return;
     if (event.button !== 0) return;
     event.preventDefault();
     event.stopPropagation();
@@ -269,6 +270,7 @@ export class HotelGrid implements OnInit {
       rateId: details.rate.id,
       paymentCategoryId: details.paymentCategoryId,
       primaryGuestId: details.primaryGuest?.id ?? null,
+      roomLocked: details.roomLocked,
       guestIds: Array.from(new Set([
         ...(details.guestIds ?? []),
         ...(details.primaryGuest ? [details.primaryGuest.id] : [])

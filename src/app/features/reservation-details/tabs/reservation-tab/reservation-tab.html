@@ -260,22 +260,37 @@
         </select>
 
         <label class="field-label">Номер кімнати</label>
-        <select
-          class="text-input"
-          [ngModel]="editRoomId()"
-          [ngModelOptions]="{ standalone: true }"
-          (ngModelChange)="onRoomChange(+$event)"
-        >
-          <option [ngValue]="0" disabled>
-            Оберіть номер кімнати
-          </option>
-
-          @for (room of filteredRooms(); track room.id) {
-            <option [ngValue]="room.id">
-              {{ room.roomNumber }}
+        <div class="room-selection-control">
+          <select
+            class="text-input"
+            [ngModel]="editRoomId()"
+            [ngModelOptions]="{ standalone: true }"
+            [disabled]="editRoomLocked()"
+            (ngModelChange)="onRoomChange(+$event)"
+          >
+            <option [ngValue]="0" disabled>
+              Оберіть номер кімнати
             </option>
-          }
-        </select>
+
+            @for (room of filteredRooms(); track room.id) {
+              <option [ngValue]="room.id">
+                {{ room.roomNumber }}
+              </option>
+            }
+          </select>
+          <button
+            class="room-lock-button"
+            type="button"
+            [class.locked]="editRoomLocked()"
+            [disabled]="saving() || loadingEditData()"
+            [attr.aria-pressed]="editRoomLocked()"
+            [attr.aria-label]="editRoomLocked() ? 'Відкріпити номер від бронювання' : 'Закріпити номер за бронюванням'"
+            [title]="editRoomLocked() ? 'Відкріпити номер' : 'Закріпити номер'"
+            (click)="toggleRoomLock()"
+          >
+            {{ editRoomLocked() ? '🔒' : '🔓' }}
+          </button>
+        </div>
 
         <label class="field-label">Тариф</label>
         <select

@@ -309,6 +309,10 @@
   transition: transform 0.12s ease, filter 0.12s ease, box-shadow 0.12s ease;
 }
 
+.reservation.room-locked {
+  box-shadow: inset 0 0 0 2px #f5c96a, 0 3px 8px rgba(0, 0, 0, 0.25);
+}
+
 .reservation:active { cursor: grabbing; }
 
 .reservation:hover {
@@ -350,6 +354,7 @@
 }
 
 .reservation-content {
+  position: relative;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -357,6 +362,15 @@
   padding: 4px 6px;
   box-sizing: border-box;
   overflow: hidden;
+}
+
+.reservation-lock {
+  position: absolute;
+  top: 3px;
+  right: 5px;
+  z-index: 1;
+  font-size: 11px;
+  line-height: 1;
 }
 
 .reservation-guest {
