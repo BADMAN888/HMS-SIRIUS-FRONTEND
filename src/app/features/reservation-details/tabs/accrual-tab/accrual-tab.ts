@@ -9,6 +9,8 @@ import { FacilityResponse } from '../../../../core/models/billing/facility-respo
 import { FolioResponse } from '../../../../core/models/billing/folio-response.model';
 import { PaymentRequest } from '../../../../core/models/billing/payment-request.model';
 import { PaymentResponse } from '../../../../core/models/billing/payment-response.model';
+import { FolioRequest } from '../../../../core/models/billing/folio-request.model';
+import { FolioReopenRequest } from '../../../../core/models/billing/folio-reopen-request.model';
 import { FacilityType } from '../../../../core/models/enums/facility-type.enum';
 import { FolioStatus } from '../../../../core/models/enums/folio-status.enum';
 import { PaymentMethod } from '../../../../core/models/enums/payment-method.enum';
@@ -20,6 +22,7 @@ import { FolioService } from '../../../../core/services/folio.service';
 import { PaymentService } from '../../../../core/services/payment.service';
 import { ReservationService } from '../../../../core/services/reservation.service';
 import {FacilityService} from '../../../../core/services/ facility.service';
+import { catchError, forkJoin, of } from 'rxjs';
 
 @Component({
   selector: 'app-accrual-tab',
@@ -55,7 +58,11 @@ export class AccrualTab implements OnInit {
   readonly facilityPrice = signal<number | null>(null);
 
   readonly folios = signal<FolioResponse[]>([]);
+  readonly unassignedAccruals = signal<AccrualResponse[]>([]);
+  readonly unassignedError = signal('');
   readonly selectedFolioId = signal<number | null>(null);
+  readonly selectedAccrualIds = signal<number[]>([]);
+  readonly folioFormOpen = signal(false);
 
   readonly openFolios = computed(() =>
     this.folios().filter(folio => folio.status === FolioStatus.OPEN)
@@ -77,6 +84,15 @@ export class AccrualTab implements OnInit {
     ) ?? null
   );
 
+  readonly selectedAccruals = computed(() => {
+    const selectedIds = new Set(this.selectedAccrualIds());
+    return this.unassignedAccruals().filter(accrual => selectedIds.has(accrual.id));
+  });
+
+  readonly selectedAccrualTotal = computed(() =>
+    this.selectedAccruals().reduce((total, accrual) => total + Number(accrual.amount), 0)
+  );
+
   readonly estimatedTotal = computed(() => {
     const price = this.facilityPrice();
     const quantity = this.quantity;
@@ -89,8 +105,10 @@ export class AccrualTab implements OnInit {
   });
 
   readonly accruals = computed(() =>
-    this.folios()
-      .flatMap(folio => folio.accruals ?? [])
+    [
+      ...this.folios().flatMap(folio => folio.accruals ?? []),
+      ...this.unassignedAccruals()
+    ]
       .sort(
         (a, b) =>
           new Date(b.accruedAt).getTime() -
@@ -110,8 +128,9 @@ export class AccrualTab implements OnInit {
 
   readonly totalAmount = computed(() =>
     this.folios().reduce(
-      (total, folio) => total + Number(folio.totalAmount ?? 0),
-      0
+      (total, folio) => total + Number(folio.totalAmount ?? 0), 0
+    ) + this.unassignedAccruals().reduce(
+      (total, accrual) => total + Number(accrual.amount ?? 0), 0
     )
   );
 
@@ -143,6 +162,8 @@ export class AccrualTab implements OnInit {
   paymentMethod: PaymentMethod = PaymentMethod.CASH;
   paymentAmount: number | null = null;
   paymentDescription = '';
+  recipientId: number | null = null;
+  payerId: number | null = null;
 
   ngOnInit(): void {
     this.route.paramMap.subscribe(params => {
@@ -221,9 +242,19 @@ export class AccrualTab implements OnInit {
   }
 
   private loadFolios(reservationId: number): void {
-    this.folioService.getByReservationId(reservationId).subscribe({
-      next: folios => {
-        this.setFolioData(folios ?? []);
+    this.unassignedError.set('');
+    forkJoin({
+      folios: this.folioService.getByReservationId(reservationId),
+      unassigned: this.accrualService
+        .getUnassignedByReservationId(reservationId)
+        .pipe(catchError(() => {
+          this.unassignedError.set('Не вдалося завантажити нарахування, ще не прив’язані до рахунку.');
+          return of([] as AccrualResponse[]);
+        }))
+    }).subscribe({
+      next: data => {
+        this.setFolioData(data.folios ?? []);
+        this.unassignedAccruals.set(data.unassigned ?? []);
         this.loading.set(false);
       },
       error: () => {
@@ -298,6 +329,154 @@ export class AccrualTab implements OnInit {
     this.selectedFolioId.set(Number(folioId));
     this.error.set('');
     this.success.set('');
+  }
+
+  isAccrualSelected(id: number): boolean {
+    return this.selectedAccrualIds().includes(id);
+  }
+
+  toggleAccrualSelection(id: number, event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    this.selectedAccrualIds.update(ids => checked
+      ? Array.from(new Set([...ids, id]))
+      : ids.filter(selectedId => selectedId !== id));
+  }
+
+  openFolioForm(): void {
+    if (this.selectedAccrualIds().length === 0) return;
+    this.recipientId = null;
+    this.payerId = null;
+    this.folioFormOpen.set(true);
+  }
+
+  closeFolioForm(): void {
+    if (!this.saving()) this.folioFormOpen.set(false);
+  }
+
+  createFolioWithSelectedAccruals(): void {
+    const hotelId = this.hotelId();
+    const reservationId = this.reservationId();
+    const accrualIds = this.selectedAccruals().map(accrual => accrual.id);
+    if (!hotelId || !reservationId || accrualIds.length === 0 || this.saving()) return;
+
+    if ([this.recipientId, this.payerId].some(id =>
+      id !== null && (!Number.isInteger(id) || id <= 0)
+    )) {
+      this.error.set('ID одержувача й платника мають бути цілими додатними числами.');
+      return;
+    }
+
+    const request: FolioRequest = {
+      hotelId,
+      reservationId,
+      recipientId: this.recipientId,
+      payerId: this.payerId
+    };
+
+    this.saving.set(true);
+    this.error.set('');
+    this.success.set('');
+    this.folioService.create(request).subscribe({
+      next: folio => this.folioService.attachAccruals(folio.id, accrualIds).subscribe({
+        next: () => this.folioService.getById(folio.id).subscribe({
+          next: createdFolio => {
+            this.folioFormOpen.set(false);
+            this.selectedAccrualIds.set([]);
+            this.setFolioData([...this.folios(), createdFolio]);
+            this.success.set(`Створено рахунок №${createdFolio.id} та додано вибрані нарахування.`);
+            this.refreshFolios();
+          },
+          error: () => {
+            this.folioFormOpen.set(false);
+            this.selectedAccrualIds.set([]);
+            this.success.set(`Рахунок №${folio.id} створено й нарахування прив’язано.`);
+            this.refreshFolios();
+          }
+        }),
+        error: () => {
+          this.saving.set(false);
+          this.error.set(`Рахунок №${folio.id} створено, але вибрані нарахування не вдалося прив’язати. Їх можна вибрати й прив’язати пізніше.`);
+          this.refreshFolios();
+        }
+      }),
+      error: () => {
+        this.saving.set(false);
+        this.error.set('Не вдалося створити рахунок. Перевір дані й повтори спробу.');
+      }
+    });
+  }
+
+  attachSelectedAccrualsToFolio(): void {
+    const folio = this.selectedFolio();
+    const accrualIds = this.selectedAccruals().map(accrual => accrual.id);
+    if (!folio || accrualIds.length === 0 || this.saving()) return;
+
+    this.saving.set(true);
+    this.error.set('');
+    this.success.set('');
+    this.folioService.attachAccruals(folio.id, accrualIds).subscribe({
+      next: () => {
+        this.selectedAccrualIds.set([]);
+        this.success.set(`Вибрані нарахування додано до рахунку №${folio.id}.`);
+        this.refreshFolios();
+      },
+      error: error => {
+        this.saving.set(false);
+        this.error.set(error?.error?.message || 'Не вдалося додати вибрані нарахування до рахунку.');
+      }
+    });
+  }
+
+  closeFolio(folio: FolioResponse): void {
+    if (this.saving() || !window.confirm(`Закрити рахунок №${folio.id}?`)) return;
+    this.saving.set(true);
+    this.error.set('');
+    this.folioService.close(folio.id).subscribe({
+      next: () => {
+        this.success.set(`Рахунок №${folio.id} закрито.`);
+        this.refreshFolios();
+      },
+      error: error => {
+        this.saving.set(false);
+        this.error.set(error?.error?.message || 'Не вдалося закрити рахунок. Спочатку перевір його баланс.');
+      }
+    });
+  }
+
+  reopenFolio(folio: FolioResponse): void {
+    if (this.saving()) return;
+    const reason = window.prompt(`Вкажи причину повторного відкриття рахунку №${folio.id}:`);
+    if (!reason?.trim()) return;
+    const request: FolioReopenRequest = { reason: reason.trim() };
+    this.saving.set(true);
+    this.error.set('');
+    this.folioService.reopen(folio.id, request).subscribe({
+      next: () => {
+        this.success.set(`Рахунок №${folio.id} повторно відкрито.`);
+        this.refreshFolios();
+      },
+      error: error => {
+        this.saving.set(false);
+        this.error.set(error?.error?.message || 'Не вдалося повторно відкрити рахунок.');
+      }
+    });
+  }
+
+  deleteFolio(folio: FolioResponse): void {
+    if (this.saving() || folio.accruals.length > 0 || folio.payments.length > 0) return;
+    if (!window.confirm(`Видалити порожній рахунок №${folio.id}?`)) return;
+    this.saving.set(true);
+    this.error.set('');
+    this.folioService.delete(folio.id).subscribe({
+      next: () => {
+        this.success.set(`Рахунок №${folio.id} видалено.`);
+        this.refreshFolios();
+      },
+      error: error => {
+        this.saving.set(false);
+        this.error.set(error?.error?.message || 'Не вдалося видалити рахунок.');
+      }
+    });
   }
 
   addAccrual(): void {
@@ -451,9 +630,18 @@ export class AccrualTab implements OnInit {
       return;
     }
 
-    this.folioService.getByReservationId(reservationId).subscribe({
-      next: folios => {
-        this.setFolioData(folios ?? []);
+    forkJoin({
+      folios: this.folioService.getByReservationId(reservationId),
+      unassigned: this.accrualService
+        .getUnassignedByReservationId(reservationId)
+        .pipe(catchError(() => {
+          this.unassignedError.set('Не вдалося оновити нарахування, ще не прив’язані до рахунку.');
+          return of([] as AccrualResponse[]);
+        }))
+    }).subscribe({
+      next: data => {
+        this.setFolioData(data.folios ?? []);
+        this.unassignedAccruals.set(data.unassigned ?? []);
         this.saving.set(false);
       },
       error: () => {

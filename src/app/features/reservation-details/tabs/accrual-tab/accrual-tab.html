@@ -105,7 +105,7 @@
         <div class="panel-heading">
           <div>
             <h2>Нарахування</h2>
-            <p>Послуги та витрати за всіма рахунками бронювання</p>
+            <p>Нарахування за рахунками та ще не прив’язані до рахунку</p>
           </div>
           <span class="count-badge">{{ accruals().length }}</span>
         </div>
@@ -114,6 +114,7 @@
           <table class="accrual-table">
             <thead>
             <tr>
+              <th>Вибір</th>
               <th>Найменування</th>
               <th>Рахунок</th>
               <th>Дата послуги</th>
@@ -126,6 +127,15 @@
             <tbody>
               @for (accrual of accruals(); track trackAccrual($index, accrual)) {
                 <tr>
+                  <td class="accrual-select-cell">
+                    <input
+                      type="checkbox"
+                      [checked]="isAccrualSelected(accrual.id)"
+                      [disabled]="saving() || !!accrual.folioId || accrual.reversed"
+                      [attr.aria-label]="'Вибрати нарахування: ' + accrual.name"
+                      (change)="toggleAccrualSelection(accrual.id, $event)"
+                    />
+                  </td>
                   <td>
                     <div class="accrual-name">
                       <span class="type-indicator"></span>
@@ -137,7 +147,13 @@
                       </div>
                     </div>
                   </td>
-                  <td>№{{ accrual.folioId }}</td>
+                  <td>
+                    @if (accrual.folioId) {
+                      №{{ accrual.folioId }}
+                    } @else {
+                      Не прив’язане
+                    }
+                  </td>
                   <td class="date-cell">
                     {{ accrual.serviceDate | date: 'dd.MM.yyyy' : '' : 'uk-UA' }}
                   </td>
@@ -151,7 +167,7 @@
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="6">
+                  <td colspan="7">
                     <div class="table-empty">
                       <span class="empty-symbol">₴</span>
                       <strong>Нарахувань поки немає</strong>
@@ -164,11 +180,36 @@
           </table>
         </div>
 
+        @if (unassignedError()) {
+          <p class="message error-message">{{ unassignedError() }}</p>
+        }
+
         <div class="panel-footer total-footer">
           <span>Усього нараховано</span>
           <strong>
             {{ totalAmount() | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}
           </strong>
+        </div>
+        <div class="create-folio-footer">
+          <span>Вибрано: {{ selectedAccruals().length }} · {{ selectedAccrualTotal() | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}</span>
+          @if (selectedFolio() && selectedAccruals().length > 0) {
+            <button
+              class="secondary-button"
+              type="button"
+              [disabled]="saving()"
+              (click)="attachSelectedAccrualsToFolio()"
+            >
+              Додати до рахунку №{{ selectedFolio()?.id }}
+            </button>
+          }
+          <button
+            class="primary-button"
+            type="button"
+            [disabled]="saving() || selectedAccruals().length === 0"
+            (click)="openFolioForm()"
+          >
+            Створити рахунок
+          </button>
         </div>
       </section>
 
@@ -290,6 +331,20 @@
                   Зареєструвати оплату
                 </button>
               </form>
+
+              <div class="folio-actions">
+                <button class="secondary-button" type="button" [disabled]="saving()" (click)="closeFolio(invoice)">
+                  Закрити рахунок
+                </button>
+                <button
+                  class="danger-button"
+                  type="button"
+                  [disabled]="saving() || invoice.accruals.length > 0 || invoice.payments.length > 0"
+                  (click)="deleteFolio(invoice)"
+                >
+                  Видалити порожній рахунок
+                </button>
+              </div>
             }
           } @else {
             <div class="invoice-empty">
@@ -331,6 +386,19 @@
                 </strong>
               </div>
               <span class="closed-label">Закрито</span>
+              <div class="folio-actions compact-actions">
+                <button class="secondary-button" type="button" [disabled]="saving()" (click)="reopenFolio(invoice)">
+                  Відкрити знову
+                </button>
+                <button
+                  class="danger-button"
+                  type="button"
+                  [disabled]="saving() || invoice.accruals.length > 0 || invoice.payments.length > 0"
+                  (click)="deleteFolio(invoice)"
+                >
+                  Видалити
+                </button>
+              </div>
             </div>
           } @empty {
             <div class="compact-empty">
@@ -404,5 +472,57 @@
         </strong>
       </div>
     </section>
+
+    @if (folioFormOpen()) {
+      <div class="folio-modal-backdrop" (click)="closeFolioForm()">
+        <section
+          class="folio-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="folio-modal-title"
+          (click)="$event.stopPropagation()"
+        >
+          <div class="folio-modal-heading">
+            <div>
+              <h2 id="folio-modal-title">Новий рахунок</h2>
+              <p>До рахунку буде додано вибрані нарахування.</p>
+            </div>
+            <button class="modal-close-button" type="button" aria-label="Закрити форму" (click)="closeFolioForm()">×</button>
+          </div>
+
+          <div class="selected-folio-accruals">
+            @for (accrual of selectedAccruals(); track accrual.id) {
+              <div>
+                <span>{{ accrual.name }} · {{ accrual.serviceDate | date:'dd.MM.yyyy' }}</span>
+                <strong>{{ accrual.amount | currency:'UAH':'symbol-narrow':'1.2-2':'uk-UA' }}</strong>
+              </div>
+            }
+          </div>
+
+          <div class="folio-party-fields">
+            <label class="form-field">
+              <span>ID одержувача (необов’язково)</span>
+              <input type="number" min="1" [(ngModel)]="recipientId" [ngModelOptions]="{standalone: true}" [disabled]="saving()" />
+            </label>
+            <label class="form-field">
+              <span>ID платника (необов’язково)</span>
+              <input type="number" min="1" [(ngModel)]="payerId" [ngModelOptions]="{standalone: true}" [disabled]="saving()" />
+            </label>
+          </div>
+
+          <div class="folio-modal-total">
+            <span>Разом до рахунку</span>
+            <strong>{{ selectedAccrualTotal() | currency:'UAH':'symbol-narrow':'1.2-2':'uk-UA' }}</strong>
+          </div>
+
+          <div class="folio-modal-actions">
+            <button class="secondary-button" type="button" [disabled]="saving()" (click)="closeFolioForm()">Скасувати</button>
+            <button class="primary-button" type="button" [disabled]="saving() || selectedAccruals().length === 0" (click)="createFolioWithSelectedAccruals()">
+              {{ saving() ? 'Створення…' : 'Створити й додати нарахування' }}
+            </button>
+          </div>
+        </section>
+      </div>
+    }
   }
 </section>

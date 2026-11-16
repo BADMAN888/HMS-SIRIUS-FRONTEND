@@ -4,6 +4,133 @@
   color: #e2eaf5;
 }
 
+.accrual-select-cell {
+  width: 42px;
+  text-align: center;
+
+  input[type='checkbox'] {
+    width: 17px;
+    height: 17px;
+    accent-color: #48a8ee;
+    cursor: pointer;
+  }
+
+  input[type='checkbox']:disabled { cursor: not-allowed; opacity: 0.55; }
+}
+
+.create-folio-footer,
+.folio-actions,
+.folio-modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.create-folio-footer {
+  justify-content: space-between;
+  margin-top: 18px;
+  color: #9bb2cb;
+  font-size: 13px;
+}
+
+.folio-actions { margin-top: 16px; flex-wrap: wrap; }
+.compact-actions { margin: 0 0 0 auto; }
+.folio-actions > button { width: auto; margin-top: 0; }
+
+.danger-button {
+  min-height: 42px;
+  padding: 0 16px;
+  border: 1px solid #713744;
+  border-radius: 11px;
+  background: #321d2a;
+  color: #fda4af;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.danger-button:disabled { cursor: not-allowed; opacity: 0.5; }
+
+.folio-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(1, 8, 18, 0.76);
+}
+
+.folio-modal {
+  width: min(560px, 100%);
+  max-height: min(85vh, 760px);
+  overflow: auto;
+  padding: 26px;
+  border: 1px solid #294967;
+  border-radius: 20px;
+  background: #0b1b30;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5);
+}
+
+.folio-modal-heading,
+.folio-modal-total,
+.selected-folio-accruals > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.folio-modal-heading h2 { margin: 0 0 6px; color: #f1f5f9; }
+.folio-modal-heading p { margin: 0; color: #9bb2cb; }
+
+.modal-close-button {
+  width: 36px;
+  height: 36px;
+  border: 1px solid #29445f;
+  border-radius: 9px;
+  background: #102b45;
+  color: #e2eaf5;
+  font-size: 23px;
+  cursor: pointer;
+}
+
+.selected-folio-accruals {
+  display: grid;
+  gap: 10px;
+  max-height: 250px;
+  overflow: auto;
+  margin: 22px 0;
+  padding: 14px;
+  border: 1px solid #1b3957;
+  border-radius: 12px;
+}
+
+.selected-folio-accruals > div { color: #c7d8ea; font-size: 13px; }
+.selected-folio-accruals strong { color: #f8fafc; white-space: nowrap; }
+
+.folio-party-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.folio-party-fields .form-field { gap: 8px; color: #d5e2f2; font-size: 12px; }
+.folio-party-fields input { width: 100%; height: 42px; padding: 0 12px; border: 1px solid #1b3957; border-radius: 9px; background: #071629; color: #e2eaf5; }
+
+.folio-modal-total {
+  margin: 22px 0;
+  padding-top: 16px;
+  border-top: 1px solid #1b3957;
+  color: #9bb2cb;
+}
+
+.folio-modal-total strong { color: #f8fafc; font-size: 20px; }
+.folio-modal-actions { justify-content: flex-end; flex-wrap: wrap; }
+
+@media (max-width: 620px) {
+  .create-folio-footer { align-items: stretch; flex-direction: column; }
+  .folio-party-fields { grid-template-columns: 1fr; }
+  .folio-modal { padding: 20px; }
+}
+
 .accrual-page {
   display: flex;
   flex-direction: column;
