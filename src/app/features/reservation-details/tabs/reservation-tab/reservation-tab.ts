@@ -238,7 +238,7 @@ export class ReservationTab implements OnInit {
     }
 
     this.handledGuestListEventId = event.eventId;
-    this.editPrimaryGuestId.set(event.primaryGuestId);
+    this.editPrimaryGuestId.set(event.primaryGuestId ?? 0);
     this.editGuestIds.set(event.guestIds.filter(id => id !== event.primaryGuestId));
 
     const primaryGuest = this.getProfileById(event.primaryGuestId);
@@ -872,10 +872,6 @@ export class ReservationTab implements OnInit {
 
     const missingFields: string[] = [];
 
-    if (!this.editPrimaryGuestId()) {
-      missingFields.push('основного гостя');
-    }
-
     if (!this.editRoomCategoryId()) {
       missingFields.push('категорії номера');
     }
@@ -945,14 +941,14 @@ export class ReservationTab implements OnInit {
 
     const guestIds = Array.from(new Set([
       ...this.editGuestIds(),
-      this.editPrimaryGuestId()
+      ...(this.editPrimaryGuestId() ? [this.editPrimaryGuestId()] : [])
     ]));
 
     const request: ReservationRequest = {
       roomId: this.editRoomId(),
       rateId: this.editRateId(),
       paymentCategoryId: this.editPaymentCategoryId(),
-      primaryGuestId: this.editPrimaryGuestId(),
+      primaryGuestId: this.editPrimaryGuestId() || null,
       guestIds,
       checkIn: this.toLocalDateTime(checkIn),
       checkOut: this.toLocalDateTime(this.editCheckOut()),

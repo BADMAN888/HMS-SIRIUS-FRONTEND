@@ -392,12 +392,12 @@ export class ProfilesTab implements OnInit {
           const reservation = this.reservation()!;
           const guestIds = new Set<number>([
             ...(reservation.guestIds ?? []),
-            reservation.primaryGuest.id,
+            ...(reservation.primaryGuest ? [reservation.primaryGuest.id] : []),
             updated.id
           ]);
           const primaryGuestId = this.createTarget === 'primary'
             ? updated.id
-            : reservation.primaryGuest.id;
+            : reservation.primaryGuest?.id ?? updated.id;
 
           this.reservationService.updateGuests(
             reservation.id,
@@ -505,22 +505,17 @@ export class ProfilesTab implements OnInit {
 
     const guestIds = new Set<number>([
       ...(reservation.guestIds ?? []),
-      reservation.primaryGuest.id
+      ...(reservation.primaryGuest ? [reservation.primaryGuest.id] : [])
     ]);
 
     if (!guestIds.has(profile.id)) {
       return;
     }
 
-    if (guestIds.size <= 1) {
-      this.error.set('У бронюванні має залишитися хоча б один гість.');
-      return;
-    }
-
     guestIds.delete(profile.id);
-    const primaryGuestId = reservation.primaryGuest.id === profile.id
-      ? [...guestIds][0]
-      : reservation.primaryGuest.id;
+    const primaryGuestId = reservation.primaryGuest?.id === profile.id
+      ? [...guestIds][0] ?? null
+      : reservation.primaryGuest?.id ?? null;
 
     this.savingProfile.set(true);
     this.error.set('');
@@ -534,7 +529,7 @@ export class ProfilesTab implements OnInit {
       next: updatedReservation => {
         this.reservation.set(updatedReservation);
         this.guestProfileWorkflow.syncReservationGuests(
-          updatedReservation.primaryGuest.id,
+          updatedReservation.primaryGuest?.id ?? null,
           updatedReservation.guestIds ?? []
         );
         this.removeProfileFromLocalList(profile.id);

@@ -42,7 +42,7 @@ export class ReservationService {
 
   updateGuests(
     id: number,
-    primaryGuestId: number,
+    primaryGuestId: number | null,
     guestIds: number[]
   ): Observable<ReservationResponse> {
     return this.http.patch<ReservationResponse>(`${this.apiUrl}/${id}/guests`, {

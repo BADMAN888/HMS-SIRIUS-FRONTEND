@@ -13,7 +13,7 @@ export interface ReservationResponse {
   rate: RateResponse;
   paymentCategoryId: number;
   paymentCategoryName: string;
-  primaryGuest: ProfileResponse;
+  primaryGuest: ProfileResponse | null;
   guestIds: number[];
   checkIn: string;
   checkOut: string;

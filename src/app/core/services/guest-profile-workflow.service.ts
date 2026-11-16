@@ -28,7 +28,7 @@ export class GuestProfileWorkflowService {
   readonly createdProfile = signal<CreatedGuestProfileEvent | null>(null);
   readonly removedDraftProfile = signal<{ profileId: number; eventId: number } | null>(null);
   readonly reservationGuests = signal<{
-    primaryGuestId: number;
+    primaryGuestId: number | null;
     guestIds: number[];
     eventId: number;
   } | null>(null);
@@ -76,7 +76,7 @@ export class GuestProfileWorkflowService {
     this.removedDraftProfile.set({ profileId, eventId: ++this.removalEventId });
   }
 
-  syncReservationGuests(primaryGuestId: number, guestIds: number[]): void {
+  syncReservationGuests(primaryGuestId: number | null, guestIds: number[]): void {
     this.reservationGuests.set({
       primaryGuestId,
       guestIds,
