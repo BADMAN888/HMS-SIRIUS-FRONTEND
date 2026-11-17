@@ -121,7 +121,6 @@
                   (change)="toggleAllAccrualSelection($event)" />
               </th>
               <th>Найменування</th>
-              <th>Рахунок</th>
               <th>Дата послуги</th>
               <th>Кількість</th>
               <th>Ціна</th>
@@ -150,13 +149,6 @@
                       </div>
                     </div>
                   </td>
-                  <td>
-                    @if (accrual.folioId) {
-                      №{{ accrual.folioId }}
-                    } @else {
-                      Не прив’язане
-                    }
-                  </td>
                   <td class="date-cell">
                     {{ accrual.serviceDate | date: 'dd.MM.yyyy' : '' : 'uk-UA' }}
                   </td>
@@ -177,7 +169,7 @@
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="8">
+                  <td colspan="7">
                     <div class="table-empty">
                       <span class="empty-symbol">₴</span>
                       <strong>Нарахувань поки немає</strong>
@@ -226,136 +218,27 @@
       <div class="right-column">
         <section class="panel invoice-panel">
           <div class="panel-heading">
-            <div>
-              <h2>Відкриті рахунки</h2>
-              <p>Вибери рахунок для проведення операцій</p>
-            </div>
+          <div>
+            <h2>Відкриті рахунки</h2>
+            <p>Натисни на рахунок, щоб переглянути його вміст</p>
+          </div>
             <span class="status-dot open-dot"></span>
           </div>
 
           @if (openFolios().length > 0) {
-            <div class="form-field folio-select-field">
-              <label for="selectedFolio">Відкритий рахунок</label>
-              <select
-                id="selectedFolio"
-                name="selectedFolio"
-                [ngModel]="selectedFolioId()"
-                (ngModelChange)="selectFolio($event)"
-                [disabled]="saving()"
-              >
-                @for (folio of openFolios(); track trackFolio($index, folio)) {
-                  <option [ngValue]="folio.id">
-                    Рахунок №{{ folio.id }}
-                  </option>
-                }
-              </select>
-            </div>
-
-            @if (selectedFolio(); as invoice) {
-              <div class="invoice-parties">
-                <div>
-                  <span>Номер рахунку</span>
-                  <strong>№{{ invoice.id }}</strong>
-                </div>
-                <div>
-                  <span>Бронювання</span>
-                  <strong>№{{ invoice.reservationId }}</strong>
-                </div>
-              </div>
-
-              <div class="invoice-metrics">
-                <div>
-                  <span>Сума</span>
-                  <strong>
-                    {{ invoice.totalAmount | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}
-                  </strong>
-                </div>
-                <div>
-                  <span>Сплачено</span>
-                  <strong class="paid-value">
-                    {{ invoice.paidAmount | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}
-                  </strong>
-                </div>
-                <div>
-                  <span>Баланс</span>
-                  <strong>
-                    {{ invoice.balance | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}
-                  </strong>
-                </div>
-              </div>
-
-              <form class="payment-form" (ngSubmit)="addPayment()">
-                <h3>Додати оплату</h3>
-
-                <div class="payment-fields">
-                  <div class="form-field">
-                    <label for="paymentMethod">Спосіб оплати</label>
-                    <select
-                      id="paymentMethod"
-                      name="paymentMethod"
-                      [(ngModel)]="paymentMethod"
-                      [disabled]="saving()"
-                    >
-                      @for (method of paymentMethods; track method) {
-                        <option [ngValue]="method">
-                          {{ formatPaymentMethod(method) }}
-                        </option>
-                      }
-                    </select>
-                  </div>
-
-                  <div class="form-field">
-                    <label for="paymentAmount">Сума оплати</label>
-                    <input
-                      id="paymentAmount"
-                      name="paymentAmount"
-                      type="number"
-                      min="0.01"
-                      [max]="invoice.balance"
-                      step="0.01"
-                      [(ngModel)]="paymentAmount"
-                      placeholder="0,00"
-                      [disabled]="saving() || invoice.balance <= 0"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div class="form-field">
-                  <label for="paymentDescription">Примітка до оплати</label>
-                  <input
-                    id="paymentDescription"
-                    name="paymentDescription"
-                    type="text"
-                    [(ngModel)]="paymentDescription"
-                    placeholder="Необов'язково"
-                    [disabled]="saving()"
-                  />
-                </div>
-
-                <button
-                  class="secondary-button"
-                  type="submit"
-                  [disabled]="saving() || invoice.balance <= 0"
-                >
-                  Зареєструвати оплату
-                </button>
-              </form>
-
-              <div class="folio-actions">
-                <button class="secondary-button" type="button" [disabled]="saving()" (click)="closeFolio(invoice)">
-                  Закрити рахунок
-                </button>
-                <button
-                  class="danger-button"
-                  type="button"
-                  [disabled]="saving() || invoice.accruals.length > 0 || invoice.payments.length > 0"
-                  (click)="deleteFolio(invoice)"
-                >
-                  Видалити порожній рахунок
-                </button>
-              </div>
+          <div class="folio-list">
+            @for (folio of openFolios(); track trackFolio($index, folio)) {
+              <button class="folio-list-item" type="button" [disabled]="saving()" (click)="openFolioDetails(folio)">
+                <span class="folio-list-icon" aria-hidden="true">₴</span>
+                <span class="folio-list-copy">
+                  <strong>Рахунок №{{ folio.id }}</strong>
+                  <small>{{ folioAccruals(folio).length }} нарахувань · Створено {{ folio.createdAt | date: 'dd.MM.yyyy' }}</small>
+                </span>
+                <span class="folio-list-total">{{ folio.totalAmount | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}</span>
+                <span class="folio-list-chevron" aria-hidden="true">›</span>
+              </button>
             }
+          </div>
           } @else {
             <div class="invoice-empty">
               <strong>Відкритих рахунків немає</strong>
@@ -376,7 +259,7 @@
           </div>
 
           @for (invoice of closedFolios(); track trackFolio($index, invoice)) {
-            <div class="closed-invoice-row">
+            <button class="closed-invoice-row" type="button" [disabled]="saving()" (click)="openFolioDetails(invoice)">
               <div>
                 <span>Рахунок №{{ invoice.id }}</span>
                 <strong>
@@ -396,20 +279,7 @@
                 </strong>
               </div>
               <span class="closed-label">Закрито</span>
-              <div class="folio-actions compact-actions">
-                <button class="secondary-button" type="button" [disabled]="saving()" (click)="reopenFolio(invoice)">
-                  Відкрити знову
-                </button>
-                <button
-                  class="danger-button"
-                  type="button"
-                  [disabled]="saving() || invoice.accruals.length > 0 || invoice.payments.length > 0"
-                  (click)="deleteFolio(invoice)"
-                >
-                  Видалити
-                </button>
-              </div>
-            </div>
+            </button>
           } @empty {
             <div class="compact-empty">
               Закритих рахунків для цього бронювання немає.
@@ -419,6 +289,25 @@
 
       </div>
     </div>
+
+    @if (folioDetailsOpen()) {
+      @if (detailFolio(); as invoice) {
+        <app-folio-details
+          [folio]="invoice"
+          [primaryGuestId]="primaryGuestId()"
+          [saving]="saving()"
+          [error]="error()"
+          [success]="success()"
+          (close)="closeFolioDetails()"
+          (partiesSave)="saveFolioParties(invoice, $event)"
+          (paymentSubmit)="addPayment(invoice, $event)"
+          (accrualCancel)="cancelAccrual($event)"
+          (folioClose)="closeFolio(invoice)"
+          (folioReopen)="reopenFolio(invoice)"
+          (folioDelete)="deleteFolio(invoice)"
+        />
+      }
+    }
 
     <section class="panel cancelled-panel">
       <div class="panel-heading">
@@ -500,12 +389,12 @@
 
           <div class="folio-party-fields">
             <label class="form-field">
-              <span>ID одержувача (необов’язково)</span>
-              <input type="number" min="1" [(ngModel)]="recipientId" [ngModelOptions]="{standalone: true}" [disabled]="saving()" />
+              <span>ID одержувача</span>
+              <input type="number" min="1" [(ngModel)]="recipientId" [ngModelOptions]="{standalone: true}" [disabled]="saving()" required />
             </label>
             <label class="form-field">
-              <span>ID платника (необов’язково)</span>
-              <input type="number" min="1" [(ngModel)]="payerId" [ngModelOptions]="{standalone: true}" [disabled]="saving()" />
+              <span>ID платника</span>
+              <input type="number" min="1" [(ngModel)]="payerId" [ngModelOptions]="{standalone: true}" [disabled]="saving()" required />
             </label>
           </div>
 

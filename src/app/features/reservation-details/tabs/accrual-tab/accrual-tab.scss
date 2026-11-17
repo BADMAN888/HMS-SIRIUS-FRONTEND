@@ -576,6 +576,68 @@
   padding: 25px 23px;
 }
 
+.folio-list {
+  display: grid;
+  gap: 10px;
+}
+
+.folio-list-item {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto 18px;
+  align-items: center;
+  gap: 13px;
+  width: 100%;
+  padding: 14px;
+  border: 1px solid #1b3957;
+  border-radius: 14px;
+  background: #09182b;
+  color: #e2eaf5;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+    border-color: #397fb6;
+    background: #0d2037;
+  }
+
+  &:disabled { cursor: not-allowed; opacity: 0.6; }
+}
+
+.folio-list-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid #24517a;
+  border-radius: 12px;
+  background: #102943;
+  color: #83c3ff;
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.folio-list-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+
+  strong { color: #eaf3fc; font-size: 13px; }
+  small { color: #8ea6c0; font-size: 11px; }
+}
+
+.folio-list-total {
+  color: #dcecff;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.folio-list-chevron { color: #83a6c8; font-size: 25px; line-height: 1; }
+
 .status-dot {
   flex: 0 0 9px;
   width: 9px;
@@ -714,6 +776,11 @@
 }
 
 .closed-invoice-row {
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -723,6 +790,13 @@
   border: 1px solid #1b3957;
   border-radius: 13px;
   background: #09182b;
+
+  &:hover:not(:disabled) {
+    border-color: #397fb6;
+    background: #0d2037;
+  }
+
+  &:disabled { cursor: not-allowed; opacity: 0.6; }
 
   > div {
     display: flex;
@@ -867,6 +941,15 @@
   .right-column {
     grid-template-columns: minmax(0, 1fr);
   }
+
+  .folio-list-item {
+    grid-template-columns: 36px minmax(0, 1fr) 18px;
+    gap: 10px;
+  }
+
+  .folio-list-icon { width: 36px; height: 36px; }
+  .folio-list-total { grid-column: 2; grid-row: 2; }
+  .folio-list-chevron { grid-column: 3; grid-row: 1 / span 2; }
 
   .cancelled-panel {
     grid-column: auto;

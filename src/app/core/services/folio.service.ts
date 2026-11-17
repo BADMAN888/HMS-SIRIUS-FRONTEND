@@ -5,6 +5,7 @@ import { Observable } from 'rxjs';
 import { FolioRequest } from '../models/billing/folio-request.model';
 import { FolioResponse } from '../models/billing/folio-response.model';
 import { FolioReopenRequest } from '../models/billing/folio-reopen-request.model';
+import { FolioPartiesRequest } from '../models/billing/folio-parties-request.model';
 
 @Injectable({
   providedIn: 'root'
@@ -45,6 +46,10 @@ export class FolioService {
       `${this.apiUrl}/${folioId}/accruals`,
       accrualIds
     );
+  }
+
+  updateParties(id: number, request: FolioPartiesRequest): Observable<FolioResponse> {
+    return this.http.patch<FolioResponse>(`${this.apiUrl}/${id}/parties`, request);
   }
 
   close(id: number): Observable<FolioResponse> {

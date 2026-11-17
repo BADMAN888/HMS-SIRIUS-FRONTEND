@@ -8,11 +8,11 @@ import { AccrualResponse } from '../../../../core/models/billing/accrual-respons
 import { FacilityResponse } from '../../../../core/models/billing/facility-response.model';
 import { FolioResponse } from '../../../../core/models/billing/folio-response.model';
 import { PaymentRequest } from '../../../../core/models/billing/payment-request.model';
+import { FolioPartiesRequest } from '../../../../core/models/billing/folio-parties-request.model';
 import { FolioRequest } from '../../../../core/models/billing/folio-request.model';
 import { FolioReopenRequest } from '../../../../core/models/billing/folio-reopen-request.model';
 import { FacilityType } from '../../../../core/models/enums/facility-type.enum';
 import { FolioStatus } from '../../../../core/models/enums/folio-status.enum';
-import { PaymentMethod } from '../../../../core/models/enums/payment-method.enum';
 
 import { AccrualService } from '../../../../core/services/accrual.service';
 
@@ -21,12 +21,13 @@ import { FolioService } from '../../../../core/services/folio.service';
 import { PaymentService } from '../../../../core/services/payment.service';
 import { ReservationService } from '../../../../core/services/reservation.service';
 import {FacilityService} from '../../../../core/services/ facility.service';
+import { FolioDetails } from '../../../../shared/folio-details/folio-details';
 import { catchError, forkJoin, of } from 'rxjs';
 
 @Component({
   selector: 'app-accrual-tab',
   standalone: true,
-  imports: [FormsModule, CurrencyPipe, DatePipe],
+  imports: [FormsModule, CurrencyPipe, DatePipe, FolioDetails],
   templateUrl: './accrual-tab.html',
   styleUrl: './accrual-tab.scss'
 })
@@ -49,6 +50,7 @@ export class AccrualTab implements OnInit {
 
   readonly reservationId = signal<number | null>(null);
   readonly hotelId = signal<number | null>(null);
+  readonly primaryGuestId = signal<number | null>(null);
 
   readonly facilities = signal<FacilityResponse[]>([]);
   readonly selectedFacilityId = signal<number | null>(null);
@@ -62,6 +64,7 @@ export class AccrualTab implements OnInit {
   readonly selectedFolioId = signal<number | null>(null);
   readonly selectedAccrualIds = signal<number[]>([]);
   readonly folioFormOpen = signal(false);
+  readonly folioDetailsOpen = signal(false);
 
   readonly openFolios = computed(() =>
     this.folios().filter(folio => folio.status === FolioStatus.OPEN)
@@ -77,6 +80,10 @@ export class AccrualTab implements OnInit {
     ) ?? null
   );
 
+  readonly detailFolio = computed(() =>
+    this.folios().find(folio => folio.id === this.selectedFolioId()) ?? null
+  );
+
   readonly selectedFacility = computed(() =>
     this.facilities().find(
       facility => facility.id === this.selectedFacilityId()
@@ -87,6 +94,10 @@ export class AccrualTab implements OnInit {
     const selectedIds = new Set(this.selectedAccrualIds());
     return this.unassignedAccruals().filter(accrual => accrual.active && selectedIds.has(accrual.id));
   });
+
+  folioAccruals(folio: FolioResponse): AccrualResponse[] {
+    return (folio.accruals ?? []).filter(accrual => accrual.active);
+  }
 
   readonly selectedAccrualTotal = computed(() =>
     this.selectedAccruals().reduce((total, accrual) => total + Number(accrual.amount), 0)
@@ -109,6 +120,7 @@ export class AccrualTab implements OnInit {
       ...this.unassignedAccruals()
     ]
       .filter(accrual => accrual.active)
+      .filter(accrual => !accrual.folioId)
       .sort(
         (a, b) =>
           new Date(b.accruedAt).getTime() -
@@ -156,20 +168,7 @@ export class AccrualTab implements OnInit {
     )
   );
 
-  readonly paymentMethods = Object.values(PaymentMethod);
-
-  readonly paymentLabels: Record<PaymentMethod, string> = {
-    [PaymentMethod.CASH]: 'Готівка',
-    [PaymentMethod.CARD]: 'Картка',
-    [PaymentMethod.BANK_TRANSFER]: 'Банківський переказ',
-    [PaymentMethod.BALANCE]: 'З балансу'
-  };
-
   quantity = 1;
-
-  paymentMethod: PaymentMethod = PaymentMethod.CASH;
-  paymentAmount: number | null = null;
-  paymentDescription = '';
   recipientId: number | null = null;
   payerId: number | null = null;
 
@@ -195,6 +194,7 @@ export class AccrualTab implements OnInit {
     this.reservationService.getById(reservationId).subscribe({
       next: reservation => {
         const hotelId = reservation.room?.hotelId;
+        this.primaryGuestId.set(reservation.primaryGuest?.id ?? null);
 
         if (hotelId === null || hotelId === undefined) {
           this.error.set(
@@ -333,10 +333,37 @@ export class AccrualTab implements OnInit {
       });
   }
 
-  selectFolio(folioId: number): void {
-    this.selectedFolioId.set(Number(folioId));
+  openFolioDetails(folio: FolioResponse): void {
+    this.selectedFolioId.set(folio.id);
     this.error.set('');
     this.success.set('');
+    this.folioDetailsOpen.set(true);
+  }
+
+  closeFolioDetails(): void {
+    if (!this.saving()) this.folioDetailsOpen.set(false);
+  }
+
+  saveFolioParties(folio: FolioResponse, request: FolioPartiesRequest): void {
+    if (this.saving()) return;
+    if (![request.recipientId, request.payerId].every(id => Number.isInteger(id) && id > 0)) {
+      this.error.set('Вкажи коректні ID одержувача та платника.');
+      return;
+    }
+
+    this.saving.set(true);
+    this.error.set('');
+    this.folioService.updateParties(folio.id, request).subscribe({
+      next: updatedFolio => {
+        this.setFolioData(this.folios().map(item => item.id === updatedFolio.id ? updatedFolio : item));
+        this.success.set('Одержувача та платника рахунку збережено.');
+        this.saving.set(false);
+      },
+      error: error => {
+        this.saving.set(false);
+        this.error.set(error?.error?.message || 'Не вдалося зберегти одержувача та платника.');
+      }
+    });
   }
 
   isAccrualSelected(id: number): boolean {
@@ -395,8 +422,8 @@ export class AccrualTab implements OnInit {
 
   openFolioForm(): void {
     if (this.selectedAccrualIds().length === 0) return;
-    this.recipientId = null;
-    this.payerId = null;
+    this.recipientId = this.primaryGuestId();
+    this.payerId = this.primaryGuestId();
     this.folioFormOpen.set(true);
   }
 
@@ -411,9 +438,9 @@ export class AccrualTab implements OnInit {
     if (!hotelId || !reservationId || accrualIds.length === 0 || this.saving()) return;
 
     if ([this.recipientId, this.payerId].some(id =>
-      id !== null && (!Number.isInteger(id) || id <= 0)
+      id === null || !Number.isInteger(id) || id <= 0
     )) {
-      this.error.set('ID одержувача й платника мають бути цілими додатними числами.');
+      this.error.set('Вкажи коректні ID одержувача та платника.');
       return;
     }
 
@@ -484,6 +511,7 @@ export class AccrualTab implements OnInit {
     this.error.set('');
     this.folioService.close(folio.id).subscribe({
       next: () => {
+        this.folioDetailsOpen.set(false);
         this.success.set(`Рахунок №${folio.id} закрито.`);
         this.refreshFolios();
       },
@@ -520,6 +548,7 @@ export class AccrualTab implements OnInit {
     this.error.set('');
     this.folioService.delete(folio.id).subscribe({
       next: () => {
+        this.folioDetailsOpen.set(false);
         this.success.set(`Рахунок №${folio.id} видалено.`);
         this.refreshFolios();
       },
@@ -583,24 +612,15 @@ export class AccrualTab implements OnInit {
     });
   }
 
-  addPayment(): void {
-    const folio = this.selectedFolio();
-
-    if (!folio || this.saving()) {
-      return;
-    }
-
-    if (
-      this.paymentAmount === null ||
-      !Number.isFinite(this.paymentAmount) ||
-      this.paymentAmount <= 0
-    ) {
+  addPayment(folio: FolioResponse, request: PaymentRequest): void {
+    if (this.saving()) return;
+    if (!Number.isFinite(request.amount) || request.amount <= 0) {
       this.error.set('Вкажи суму платежу, більшу за нуль.');
       this.success.set('');
       return;
     }
 
-    if (this.paymentAmount > Number(folio.balance)) {
+    if (request.amount > Number(folio.balance)) {
       this.error.set(
         'Сума платежу не може перевищувати поточний баланс рахунку.'
       );
@@ -608,22 +628,12 @@ export class AccrualTab implements OnInit {
       return;
     }
 
-    const request: PaymentRequest = {
-      folioId: folio.id,
-      method: this.paymentMethod,
-      amount: this.paymentAmount,
-      description: this.paymentDescription.trim() || null
-    };
-
     this.saving.set(true);
     this.error.set('');
     this.success.set('');
 
     this.paymentService.create(request).subscribe({
       next: () => {
-        this.paymentAmount = null;
-        this.paymentDescription = '';
-
         this.success.set('Платіж успішно додано.');
         this.refreshFolios();
       },
@@ -634,10 +644,6 @@ export class AccrualTab implements OnInit {
         );
       }
     });
-  }
-
-  formatPaymentMethod(method: PaymentMethod): string {
-    return this.paymentLabels[method] ?? method;
   }
 
   trackAccrual(_: number, accrual: AccrualResponse): number {
