@@ -1,3 +1,5 @@
+import { LegalEntityResponse } from '../legal-entity-response.model';
+
 export interface HotelResponse {
   id: number;
   hotelName: string;
@@ -6,4 +8,5 @@ export interface HotelResponse {
   phone: string | null;
   checkInTime: string | null;
   checkOutTime: string | null;
+  legalEntities: LegalEntityResponse[];
 }

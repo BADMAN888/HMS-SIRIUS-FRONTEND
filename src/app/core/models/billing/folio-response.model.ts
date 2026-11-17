@@ -8,6 +8,8 @@ export interface FolioResponse {
   reservationId: number | null;
   recipientId: number | null;
   payerId: number | null;
+  serviceProviderId: number | null;
+  serviceProviderName: string | null;
   status: FolioStatus;
   totalAmount: number;
   paidAmount: number;

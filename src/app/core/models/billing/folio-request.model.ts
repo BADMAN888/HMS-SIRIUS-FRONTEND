@@ -3,4 +3,5 @@ export interface FolioRequest {
   reservationId?: number | null;
   recipientId?: number | null;
   payerId?: number | null;
+  serviceProviderId?: number | null;
 }

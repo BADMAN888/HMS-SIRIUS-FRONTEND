@@ -20,7 +20,15 @@
         <span>ID платника</span>
         <input type="number" min="1" [(ngModel)]="payerId" [ngModelOptions]="{standalone: true}" [disabled]="saving || !isOpen()" required />
       </label>
-      <div><span>Основний гість</span><strong>{{ primaryGuestId ?? 'Не вказаний' }}</strong></div>
+      <label class="form-field">
+        <span>Постачальник послуг</span>
+        <select [(ngModel)]="serviceProviderId" [ngModelOptions]="{standalone: true}" [disabled]="saving || !isOpen()">
+          <option [ngValue]="null">Не вибрано</option>
+          @for (entity of legalEntities; track entity.id) {
+            <option [ngValue]="entity.id" [disabled]="!entity.active">{{ entity.shortName }} · {{ entity.edrpou }}{{ entity.active ? '' : ' · Неактивна' }}</option>
+          }
+        </select>
+      </label>
     </div>
     @if (isOpen()) {
       <div class="folio-party-save-row">

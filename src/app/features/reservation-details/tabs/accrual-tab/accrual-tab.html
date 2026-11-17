@@ -295,6 +295,7 @@
         <app-folio-details
           [folio]="invoice"
           [primaryGuestId]="primaryGuestId()"
+          [legalEntities]="legalEntities()"
           [saving]="saving()"
           [error]="error()"
           [success]="success()"
@@ -395,6 +396,17 @@
             <label class="form-field">
               <span>ID платника</span>
               <input type="number" min="1" [(ngModel)]="payerId" [ngModelOptions]="{standalone: true}" [disabled]="saving()" required />
+            </label>
+            <label class="form-field">
+              <span>Постачальник послуг</span>
+              <select [(ngModel)]="serviceProviderId" [ngModelOptions]="{standalone: true}" [disabled]="saving()">
+                <option [ngValue]="null">Не вибрано</option>
+                @for (entity of legalEntities(); track entity.id) {
+                  @if (entity.active) {
+                    <option [ngValue]="entity.id">{{ entity.shortName }} · {{ entity.edrpou }}</option>
+                  }
+                }
+              </select>
             </label>
           </div>
 

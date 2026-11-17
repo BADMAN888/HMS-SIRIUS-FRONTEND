@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { AccrualResponse } from '../../core/models/billing/accrual-response.model';
 import { FolioPartiesRequest } from '../../core/models/billing/folio-parties-request.model';
 import { FolioResponse } from '../../core/models/billing/folio-response.model';
+import { LegalEntityResponse } from '../../core/models/legal-entity-response.model';
 import { PaymentRequest } from '../../core/models/billing/payment-request.model';
 import { FolioStatus } from '../../core/models/enums/folio-status.enum';
 import { PaymentMethod } from '../../core/models/enums/payment-method.enum';
@@ -19,6 +20,7 @@ import { PaymentMethod } from '../../core/models/enums/payment-method.enum';
 export class FolioDetails implements OnChanges {
   @Input({ required: true }) folio!: FolioResponse;
   @Input() primaryGuestId: number | null = null;
+  @Input() legalEntities: LegalEntityResponse[] = [];
   @Input() saving = false;
   @Input() error = '';
   @Input() success = '';
@@ -33,6 +35,7 @@ export class FolioDetails implements OnChanges {
 
   recipientId: number | null = null;
   payerId: number | null = null;
+  serviceProviderId: number | null = null;
   paymentMethods = Object.values(PaymentMethod);
   paymentMethod: PaymentMethod = PaymentMethod.CASH;
   paymentAmount: number | null = null;
@@ -42,6 +45,7 @@ export class FolioDetails implements OnChanges {
     if (changes['folio'] || changes['primaryGuestId']) {
       this.recipientId = this.folio?.recipientId ?? this.primaryGuestId;
       this.payerId = this.folio?.payerId ?? this.primaryGuestId;
+      this.serviceProviderId = this.folio?.serviceProviderId ?? null;
     }
   }
 
@@ -51,7 +55,11 @@ export class FolioDetails implements OnChanges {
 
   saveParties(): void {
     if (this.saving || !this.isValidPartyId(this.recipientId) || !this.isValidPartyId(this.payerId)) return;
-    this.partiesSave.emit({ recipientId: this.recipientId, payerId: this.payerId });
+    this.partiesSave.emit({
+      recipientId: this.recipientId,
+      payerId: this.payerId,
+      serviceProviderId: this.serviceProviderId
+    });
   }
 
   submitPayment(): void {

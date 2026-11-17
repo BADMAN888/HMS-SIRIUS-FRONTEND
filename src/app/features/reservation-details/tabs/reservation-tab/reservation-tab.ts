@@ -559,7 +559,7 @@ export class ReservationTab implements OnInit {
         this.profiles.set(data.profiles);
         this.rates.set(data.rates);
         this.roomCategories.set(data.roomCategories);
-        this.companies.set(data.companies.filter(company => company.active));
+        this.companies.set(data.companies.filter(company => company.active && company.legalEntity.active));
         this.rooms.set(data.rooms);
         this.allReservations.set(data.reservations);
 
@@ -652,7 +652,7 @@ export class ReservationTab implements OnInit {
         this.profiles.set(data.profiles);
         this.rates.set(data.rates);
         this.roomCategories.set(data.roomCategories);
-        this.companies.set(data.companies.filter(company => company.active));
+        this.companies.set(data.companies.filter(company => company.active && company.legalEntity.active));
         this.rooms.set(data.allRooms);
         this.allReservations.set(data.reservations);
 

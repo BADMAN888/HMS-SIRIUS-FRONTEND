@@ -71,7 +71,8 @@
   span { color: #8fa9c5; font-size: 11px; }
   strong { color: #e2eaf5; font-size: 13px; }
 
-  input {
+  input,
+  select {
     width: 100%;
     min-width: 0;
     height: 32px;

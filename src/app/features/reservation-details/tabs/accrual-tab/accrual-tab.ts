@@ -7,6 +7,7 @@ import { AccrualRequest } from '../../../../core/models/billing/accrual-request.
 import { AccrualResponse } from '../../../../core/models/billing/accrual-response.model';
 import { FacilityResponse } from '../../../../core/models/billing/facility-response.model';
 import { FolioResponse } from '../../../../core/models/billing/folio-response.model';
+import { LegalEntityResponse } from '../../../../core/models/legal-entity-response.model';
 import { PaymentRequest } from '../../../../core/models/billing/payment-request.model';
 import { FolioPartiesRequest } from '../../../../core/models/billing/folio-parties-request.model';
 import { FolioRequest } from '../../../../core/models/billing/folio-request.model';
@@ -18,6 +19,7 @@ import { AccrualService } from '../../../../core/services/accrual.service';
 
 import { FacilityPriceService } from '../../../../core/services/facility-price.service';
 import { FolioService } from '../../../../core/services/folio.service';
+import { LegalEntityService } from '../../../../core/services/legal-entity.service';
 import { PaymentService } from '../../../../core/services/payment.service';
 import { ReservationService } from '../../../../core/services/reservation.service';
 import {FacilityService} from '../../../../core/services/ facility.service';
@@ -37,6 +39,7 @@ export class AccrualTab implements OnInit {
   private readonly facilityService = inject(FacilityService);
   private readonly facilityPriceService = inject(FacilityPriceService);
   private readonly folioService = inject(FolioService);
+  private readonly legalEntityService = inject(LegalEntityService);
   private readonly accrualService = inject(AccrualService);
   private readonly paymentService = inject(PaymentService);
 
@@ -59,6 +62,7 @@ export class AccrualTab implements OnInit {
   readonly facilityPrice = signal<number | null>(null);
 
   readonly folios = signal<FolioResponse[]>([]);
+  readonly legalEntities = signal<LegalEntityResponse[]>([]);
   readonly unassignedAccruals = signal<AccrualResponse[]>([]);
   readonly unassignedError = signal('');
   readonly selectedFolioId = signal<number | null>(null);
@@ -171,6 +175,7 @@ export class AccrualTab implements OnInit {
   quantity = 1;
   recipientId: number | null = null;
   payerId: number | null = null;
+  serviceProviderId: number | null = null;
 
   ngOnInit(): void {
     this.route.paramMap.subscribe(params => {
@@ -205,6 +210,10 @@ export class AccrualTab implements OnInit {
         }
 
         this.hotelId.set(hotelId);
+        this.legalEntityService.getByHotelId(hotelId).subscribe({
+          next: entities => this.legalEntities.set(entities ?? []),
+          error: () => this.legalEntities.set([])
+        });
         this.loadFacilities(hotelId, reservationId);
       },
       error: () => {
@@ -424,6 +433,7 @@ export class AccrualTab implements OnInit {
     if (this.selectedAccrualIds().length === 0) return;
     this.recipientId = this.primaryGuestId();
     this.payerId = this.primaryGuestId();
+    this.serviceProviderId = this.legalEntities().find(entity => entity.active)?.id ?? null;
     this.folioFormOpen.set(true);
   }
 
@@ -448,7 +458,8 @@ export class AccrualTab implements OnInit {
       hotelId,
       reservationId,
       recipientId: this.recipientId,
-      payerId: this.payerId
+      payerId: this.payerId,
+      serviceProviderId: this.serviceProviderId
     };
 
     this.saving.set(true);
