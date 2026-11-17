@@ -114,13 +114,19 @@
           <table class="accrual-table">
             <thead>
             <tr>
-              <th>Вибір</th>
+              <th class="accrual-select-cell">
+                <input type="checkbox" aria-label="Вибрати всі доступні нарахування"
+                  [checked]="allAccrualsSelected()"
+                  [disabled]="saving() || selectableAccrualIds().length === 0"
+                  (change)="toggleAllAccrualSelection($event)" />
+              </th>
               <th>Найменування</th>
               <th>Рахунок</th>
               <th>Дата послуги</th>
               <th>Кількість</th>
               <th>Ціна</th>
               <th>Сума</th>
+              <th aria-label="Дії"></th>
             </tr>
             </thead>
 
@@ -131,7 +137,7 @@
                     <input
                       type="checkbox"
                       [checked]="isAccrualSelected(accrual.id)"
-                      [disabled]="saving() || !!accrual.folioId || accrual.reversed"
+                      [disabled]="saving() || !!accrual.folioId"
                       [attr.aria-label]="'Вибрати нарахування: ' + accrual.name"
                       (change)="toggleAccrualSelection(accrual.id, $event)"
                     />
@@ -141,9 +147,6 @@
                       <span class="type-indicator"></span>
                       <div>
                         <strong>{{ accrual.name }}</strong>
-                        @if (accrual.reversed) {
-                          <span>Сторновано</span>
-                        }
                       </div>
                     </div>
                   </td>
@@ -164,10 +167,17 @@
                   <td class="amount-cell">
                     {{ accrual.amount | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}
                   </td>
+                  <td class="actions-cell">
+                    <button class="icon-button delete-button" type="button"
+                      [disabled]="saving()" [attr.aria-label]="'Анулювати нарахування: ' + accrual.name"
+                      title="Анулювати" (click)="cancelAccrual(accrual)">
+                      <span aria-hidden="true">×</span>
+                    </button>
+                  </td>
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="7">
+                  <td colspan="8">
                     <div class="table-empty">
                       <span class="empty-symbol">₴</span>
                       <strong>Нарахувань поки немає</strong>
@@ -407,50 +417,39 @@
           }
         </section>
 
-        <section class="panel invoice-panel">
-          <div class="panel-heading">
-            <div>
-              <h2>Історія оплат</h2>
-              <p>Усі платежі за рахунками бронювання</p>
-            </div>
-            <span class="count-badge">{{ payments().length }}</span>
-          </div>
-
-          @if (payments().length > 0) {
-            <div class="table-scroll">
-              <table class="accrual-table">
-                <thead>
-                <tr>
-                  <th>Рахунок</th>
-                  <th>Спосіб</th>
-                  <th>Дата</th>
-                  <th>Сума</th>
-                </tr>
-                </thead>
-                <tbody>
-                  @for (payment of payments(); track trackPayment($index, payment)) {
-                    <tr>
-                      <td>№{{ payment.folioId }}</td>
-                      <td>{{ formatPaymentMethod(payment.method) }}</td>
-                      <td class="date-cell">
-                        {{ payment.paidAt | date: 'dd.MM.yyyy HH:mm' }}
-                      </td>
-                      <td class="amount-cell">
-                        {{ payment.amount | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}
-                      </td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-            </div>
-          } @else {
-            <div class="compact-empty">
-              Платежів за цим бронюванням поки немає.
-            </div>
-          }
-        </section>
       </div>
     </div>
+
+    <section class="panel cancelled-panel">
+      <div class="panel-heading">
+        <div>
+          <h2>Анульовані нарахування</h2>
+          <p>Нарахування, які більше не беруть участі в розрахунках</p>
+        </div>
+        <span class="count-badge">{{ cancelledAccruals().length }}</span>
+      </div>
+      @if (cancelledAccruals().length) {
+        <div class="table-scroll">
+          <table class="accrual-table">
+            <thead><tr><th>Найменування</th><th>Рахунок</th><th>Дата послуги</th><th>Кількість</th><th>Сума</th><th></th></tr></thead>
+            <tbody>
+              @for (accrual of cancelledAccruals(); track accrual.id) {
+                <tr>
+                  <td><div class="accrual-name"><span class="type-indicator"></span><div><strong>{{ accrual.name }}</strong><span>Анульовано</span></div></div></td>
+                  <td>{{ accrual.folioId ? '№' + accrual.folioId : 'Не прив’язане' }}</td>
+                  <td class="date-cell">{{ accrual.serviceDate | date: 'dd.MM.yyyy' : '' : 'uk-UA' }}</td>
+                  <td>{{ accrual.quantity }}</td>
+                  <td class="amount-cell">{{ accrual.amount | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}</td>
+                  <td class="actions-cell"><button class="secondary-button reactivate-button" type="button" [disabled]="saving()" (click)="reactivateAccrual(accrual)">Активувати</button></td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      } @else {
+        <div class="compact-empty">Анульованих нарахувань поки немає.</div>
+      }
+    </section>
 
     <section class="billing-summary">
       <div>

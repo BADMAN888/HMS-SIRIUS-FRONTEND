@@ -8,7 +8,6 @@ import { AccrualResponse } from '../../../../core/models/billing/accrual-respons
 import { FacilityResponse } from '../../../../core/models/billing/facility-response.model';
 import { FolioResponse } from '../../../../core/models/billing/folio-response.model';
 import { PaymentRequest } from '../../../../core/models/billing/payment-request.model';
-import { PaymentResponse } from '../../../../core/models/billing/payment-response.model';
 import { FolioRequest } from '../../../../core/models/billing/folio-request.model';
 import { FolioReopenRequest } from '../../../../core/models/billing/folio-reopen-request.model';
 import { FacilityType } from '../../../../core/models/enums/facility-type.enum';
@@ -86,7 +85,7 @@ export class AccrualTab implements OnInit {
 
   readonly selectedAccruals = computed(() => {
     const selectedIds = new Set(this.selectedAccrualIds());
-    return this.unassignedAccruals().filter(accrual => selectedIds.has(accrual.id));
+    return this.unassignedAccruals().filter(accrual => accrual.active && selectedIds.has(accrual.id));
   });
 
   readonly selectedAccrualTotal = computed(() =>
@@ -109,6 +108,7 @@ export class AccrualTab implements OnInit {
       ...this.folios().flatMap(folio => folio.accruals ?? []),
       ...this.unassignedAccruals()
     ]
+      .filter(accrual => accrual.active)
       .sort(
         (a, b) =>
           new Date(b.accruedAt).getTime() -
@@ -116,20 +116,28 @@ export class AccrualTab implements OnInit {
       )
   );
 
-  readonly payments = computed(() =>
-    this.folios()
-      .flatMap(folio => folio.payments ?? [])
-      .sort(
-        (a, b) =>
-          new Date(b.paidAt).getTime() -
-          new Date(a.paidAt).getTime()
-      )
+  readonly cancelledAccruals = computed(() =>
+    [
+      ...this.folios().flatMap(folio => folio.accruals ?? []),
+      ...this.unassignedAccruals()
+    ]
+      .filter(accrual => !accrual.active && Number(accrual.amount) >= 0)
+      .sort((a, b) => new Date(b.accruedAt).getTime() - new Date(a.accruedAt).getTime())
+  );
+
+  readonly selectableAccrualIds = computed(() =>
+    this.accruals().filter(accrual => !accrual.folioId).map(accrual => accrual.id)
+  );
+
+  readonly allAccrualsSelected = computed(() =>
+    this.selectableAccrualIds().length > 0 &&
+    this.selectableAccrualIds().every(id => this.selectedAccrualIds().includes(id))
   );
 
   readonly totalAmount = computed(() =>
     this.folios().reduce(
       (total, folio) => total + Number(folio.totalAmount ?? 0), 0
-    ) + this.unassignedAccruals().reduce(
+    ) + this.unassignedAccruals().filter(accrual => accrual.active).reduce(
       (total, accrual) => total + Number(accrual.amount ?? 0), 0
     )
   );
@@ -340,6 +348,49 @@ export class AccrualTab implements OnInit {
     this.selectedAccrualIds.update(ids => checked
       ? Array.from(new Set([...ids, id]))
       : ids.filter(selectedId => selectedId !== id));
+  }
+
+  toggleAllAccrualSelection(event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    const ids = this.selectableAccrualIds();
+    this.selectedAccrualIds.update(selected => checked
+      ? Array.from(new Set([...selected.filter(id => ids.includes(id)), ...ids]))
+      : selected.filter(id => !ids.includes(id)));
+  }
+
+  cancelAccrual(accrual: AccrualResponse): void {
+    if (this.saving() || !window.confirm(`Анулювати нарахування «${accrual.name}»?`)) return;
+    this.saving.set(true);
+    this.error.set('');
+    this.success.set('');
+    this.accrualService.cancel(accrual.id).subscribe({
+      next: () => {
+        this.selectedAccrualIds.update(ids => ids.filter(id => id !== accrual.id));
+        this.success.set('Нарахування анульовано.');
+        this.refreshFolios();
+      },
+      error: error => {
+        this.saving.set(false);
+        this.error.set(error?.error?.message || 'Не вдалося анулювати нарахування.');
+      }
+    });
+  }
+
+  reactivateAccrual(accrual: AccrualResponse): void {
+    if (this.saving()) return;
+    this.saving.set(true);
+    this.error.set('');
+    this.success.set('');
+    this.accrualService.reactivate(accrual.id).subscribe({
+      next: () => {
+        this.success.set('Нарахування знову активне.');
+        this.refreshFolios();
+      },
+      error: error => {
+        this.saving.set(false);
+        this.error.set(error?.error?.message || 'Не вдалося активувати нарахування.');
+      }
+    });
   }
 
   openFolioForm(): void {
@@ -599,10 +650,6 @@ export class AccrualTab implements OnInit {
 
   trackFolio(_: number, folio: FolioResponse): number {
     return folio.id;
-  }
-
-  trackPayment(_: number, payment: PaymentResponse): number {
-    return payment.id;
   }
 
   private setFolioData(folios: FolioResponse[]): void {

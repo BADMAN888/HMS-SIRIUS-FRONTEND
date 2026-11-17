@@ -11,6 +11,5 @@ export interface AccrualResponse {
   amount: number;
   serviceDate: string;
   accruedAt: string;
-  reversed: boolean;
-  reversalOfId: number | null;
+  active: boolean;
 }
