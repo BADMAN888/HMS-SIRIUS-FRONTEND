@@ -1,0 +1,96 @@
+<div class="folio-modal-backdrop" (click)="!saving && close.emit()">
+  <section class="folio-modal" role="dialog" aria-modal="true" aria-labelledby="folio-details-title" (click)="$event.stopPropagation()">
+    <div class="folio-modal-heading">
+      <div>
+        <h2 id="folio-details-title">Картка рахунку №{{ folio.id }}</h2>
+        <p>{{ isOpen() ? 'Відкритий рахунок' : 'Закритий рахунок' }} · Бронювання №{{ folio.reservationId }}</p>
+      </div>
+      <button class="modal-close-button" type="button" aria-label="Закрити картку рахунку" [disabled]="saving" (click)="close.emit()">×</button>
+    </div>
+
+    @if (error) { <div class="message error-message">{{ error }}</div> }
+    @if (success) { <div class="message success-message">{{ success }}</div> }
+
+    <div class="folio-details-parties">
+      <label class="form-field">
+        <span>ID одержувача</span>
+        <input type="number" min="1" [(ngModel)]="recipientId" [ngModelOptions]="{standalone: true}" [disabled]="saving || !isOpen()" required />
+      </label>
+      <label class="form-field">
+        <span>ID платника</span>
+        <input type="number" min="1" [(ngModel)]="payerId" [ngModelOptions]="{standalone: true}" [disabled]="saving || !isOpen()" required />
+      </label>
+      <div><span>Основний гість</span><strong>{{ primaryGuestId ?? 'Не вказаний' }}</strong></div>
+    </div>
+    @if (isOpen()) {
+      <div class="folio-party-save-row">
+        <span>За замовчуванням використовується ID основного гостя.</span>
+        <button class="secondary-button" type="button" [disabled]="saving || !recipientId || !payerId" (click)="saveParties()">Зберегти дані</button>
+      </div>
+    }
+
+    <h3 class="folio-accruals-title">Нарахування в рахунку</h3>
+    @if (activeAccruals.length > 0) {
+      <div class="table-scroll">
+        <table class="accrual-table">
+          <thead><tr><th>Найменування</th><th>Дата послуги</th><th>Кількість</th><th>Сума</th><th></th></tr></thead>
+          <tbody>
+            @for (accrual of activeAccruals; track trackAccrual($index, accrual)) {
+              <tr>
+                <td><div class="accrual-name"><span class="type-indicator"></span><strong>{{ accrual.name }}</strong></div></td>
+                <td class="date-cell">{{ accrual.serviceDate | date: 'dd.MM.yyyy' : '' : 'uk-UA' }}</td>
+                <td>{{ accrual.quantity }}</td>
+                <td class="amount-cell">{{ accrual.amount | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}</td>
+                <td class="actions-cell"><button class="icon-button delete-button" type="button" [disabled]="saving || !isOpen()" [attr.aria-label]="'Анулювати нарахування: ' + accrual.name" title="Анулювати" (click)="accrualCancel.emit(accrual)"><span aria-hidden="true">×</span></button></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    } @else {
+      <div class="compact-empty">У рахунку поки немає активних нарахувань.</div>
+    }
+
+    <div class="folio-details-total">
+      <span>Разом по рахунку</span>
+      <strong>{{ folio.totalAmount | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}</strong>
+      <span>Оплачено: {{ folio.paidAmount | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}</span>
+      <span>Баланс: {{ folio.balance | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}</span>
+    </div>
+
+    @if (isOpen()) {
+      <form class="payment-form" (ngSubmit)="submitPayment()">
+        <h3>Додати оплату</h3>
+        <div class="payment-fields">
+          <div class="form-field">
+            <label for="folioPaymentMethod">Спосіб оплати</label>
+            <select id="folioPaymentMethod" name="folioPaymentMethod" [(ngModel)]="paymentMethod" [disabled]="saving">
+              @for (method of paymentMethods; track method) { <option [ngValue]="method">{{ formatPaymentMethod(method) }}</option> }
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="folioPaymentAmount">Сума оплати</label>
+            <input id="folioPaymentAmount" name="folioPaymentAmount" type="number" min="0.01" [max]="folio.balance" step="0.01" [(ngModel)]="paymentAmount" [disabled]="saving || folio.balance <= 0" required />
+          </div>
+        </div>
+        <div class="form-field">
+          <label for="folioPaymentDescription">Примітка до оплати</label>
+          <input id="folioPaymentDescription" name="folioPaymentDescription" type="text" [(ngModel)]="paymentDescription" placeholder="Необов'язково" [disabled]="saving" />
+        </div>
+        <button class="secondary-button" type="submit" [disabled]="saving || folio.balance <= 0">Зареєструвати оплату</button>
+      </form>
+    }
+
+    <div class="folio-modal-actions">
+      <button class="secondary-button" type="button" [disabled]="saving" (click)="close.emit()">Закрити вікно</button>
+      @if (folio.accruals.length === 0 && folio.payments.length === 0) {
+        <button class="danger-button" type="button" [disabled]="saving" (click)="folioDelete.emit()">Видалити порожній рахунок</button>
+      }
+      @if (isOpen()) {
+        <button class="primary-button" type="button" [disabled]="saving" (click)="folioClose.emit()">Закрити рахунок</button>
+      } @else {
+        <button class="primary-button" type="button" [disabled]="saving" (click)="folioReopen.emit()">Відкрити знову</button>
+      }
+    </div>
+  </section>
+</div>
