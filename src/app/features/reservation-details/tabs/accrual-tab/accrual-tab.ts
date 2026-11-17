@@ -26,7 +26,7 @@ import { ProfileService } from '../../../../core/services/profile.service';
 import { ReservationService } from '../../../../core/services/reservation.service';
 import {FacilityService} from '../../../../core/services/ facility.service';
 import { FolioDetails } from '../../../../shared/folio-details/folio-details';
-import { catchError, forkJoin, of } from 'rxjs';
+import { catchError, concatMap, forkJoin, from, of, tap, toArray } from 'rxjs';
 
 @Component({
   selector: 'app-accrual-tab',
@@ -62,9 +62,40 @@ export class AccrualTab implements OnInit {
 
   readonly facilities = signal<FacilityResponse[]>([]);
   readonly selectedFacilityId = signal<number | null>(null);
+  readonly facilitySearch = signal('');
   readonly selectedServiceDate = signal(this.getLocalDate());
+  readonly selectedServiceEndDate = signal(this.getLocalDate());
+  readonly servicePeriodPickerOpen = signal(false);
+  readonly serviceCalendarMonth = signal(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+  readonly serviceCalendarDays = computed(() => {
+    const month = this.serviceCalendarMonth();
+    const first = new Date(month.getFullYear(), month.getMonth(), 1);
+    const start = new Date(first);
+    start.setDate(1 - ((first.getDay() + 6) % 7));
+    return Array.from({ length: 42 }, (_, index) => {
+      const day = new Date(start);
+      day.setDate(start.getDate() + index);
+      return {
+        date: day,
+        iso: this.formatIsoDate(day),
+        currentMonth: day.getMonth() === month.getMonth()
+      };
+    });
+  });
+  readonly servicePeriodLabel = computed(() => {
+    const start = this.selectedServiceDate();
+    const end = this.selectedServiceEndDate();
+    if (!start) return 'Оберіть період послуги';
+    return end ? `${this.formatServiceDate(start)} — ${this.formatServiceDate(end)}` : `${this.formatServiceDate(start)} — оберіть дату завершення`;
+  });
+  readonly selectedServiceDates = computed(() =>
+    this.getDateRange(this.selectedServiceDate(), this.selectedServiceEndDate())
+  );
+  readonly accrualDestinationId = signal<number | null>(null);
+  private serviceDateSelection: 'start' | 'end' = 'start';
 
   readonly facilityPrice = signal<number | null>(null);
+  readonly facilityPrices = signal<number[]>([]);
 
   readonly folios = signal<FolioResponse[]>([]);
   readonly legalEntities = signal<LegalEntityResponse[]>([]);
@@ -113,14 +144,12 @@ export class AccrualTab implements OnInit {
   );
 
   readonly estimatedTotal = computed(() => {
-    const price = this.facilityPrice();
     const quantity = this.quantity;
-
-    if (price === null || !Number.isFinite(quantity) || quantity <= 0) {
+    const prices = this.facilityPrices();
+    if (!prices.length || !Number.isFinite(quantity) || quantity <= 0) {
       return 0;
     }
-
-    return price * quantity;
+    return prices.reduce((total, price) => total + price, 0) * quantity;
   });
 
   readonly accruals = computed(() =>
@@ -244,9 +273,11 @@ export class AccrualTab implements OnInit {
 
         if (standardFacilities.length > 0) {
           this.selectedFacilityId.set(standardFacilities[0].id);
+          this.facilitySearch.set(this.facilityOptionLabel(standardFacilities[0]));
           this.loadFacilityPrice();
         } else {
           this.selectedFacilityId.set(null);
+          this.facilitySearch.set('');
           this.facilityPrice.set(null);
           this.priceError.set(
             'Для цього готелю немає активних звичайних послуг.'
@@ -300,42 +331,110 @@ export class AccrualTab implements OnInit {
     this.loadFacilityPrice();
   }
 
-  selectServiceDate(date: string): void {
-    this.selectedServiceDate.set(date);
+  facilityOptionLabel(facility: FacilityResponse): string {
+    return `${facility.name} (${facility.unit})`;
+  }
+
+  adjustQuantity(amount: number): void {
+    this.quantity = Math.max(1, Math.floor(Number(this.quantity) || 1) + amount);
+  }
+
+  selectFacilityBySearch(value: string): void {
+    this.facilitySearch.set(value);
+    const query = value.trim().toLocaleLowerCase();
+    const facility = this.facilities().find(item =>
+      this.facilityOptionLabel(item).toLocaleLowerCase() === query
+    );
+    this.selectedFacilityId.set(facility?.id ?? null);
     this.loadFacilityPrice();
+  }
+
+  toggleServicePeriodPicker(): void {
+    if (!this.servicePeriodPickerOpen()) {
+      const [year, month] = this.selectedServiceDate().split('-').map(Number);
+      this.serviceCalendarMonth.set(new Date(year, month - 1, 1));
+      this.serviceDateSelection = 'start';
+    }
+    this.servicePeriodPickerOpen.update(open => !open);
+  }
+
+  shiftServiceCalendar(offset: number): void {
+    const month = this.serviceCalendarMonth();
+    this.serviceCalendarMonth.set(new Date(month.getFullYear(), month.getMonth() + offset, 1));
+  }
+
+  selectServicePeriodDate(iso: string): void {
+    if (this.serviceDateSelection === 'start') {
+      this.selectedServiceDate.set(iso);
+      this.selectedServiceEndDate.set('');
+      this.serviceDateSelection = 'end';
+      this.loadFacilityPrice();
+      return;
+    }
+    if (iso < this.selectedServiceDate()) {
+      this.selectedServiceDate.set(iso);
+      this.selectedServiceEndDate.set('');
+      this.loadFacilityPrice();
+      return;
+    }
+    this.selectedServiceEndDate.set(iso);
+    this.serviceDateSelection = 'start';
+    this.servicePeriodPickerOpen.set(false);
+    this.loadFacilityPrice();
+  }
+
+  isServicePeriodDateSelected(iso: string): boolean {
+    return iso === this.selectedServiceDate() || iso === this.selectedServiceEndDate();
+  }
+
+  isServicePeriodDateInRange(iso: string): boolean {
+    const start = this.selectedServiceDate();
+    const end = this.selectedServiceEndDate();
+    return Boolean(start && end && iso > start && iso < end);
+  }
+
+  selectAccrualDestination(value: number | string | null): void {
+    this.accrualDestinationId.set(value === null || value === '' ? null : Number(value));
   }
 
   private loadFacilityPrice(): void {
     const facilityId = this.selectedFacilityId();
-    const serviceDate = this.selectedServiceDate();
+    const startDate = this.selectedServiceDate();
+    const endDate = this.selectedServiceEndDate();
+    const serviceDates = this.selectedServiceDates();
 
     this.facilityPrice.set(null);
+    this.facilityPrices.set([]);
     this.priceError.set('');
 
-    if (!facilityId || !serviceDate) {
+    if (!facilityId || serviceDates.length === 0) {
+      this.priceLoading.set(false);
       return;
     }
 
     this.priceLoading.set(true);
 
-    this.facilityPriceService
-      .getPriceForDate(facilityId, serviceDate)
+    forkJoin(serviceDates.map(date => this.facilityPriceService.getPriceForDate(facilityId, date)))
       .subscribe({
-        next: response => {
+        next: responses => {
           if (
             this.selectedFacilityId() !== facilityId ||
-            this.selectedServiceDate() !== serviceDate
+            this.selectedServiceDate() !== startDate ||
+            this.selectedServiceEndDate() !== endDate
           ) {
             return;
           }
 
-          this.facilityPrice.set(Number(response.price));
+          const prices = responses.map(response => Number(response.price));
+          this.facilityPrices.set(prices);
+          this.facilityPrice.set(prices[0] ?? null);
           this.priceLoading.set(false);
         },
         error: () => {
           if (
             this.selectedFacilityId() !== facilityId ||
-            this.selectedServiceDate() !== serviceDate
+            this.selectedServiceDate() !== startDate ||
+            this.selectedServiceEndDate() !== endDate
           ) {
             return;
           }
@@ -343,7 +442,7 @@ export class AccrualTab implements OnInit {
           this.facilityPrice.set(null);
           this.priceLoading.set(false);
           this.priceError.set(
-            'Для цієї послуги немає ціни на вибрану дату.'
+            'Для цієї послуги немає ціни на одну або кілька дат періоду.'
           );
         }
       });
@@ -575,54 +674,57 @@ export class AccrualTab implements OnInit {
   }
 
   addAccrual(): void {
-    const folio = this.selectedFolio();
     const reservationId = this.reservationId();
     const facilityId = this.selectedFacilityId();
-    const serviceDate = this.selectedServiceDate();
-    const price = this.facilityPrice();
+    const serviceDates = this.selectedServiceDates();
+    const destinationFolioId = this.accrualDestinationId();
 
-    if (!folio || !reservationId || !facilityId || this.saving()) {
+    if (!reservationId || !facilityId || this.saving()) {
       return;
     }
 
-    if (!serviceDate) {
-      this.error.set('Вкажи дату надання послуги.');
+    if (serviceDates.length === 0) {
+      this.error.set('Вкажи коректний період надання послуги.');
       return;
     }
 
-    if (price === null || !Number.isFinite(price) || price <= 0) {
-      this.error.set('Неможливо додати послугу без чинної ціни.');
+    if (this.facilityPrices().length !== serviceDates.length || this.facilityPrices().some(price => !Number.isFinite(price) || price <= 0)) {
+      this.error.set('Неможливо додати послугу: перевір чинні ціни для всього періоду.');
       return;
     }
 
-    if (!Number.isFinite(this.quantity) || this.quantity <= 0) {
-      this.error.set('Кількість повинна бути більшою за нуль.');
+    if (!Number.isInteger(this.quantity) || this.quantity < 1) {
+      this.error.set('Кількість має бути цілим числом від 1.');
       return;
     }
-
-    const request: AccrualRequest = {
-      facilityId,
-      reservationId,
-      folioId: folio.id,
-      serviceDate,
-      quantity: this.quantity
-    };
 
     this.saving.set(true);
     this.error.set('');
     this.success.set('');
 
-    this.accrualService.create(request).subscribe({
+    let createdCount = 0;
+    from(serviceDates).pipe(
+      concatMap(serviceDate => this.accrualService.create({
+        facilityId,
+        reservationId,
+        serviceDate,
+        quantity: this.quantity,
+        ...(destinationFolioId === null ? {} : { folioId: destinationFolioId })
+      } satisfies AccrualRequest).pipe(tap(() => createdCount++))),
+      toArray()
+    ).subscribe({
       next: () => {
         this.quantity = 1;
-        this.success.set('Нарахування успішно додано.');
+        this.success.set(destinationFolioId === null
+          ? `Додано ${createdCount} нарахувань до списку «Нарахування».`
+          : `Додано ${createdCount} нарахувань до рахунку №${destinationFolioId}.`);
         this.refreshFolios();
       },
       error: () => {
-        this.saving.set(false);
-        this.error.set(
-          'Не вдалося додати нарахування. Перевір послугу, дату та стан рахунку.'
-        );
+        this.error.set(createdCount > 0
+          ? `Додано ${createdCount} із ${serviceDates.length} нарахувань; решту не вдалося створити.`
+          : 'Не вдалося додати нарахування. Перевір послугу, період та ціни.');
+        this.refreshFolios();
       }
     });
   }
@@ -675,6 +777,10 @@ export class AccrualTab implements OnInit {
 
   private setFolioData(folios: FolioResponse[]): void {
     this.folios.set(folios);
+    const destinationId = this.accrualDestinationId();
+    if (destinationId !== null && !folios.some(folio => folio.id === destinationId && folio.status === FolioStatus.OPEN)) {
+      this.accrualDestinationId.set(null);
+    }
 
     const currentSelectedId = this.selectedFolioId();
     const currentStillOpen = folios.some(
@@ -728,5 +834,28 @@ export class AccrualTab implements OnInit {
     const day = String(now.getDate()).padStart(2, '0');
 
     return `${year}-${month}-${day}`;
+  }
+
+  private formatIsoDate(date: Date): string {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  }
+
+  private formatServiceDate(iso: string): string {
+    const [year, month, day] = iso.split('-');
+    return `${day}.${month}.${year}`;
+  }
+
+  private getDateRange(start: string, end: string): string[] {
+    if (!start || !end || end < start) return [];
+    const dates: string[] = [];
+    const [year, month, day] = start.split('-').map(Number);
+    const cursor = new Date(year, month - 1, day);
+    const [endYear, endMonth, endDay] = end.split('-').map(Number);
+    const final = new Date(endYear, endMonth - 1, endDay);
+    while (cursor <= final) {
+      dates.push(`${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}-${String(cursor.getDate()).padStart(2, '0')}`);
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    return dates;
   }
 }

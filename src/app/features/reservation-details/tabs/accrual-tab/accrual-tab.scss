@@ -152,9 +152,8 @@
 
 .service-form {
   display: grid;
-  grid-template-columns: minmax(130px, 0.8fr) minmax(180px, 1.4fr)
-    minmax(95px, 0.55fr) minmax(145px, 0.9fr);
-  gap: 20px 24px;
+  grid-template-columns: minmax(0, 1.2fr) minmax(140px, 0.72fr) minmax(0, 1.8fr);
+  gap: 18px 20px;
   align-items: end;
 }
 
@@ -225,8 +224,83 @@
 }
 
 .date-field {
-  grid-column: span 2;
+  min-width: 0;
 }
+
+.destination-field { grid-column: 1; }
+
+.quantity-stepper {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) 42px;
+  gap: 7px;
+
+  input { text-align: center; font-size: 16px !important; font-weight: 700; }
+
+  button {
+    display: grid;
+    place-items: center;
+    height: 43px;
+    border: 1px solid #24517a;
+    border-radius: 11px;
+    background: #102943;
+    color: #dcecff;
+    font-size: 21px;
+    cursor: pointer;
+    &:hover:not(:disabled) { border-color: #3988cb; background: #143657; }
+    &:disabled { cursor: not-allowed; opacity: .45; }
+  }
+}
+
+.date-range-hint { color: #7f9bb8; font-size: 10px; }
+.service-field input[list] { cursor: text; }
+
+.service-period-wrap { position: relative; }
+.service-period-input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 43px;
+  padding: 10px 12px;
+  border: 1px solid #1b3957;
+  border-radius: 11px;
+  background: #071629;
+  color: #e2eaf5;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+  &:hover, &:focus-visible { border-color: #3988cb; outline: none; }
+  > span:first-child { color: #75b9ed; }
+  > span:nth-child(2) { min-width: 0; }
+  .service-period-chevron { margin-left: auto; color: #8fa9c5; }
+}
+.service-period-picker {
+  position: absolute;
+  z-index: 10;
+  top: calc(100% + 7px);
+  right: 0;
+  width: min(330px, 100%);
+  padding: 14px;
+  border: 1px solid #294967;
+  border-radius: 12px;
+  background: #081a2e;
+  box-shadow: 0 14px 30px rgb(0 0 0 / 35%);
+}
+.service-calendar-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;
+  strong { color:#e2eaf5; font-size:13px; text-transform:capitalize; }
+  button { width:30px; height:30px; border:1px solid #294967; border-radius:7px; background:#102943; color:#e2eaf5; font-size:20px; cursor:pointer; }
+}
+.service-calendar-grid { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:3px; }
+.service-weekday { padding:5px 0; color:#829bb6; font-size:10px; text-align:center; }
+.service-day { height:34px; border:0; border-radius:7px; background:transparent; color:#dce8f6; font:inherit; font-size:12px; cursor:pointer;
+  &:hover { background:#173b5c; }
+  &.other-month { color:#526a83; }
+  &.in-range { border-radius:0; background:rgba(57,136,203,.18); color:#c9e4ff; }
+  &.selected { border-radius:8px; background:#1769aa; color:white; font-weight:700; }
+}
+.service-picker-hint { margin:9px 0; color:#829bb6; font-size:10px; }
+.service-picker-done { width:100%; min-height:32px; border:1px solid #24517a; border-radius:8px; background:#123250; color:#dcecff; font:inherit; font-size:11px; cursor:pointer; }
 
 .readonly-value {
   display: flex;
@@ -246,12 +320,11 @@
 }
 
 .service-form-footer {
-  grid-column: 1 / -1;
+  grid-column: 3;
   display: flex;
   align-items: end;
   justify-content: space-between;
-  gap: 20px;
-  padding-top: 4px;
+  gap: 14px;
 }
 
 .calculated-total {
@@ -330,7 +403,7 @@
 
 .billing-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
   gap: 26px;
   align-items: stretch;
 }
@@ -342,7 +415,7 @@
 .accruals-panel {
   display: flex;
   flex-direction: column;
-  min-height: 570px;
+  min-height: 0;
 }
 
 .panel-heading {
@@ -566,20 +639,27 @@
 }
 
 .right-column {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: repeat(2, minmax(0, 1fr));
   gap: 22px;
   min-width: 0;
 }
 
 .invoice-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   padding: 25px 23px;
 }
 
 .folio-list {
   display: grid;
   gap: 10px;
+  min-height: 0;
+  overflow-y: auto;
 }
+
+.closed-folio-list { display: grid; gap: 10px; min-height: 0; overflow-y: auto; }
 
 .folio-list-item {
   display: grid;
@@ -871,9 +951,6 @@
     gap: 30px;
   }
 
-  .right-column {
-    gap: 26px;
-  }
 }
 
 @media (max-width: 1100px) {
@@ -887,8 +964,8 @@
 
   .right-column {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    align-items: start;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: repeat(2, minmax(0, 1fr));
   }
 
   .cancelled-panel {
@@ -920,8 +997,13 @@
     grid-column: 1 / -1;
   }
 
+  .quantity-field { grid-column: 1 / -1; }
+
   .date-field,
-  .notes-field {
+  .destination-field,
+  .price-field,
+  .notes-field,
+  .service-form-footer {
     grid-column: 1 / -1;
   }
 
@@ -939,7 +1021,9 @@
   }
 
   .right-column {
+    display: grid;
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: repeat(2, minmax(0, 1fr));
   }
 
   .folio-list-item {

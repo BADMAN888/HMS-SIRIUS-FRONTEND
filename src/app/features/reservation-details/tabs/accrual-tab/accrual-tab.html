@@ -15,47 +15,70 @@
       <form class="service-form" (ngSubmit)="addAccrual()">
         <div class="form-field service-field">
           <label for="facilityId">Послуга</label>
-          <select
+          <input
             id="facilityId"
             name="facilityId"
-            [ngModel]="selectedFacilityId()"
-            (ngModelChange)="selectFacility($event)"
+            type="search"
+            list="facility-options"
+            [ngModel]="facilitySearch()"
+            (ngModelChange)="selectFacilityBySearch($event)"
             [disabled]="facilities().length === 0 || saving()"
+            placeholder="Введи назву або вибери зі списку"
             required
-          >
+          />
+          <datalist id="facility-options">
             @for (facility of facilities(); track trackFacility($index, facility)) {
-              <option [ngValue]="facility.id">
-                {{ facility.name }} ({{ facility.unit }})
-              </option>
+              <option [value]="facilityOptionLabel(facility)"></option>
             }
-          </select>
+          </datalist>
         </div>
 
         <div class="form-field quantity-field">
           <label for="quantity">Кількість</label>
-          <input
-            id="quantity"
-            name="quantity"
-            type="number"
-            min="0.01"
-            step="0.01"
-            [(ngModel)]="quantity"
-            [disabled]="!selectedFolio() || saving()"
-            required
-          />
+          <div class="quantity-stepper">
+            <button type="button" aria-label="Зменшити кількість" [disabled]="quantity <= 1 || saving()" (click)="adjustQuantity(-1)">−</button>
+            <input id="quantity" name="quantity" type="number" min="1" step="1" [(ngModel)]="quantity" [disabled]="!selectedFacilityId() || saving()" required />
+            <button type="button" aria-label="Збільшити кількість" [disabled]="saving()" (click)="adjustQuantity(1)">+</button>
+          </div>
         </div>
 
         <div class="form-field date-field">
-          <label for="serviceDate">Дата послуги</label>
-          <input
-            id="serviceDate"
-            name="serviceDate"
-            type="date"
-            [ngModel]="selectedServiceDate()"
-            (ngModelChange)="selectServiceDate($event)"
-            [disabled]="saving()"
-            required
-          />
+          <label>Період послуги</label>
+          <div class="service-period-wrap">
+            <button class="service-period-input" type="button" (click)="toggleServicePeriodPicker()" [attr.aria-expanded]="servicePeriodPickerOpen()">
+              <span aria-hidden="true">▦</span>
+              <span>{{ servicePeriodLabel() }}</span>
+              <span class="service-period-chevron">{{ servicePeriodPickerOpen() ? '⌃' : '⌄' }}</span>
+            </button>
+            @if (servicePeriodPickerOpen()) {
+              <div class="service-period-picker">
+                <div class="service-calendar-header">
+                  <button type="button" aria-label="Попередній місяць" (click)="shiftServiceCalendar(-1)">‹</button>
+                  <strong>{{ serviceCalendarMonth() | date:'LLLL yyyy':'':'uk' }}</strong>
+                  <button type="button" aria-label="Наступний місяць" (click)="shiftServiceCalendar(1)">›</button>
+                </div>
+                <div class="service-calendar-grid">
+                  @for (weekday of ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд']; track weekday) { <span class="service-weekday">{{ weekday }}</span> }
+                  @for (day of serviceCalendarDays(); track day.iso) {
+                    <button type="button" class="service-day" [class.other-month]="!day.currentMonth" [class.selected]="isServicePeriodDateSelected(day.iso)" [class.in-range]="isServicePeriodDateInRange(day.iso)" (click)="selectServicePeriodDate(day.iso)">{{ day.date | date:'d' }}</button>
+                  }
+                </div>
+                <div class="service-picker-hint">Оберіть початок періоду, потім його завершення</div>
+                <button class="service-picker-done" type="button" (click)="servicePeriodPickerOpen.set(false)">Готово</button>
+              </div>
+            }
+          </div>
+          <small class="date-range-hint">{{ selectedServiceDates().length ? 'Дат у періоді: ' + selectedServiceDates().length + ' · нарахування створиться для кожної дати' : 'Оберіть початок і завершення періоду' }}</small>
+        </div>
+
+        <div class="form-field destination-field">
+          <label for="accrualDestination">Зарахувати до</label>
+          <select id="accrualDestination" name="accrualDestination" [ngModel]="accrualDestinationId()" (ngModelChange)="selectAccrualDestination($event)" [disabled]="saving()">
+            <option [ngValue]="null">Нарахування (без рахунку)</option>
+            @for (folio of openFolios(); track folio.id) {
+              <option [ngValue]="folio.id">Рахунок №{{ folio.id }}</option>
+            }
+          </select>
         </div>
 
         <div class="form-field price-field">
@@ -87,9 +110,9 @@
             class="primary-button"
             type="submit"
             [disabled]="
-              !selectedFolio() ||
               !selectedFacilityId() ||
-              facilityPrice() === null ||
+              selectedServiceDates().length === 0 ||
+              facilityPrices().length !== selectedServiceDates().length ||
               priceLoading() ||
               saving()
             "
@@ -258,29 +281,18 @@
             <span class="status-dot closed-dot"></span>
           </div>
 
-          @for (invoice of closedFolios(); track trackFolio($index, invoice)) {
-            <button class="closed-invoice-row" type="button" [disabled]="saving()" (click)="openFolioDetails(invoice)">
-              <div>
-                <span>Рахунок №{{ invoice.id }}</span>
-                <strong>
-                  {{ invoice.totalAmount | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}
-                </strong>
-              </div>
-              <div>
-                <span>Сплачено</span>
-                <strong>
-                  {{ invoice.paidAmount | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}
-                </strong>
-              </div>
-              <div>
-                <span>Баланс</span>
-                <strong>
-                  {{ invoice.balance | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}
-                </strong>
-              </div>
-              <span class="closed-label">Закрито</span>
-            </button>
-          } @empty {
+          @if (closedFolios().length > 0) {
+            <div class="closed-folio-list">
+              @for (invoice of closedFolios(); track trackFolio($index, invoice)) {
+                <button class="closed-invoice-row" type="button" [disabled]="saving()" (click)="openFolioDetails(invoice)">
+                  <div><span>Рахунок №{{ invoice.id }}</span><strong>{{ invoice.totalAmount | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}</strong></div>
+                  <div><span>Сплачено</span><strong>{{ invoice.paidAmount | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}</strong></div>
+                  <div><span>Баланс</span><strong>{{ invoice.balance | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}</strong></div>
+                  <span class="closed-label">Закрито</span>
+                </button>
+              }
+            </div>
+          } @else {
             <div class="compact-empty">
               Закритих рахунків для цього бронювання немає.
             </div>
