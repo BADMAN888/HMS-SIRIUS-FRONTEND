@@ -295,6 +295,8 @@
         <app-folio-details
           [folio]="invoice"
           [primaryGuestId]="primaryGuestId()"
+          [primaryGuest]="primaryGuest()"
+          [profiles]="profiles()"
           [legalEntities]="legalEntities()"
           [saving]="saving()"
           [error]="error()"
@@ -363,66 +365,19 @@
     </section>
 
     @if (folioFormOpen()) {
-      <div class="folio-modal-backdrop" (click)="closeFolioForm()">
-        <section
-          class="folio-modal"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="folio-modal-title"
-          (click)="$event.stopPropagation()"
-        >
-          <div class="folio-modal-heading">
-            <div>
-              <h2 id="folio-modal-title">Новий рахунок</h2>
-              <p>До рахунку буде додано вибрані нарахування.</p>
-            </div>
-            <button class="modal-close-button" type="button" aria-label="Закрити форму" (click)="closeFolioForm()">×</button>
-          </div>
-
-          <div class="selected-folio-accruals">
-            @for (accrual of selectedAccruals(); track accrual.id) {
-              <div>
-                <span>{{ accrual.name }} · {{ accrual.serviceDate | date:'dd.MM.yyyy' }}</span>
-                <strong>{{ accrual.amount | currency:'UAH':'symbol-narrow':'1.2-2':'uk-UA' }}</strong>
-              </div>
-            }
-          </div>
-
-          <div class="folio-party-fields">
-            <label class="form-field">
-              <span>ID одержувача</span>
-              <input type="number" min="1" [(ngModel)]="recipientId" [ngModelOptions]="{standalone: true}" [disabled]="saving()" required />
-            </label>
-            <label class="form-field">
-              <span>ID платника</span>
-              <input type="number" min="1" [(ngModel)]="payerId" [ngModelOptions]="{standalone: true}" [disabled]="saving()" required />
-            </label>
-            <label class="form-field">
-              <span>Постачальник послуг</span>
-              <select [(ngModel)]="serviceProviderId" [ngModelOptions]="{standalone: true}" [disabled]="saving()">
-                <option [ngValue]="null">Не вибрано</option>
-                @for (entity of legalEntities(); track entity.id) {
-                  @if (entity.active) {
-                    <option [ngValue]="entity.id">{{ entity.shortName }} · {{ entity.edrpou }}</option>
-                  }
-                }
-              </select>
-            </label>
-          </div>
-
-          <div class="folio-modal-total">
-            <span>Разом до рахунку</span>
-            <strong>{{ selectedAccrualTotal() | currency:'UAH':'symbol-narrow':'1.2-2':'uk-UA' }}</strong>
-          </div>
-
-          <div class="folio-modal-actions">
-            <button class="secondary-button" type="button" [disabled]="saving()" (click)="closeFolioForm()">Скасувати</button>
-            <button class="primary-button" type="button" [disabled]="saving() || selectedAccruals().length === 0" (click)="createFolioWithSelectedAccruals()">
-              {{ saving() ? 'Створення…' : 'Створити й додати нарахування' }}
-            </button>
-          </div>
-        </section>
-      </div>
+      <app-folio-details
+        [creationMode]="true"
+        [draftAccruals]="selectedAccruals()"
+        [draftTotal]="selectedAccrualTotal()"
+        [primaryGuestId]="primaryGuestId()"
+        [primaryGuest]="primaryGuest()"
+        [profiles]="profiles()"
+        [legalEntities]="legalEntities()"
+        [saving]="saving()"
+        [error]="error()"
+        (close)="closeFolioForm()"
+        (folioCreate)="createFolioWithSelectedAccruals($event)"
+      />
     }
   }
 </section>

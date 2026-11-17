@@ -1,3 +1,53 @@
+@if (creationMode) {
+  <div class="folio-modal-backdrop" (click)="!saving && close.emit()">
+    <section class="folio-modal" role="dialog" aria-modal="true" aria-labelledby="folio-create-title" (click)="$event.stopPropagation()">
+      <div class="folio-modal-heading">
+        <div><h2 id="folio-create-title">Новий рахунок</h2><p>До рахунку буде додано вибрані нарахування.</p></div>
+        <button class="modal-close-button" type="button" aria-label="Закрити картку рахунку" [disabled]="saving" (click)="close.emit()">×</button>
+      </div>
+      @if (error) { <div class="message error-message">{{ error }}</div> }
+      <div class="folio-details-parties">
+        <div class="form-field">
+          <span>Одержувач послуги</span>
+          <button class="recipient-copy" type="button" [disabled]="!primaryGuestId" (click)="copyRecipient()" title="Натисніть, щоб скопіювати ID одержувача">
+            {{ payerLabel(primaryGuest) }} <small>{{ copiedRecipient ? 'Скопійовано' : 'Натисніть, щоб скопіювати ID' }}</small>
+          </button>
+        </div>
+        <div class="form-field payer-field">
+          <span>Платник</span>
+          @if (payerId !== null) { <strong class="selected-payer">{{ payerLabel(selectedPayer) }}</strong> }
+          <input type="search" [ngModel]="payerSearch" [ngModelOptions]="{standalone: true}" (ngModelChange)="onPayerSearch($event)" (focus)="payerResultsOpen = true" [disabled]="saving" placeholder="Пошук за ID або ім'ям" />
+          @if (payerResultsOpen && payerSearch) {
+            <div class="payer-results" role="listbox">
+              @for (profile of payerMatches; track profile.id) {
+                <button type="button" role="option" (click)="selectPayer(profile)">{{ payerLabel(profile) }}</button>
+              } @empty { <span class="no-payer-results">Нічого не знайдено</span> }
+            </div>
+          }
+        </div>
+        <label class="form-field">
+          <span>Постачальник послуг</span>
+          <select [(ngModel)]="serviceProviderId" [ngModelOptions]="{standalone: true}" [disabled]="saving">
+            <option [ngValue]="null">Не вибрано</option>
+            @for (entity of legalEntities; track entity.id) { @if (entity.active) { <option [ngValue]="entity.id">{{ entity.shortName }} · {{ entity.edrpou }}</option> } }
+          </select>
+        </label>
+      </div>
+      <h3 class="folio-accruals-title">Нарахування в рахунку</h3>
+      <div class="table-scroll"><table class="accrual-table">
+        <thead><tr><th>Найменування</th><th>Дата послуги</th><th>Кількість</th><th>Сума</th></tr></thead>
+        <tbody>@for (accrual of draftAccruals; track accrual.id) {
+          <tr><td><div class="accrual-name"><span class="type-indicator"></span><strong>{{ accrual.name }}</strong></div></td><td>{{ accrual.serviceDate | date: 'dd.MM.yyyy' : '' : 'uk-UA' }}</td><td>{{ accrual.quantity }}</td><td class="amount-cell">{{ accrual.amount | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}</td></tr>
+        }</tbody>
+      </table></div>
+      <div class="folio-details-total"><span>Разом до рахунку</span><strong>{{ draftTotal | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}</strong></div>
+      <div class="folio-modal-actions">
+        <button class="secondary-button" type="button" [disabled]="saving" (click)="close.emit()">Скасувати</button>
+        <button class="primary-button" type="button" [disabled]="saving || !draftAccruals.length || payerId === null || !primaryGuestId" (click)="createFolio()">{{ saving ? 'Створення…' : 'Створити й додати нарахування' }}</button>
+      </div>
+    </section>
+  </div>
+} @else if (folio) {
 <div class="folio-modal-backdrop" (click)="!saving && close.emit()">
   <section class="folio-modal" role="dialog" aria-modal="true" aria-labelledby="folio-details-title" (click)="$event.stopPropagation()">
     <div class="folio-modal-heading">
@@ -12,14 +62,24 @@
     @if (success) { <div class="message success-message">{{ success }}</div> }
 
     <div class="folio-details-parties">
-      <label class="form-field">
-        <span>ID одержувача</span>
-        <input type="number" min="1" [(ngModel)]="recipientId" [ngModelOptions]="{standalone: true}" [disabled]="saving || !isOpen()" required />
-      </label>
-      <label class="form-field">
-        <span>ID платника</span>
-        <input type="number" min="1" [(ngModel)]="payerId" [ngModelOptions]="{standalone: true}" [disabled]="saving || !isOpen()" required />
-      </label>
+      <div class="form-field">
+        <span>Одержувач послуги</span>
+        <button class="recipient-copy" type="button" [disabled]="!primaryGuestId" (click)="copyRecipient()" title="Натисніть, щоб скопіювати ID одержувача">
+          {{ payerLabel(primaryGuest) }} <small>{{ copiedRecipient ? 'Скопійовано' : 'Натисніть, щоб скопіювати ID' }}</small>
+        </button>
+      </div>
+      <div class="form-field payer-field">
+        <span>Платник</span>
+        @if (payerId !== null) { <strong class="selected-payer">{{ payerLabel(selectedPayer) }}</strong> }
+        <input type="search" [ngModel]="payerSearch" [ngModelOptions]="{standalone: true}" (ngModelChange)="onPayerSearch($event)" (focus)="payerResultsOpen = true" [disabled]="saving || !isOpen()" placeholder="Пошук за ID або ім'ям" />
+        @if (payerResultsOpen && payerSearch) {
+          <div class="payer-results" role="listbox">
+            @for (profile of payerMatches; track profile.id) {
+              <button type="button" role="option" (click)="selectPayer(profile)">{{ payerLabel(profile) }}</button>
+            } @empty { <span class="no-payer-results">Нічого не знайдено</span> }
+          </div>
+        }
+      </div>
       <label class="form-field">
         <span>Постачальник послуг</span>
         <select [(ngModel)]="serviceProviderId" [ngModelOptions]="{standalone: true}" [disabled]="saving || !isOpen()">
@@ -102,3 +162,4 @@
     </div>
   </section>
 </div>
+}

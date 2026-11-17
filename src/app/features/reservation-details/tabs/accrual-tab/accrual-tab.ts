@@ -14,6 +14,7 @@ import { FolioRequest } from '../../../../core/models/billing/folio-request.mode
 import { FolioReopenRequest } from '../../../../core/models/billing/folio-reopen-request.model';
 import { FacilityType } from '../../../../core/models/enums/facility-type.enum';
 import { FolioStatus } from '../../../../core/models/enums/folio-status.enum';
+import { ProfileResponse } from '../../../../core/models/profile/profile-response.model';
 
 import { AccrualService } from '../../../../core/services/accrual.service';
 
@@ -21,6 +22,7 @@ import { FacilityPriceService } from '../../../../core/services/facility-price.s
 import { FolioService } from '../../../../core/services/folio.service';
 import { LegalEntityService } from '../../../../core/services/legal-entity.service';
 import { PaymentService } from '../../../../core/services/payment.service';
+import { ProfileService } from '../../../../core/services/profile.service';
 import { ReservationService } from '../../../../core/services/reservation.service';
 import {FacilityService} from '../../../../core/services/ facility.service';
 import { FolioDetails } from '../../../../shared/folio-details/folio-details';
@@ -42,6 +44,7 @@ export class AccrualTab implements OnInit {
   private readonly legalEntityService = inject(LegalEntityService);
   private readonly accrualService = inject(AccrualService);
   private readonly paymentService = inject(PaymentService);
+  private readonly profileService = inject(ProfileService);
 
   readonly loading = signal(true);
   readonly saving = signal(false);
@@ -54,6 +57,8 @@ export class AccrualTab implements OnInit {
   readonly reservationId = signal<number | null>(null);
   readonly hotelId = signal<number | null>(null);
   readonly primaryGuestId = signal<number | null>(null);
+  readonly primaryGuest = signal<ProfileResponse | null>(null);
+  readonly profiles = signal<ProfileResponse[]>([]);
 
   readonly facilities = signal<FacilityResponse[]>([]);
   readonly selectedFacilityId = signal<number | null>(null);
@@ -173,9 +178,6 @@ export class AccrualTab implements OnInit {
   );
 
   quantity = 1;
-  recipientId: number | null = null;
-  payerId: number | null = null;
-  serviceProviderId: number | null = null;
 
   ngOnInit(): void {
     this.route.paramMap.subscribe(params => {
@@ -200,6 +202,11 @@ export class AccrualTab implements OnInit {
       next: reservation => {
         const hotelId = reservation.room?.hotelId;
         this.primaryGuestId.set(reservation.primaryGuest?.id ?? null);
+        this.primaryGuest.set(reservation.primaryGuest ?? null);
+        this.profileService.getAll().subscribe({
+          next: profiles => this.profiles.set(profiles ?? []),
+          error: () => this.profiles.set(reservation.primaryGuest ? [reservation.primaryGuest] : [])
+        });
 
         if (hotelId === null || hotelId === undefined) {
           this.error.set(
@@ -431,9 +438,6 @@ export class AccrualTab implements OnInit {
 
   openFolioForm(): void {
     if (this.selectedAccrualIds().length === 0) return;
-    this.recipientId = this.primaryGuestId();
-    this.payerId = this.primaryGuestId();
-    this.serviceProviderId = this.legalEntities().find(entity => entity.active)?.id ?? null;
     this.folioFormOpen.set(true);
   }
 
@@ -441,13 +445,13 @@ export class AccrualTab implements OnInit {
     if (!this.saving()) this.folioFormOpen.set(false);
   }
 
-  createFolioWithSelectedAccruals(): void {
+  createFolioWithSelectedAccruals(parties: FolioPartiesRequest): void {
     const hotelId = this.hotelId();
     const reservationId = this.reservationId();
     const accrualIds = this.selectedAccruals().map(accrual => accrual.id);
     if (!hotelId || !reservationId || accrualIds.length === 0 || this.saving()) return;
 
-    if ([this.recipientId, this.payerId].some(id =>
+    if ([parties.recipientId, parties.payerId].some(id =>
       id === null || !Number.isInteger(id) || id <= 0
     )) {
       this.error.set('Вкажи коректні ID одержувача та платника.');
@@ -457,9 +461,9 @@ export class AccrualTab implements OnInit {
     const request: FolioRequest = {
       hotelId,
       reservationId,
-      recipientId: this.recipientId,
-      payerId: this.payerId,
-      serviceProviderId: this.serviceProviderId
+      recipientId: parties.recipientId,
+      payerId: parties.payerId,
+      serviceProviderId: parties.serviceProviderId
     };
 
     this.saving.set(true);
