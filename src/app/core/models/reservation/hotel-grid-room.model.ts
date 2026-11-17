@@ -7,6 +7,7 @@ export interface HotelGridRoom {
   roomNumber: string;
   floor: number;
   status: RoomStatus;
+  clean: boolean;
   roomView: RoomView;
   hotelId: number;
   hotelName: string;

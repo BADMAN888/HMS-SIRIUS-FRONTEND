@@ -5,6 +5,7 @@
         <div><h2 id="folio-create-title">Новий рахунок</h2><p>До рахунку буде додано вибрані нарахування.</p></div>
         <button class="modal-close-button" type="button" aria-label="Закрити картку рахунку" [disabled]="saving" (click)="close.emit()">×</button>
       </div>
+      <div class="folio-created-date"><span>Дата створення</span><strong>{{ today | date:'dd.MM.yyyy':'':'uk' }}</strong></div>
       @if (error) { <div class="message error-message">{{ error }}</div> }
       <div class="folio-details-parties">
         <div class="form-field">
@@ -53,7 +54,7 @@
     <div class="folio-modal-heading">
       <div>
         <h2 id="folio-details-title">Картка рахунку №{{ folio.id }}</h2>
-        <p>{{ isOpen() ? 'Відкритий рахунок' : 'Закритий рахунок' }} · Бронювання №{{ folio.reservationId }}</p>
+        <p>{{ isOpen() ? 'Відкритий рахунок' : 'Закритий рахунок' }} · Бронювання №{{ folio.reservationId }} · Створено {{ folio.createdAt | date:'dd.MM.yyyy':'':'uk' }}</p>
       </div>
       <button class="modal-close-button" type="button" aria-label="Закрити картку рахунку" [disabled]="saving" (click)="close.emit()">×</button>
     </div>

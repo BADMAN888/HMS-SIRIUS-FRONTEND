@@ -5,6 +5,7 @@ import { Observable } from 'rxjs';
 import { RoomRequest } from '../models/hotel/room-request.model';
 import { RoomResponse } from '../models/hotel/room-response.model';
 import { RoomStatusRequest } from '../models/hotel/room-status-request.model';
+import { RoomCleanlinessRequest } from '../models/hotel/room-cleanliness-request.model';
 import { RoomStatus } from '../models/enums/room-status.enum';
 
 @Injectable({
@@ -71,6 +72,10 @@ export class RoomService {
       `${this.apiUrl}/${id}/status`,
       request
     );
+  }
+
+  updateRoomCleanliness(id: number, request: RoomCleanlinessRequest): Observable<RoomResponse> {
+    return this.http.patch<RoomResponse>(`${this.apiUrl}/${id}/cleanliness`, request);
   }
 
   delete(id: number): Observable<string> {

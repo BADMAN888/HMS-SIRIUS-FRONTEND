@@ -8,6 +8,8 @@ import {HotelGridRoomResponse} from '../../core/models/hotel-grid/hotel-grid-roo
 import { ReservationService } from '../../core/services/reservation.service';
 import { ReservationRequest } from '../../core/models/reservation/reservation-request.model';
 import { ReservationResponse } from '../../core/models/reservation/reservation-response.model';
+import { RoomStatus } from '../../core/models/enums/room-status.enum';
+import { RoomService } from '../../core/services/room.service';
 
 
 @Component({
@@ -20,6 +22,7 @@ import { ReservationResponse } from '../../core/models/reservation/reservation-r
 export class HotelGrid implements OnInit {
   private readonly hotelGridService = inject(HotelGridService);
   private readonly reservationService = inject(ReservationService);
+  private readonly roomService = inject(RoomService);
   private readonly router = inject(Router);
   private readonly cdr = inject(ChangeDetectorRef);
 
@@ -35,6 +38,8 @@ export class HotelGrid implements OnInit {
 
   loading = false;
   error = '';
+  readonly roomStatus = RoomStatus;
+  readonly updatingCleanliness = new Set<number>();
 
   private gridStart!: Date;
   private gridEnd!: Date;
@@ -156,6 +161,27 @@ export class HotelGrid implements OnInit {
     return (room.reservations ?? []).filter(reservation =>
       reservation.status !== 'CANCELLED' && reservation.status !== 'NO_SHOW'
     );
+  }
+
+  toggleRoomCleanliness(event: MouseEvent, room: HotelGridRoomResponse): void {
+    event.stopPropagation();
+    if (this.updatingCleanliness.has(room.id)) return;
+
+    this.updatingCleanliness.add(room.id);
+    this.roomService.updateRoomCleanliness(room.id, { clean: !room.clean }).subscribe({
+      next: updatedRoom => {
+        this.rooms = this.rooms.map(item => item.id === room.id
+          ? { ...item, clean: updatedRoom.clean }
+          : item);
+        this.updatingCleanliness.delete(room.id);
+        this.cdr.detectChanges();
+      },
+      error: error => {
+        this.error = error?.error?.message || 'Не вдалося змінити стан чистоти номера.';
+        this.updatingCleanliness.delete(room.id);
+        this.cdr.detectChanges();
+      }
+    });
   }
 
   startCellSelection(event: PointerEvent, room: HotelGridRoomResponse, dayIndex: number): void {

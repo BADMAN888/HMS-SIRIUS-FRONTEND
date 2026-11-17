@@ -3,6 +3,7 @@
     <div>
       <h1>Шахматка номерів</h1>
       <p>Доступність номерів і бронювання на обраний період</p>
+      <div class="room-cleanliness-legend"><span><i class="clean-indicator"></i> Чистий</span><span><i class="dirty-indicator"></i> Брудний</span></div>
     </div>
 
     <div class="grid-period">
@@ -97,17 +98,30 @@
         @for (room of rooms; track room.id) {
           <div class="room-row" [attr.data-room-id]="room.id">
             <div class="room-cell">
-              <div class="room-number">{{ room.roomNumber }}</div>
+              <div class="room-heading">
+                <div class="room-number">{{ room.roomNumber }}</div>
+                <button
+                  type="button"
+                  class="cleanliness-indicator"
+                  [class.dirty]="!room.clean"
+                  [disabled]="updatingCleanliness.has(room.id)"
+                  [attr.aria-label]="room.clean ? 'Номер чистий. Натисніть, щоб позначити брудним' : 'Номер брудний. Натисніть, щоб позначити чистим'"
+                  [attr.title]="room.clean ? 'Чистий · натисніть, щоб позначити брудним' : 'Брудний · натисніть, щоб позначити чистим'"
+                  (click)="toggleRoomCleanliness($event, room)"
+                ><span></span></button>
+              </div>
               <div class="room-info">
                 <span>Floor {{ room.floor }}</span>
                 <span>{{ room.categoryName }}</span>
               </div>
             </div>
 
-            <div class="room-days">
+            <div class="room-days" [class.out-of-service]="room.status === roomStatus.OUT_OF_SERVICE" [class.out-of-order]="room.status === roomStatus.OUT_OF_ORDER">
               @for (day of days; track day.getTime(); let dayIndex = $index) {
                 <div
                   class="room-day"
+                  [class.out-of-service]="room.status === roomStatus.OUT_OF_SERVICE"
+                  [class.out-of-order]="room.status === roomStatus.OUT_OF_ORDER"
                   [class.selected]="isCellSelected(room.id, dayIndex)"
                   [attr.data-day-index]="dayIndex"
                   (pointerdown)="startCellSelection($event, room, dayIndex)"

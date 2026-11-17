@@ -34,6 +34,9 @@
 .folio-modal-heading { margin-bottom: 22px; }
 .folio-modal-heading h2 { margin: 0 0 6px; color: #f1f5f9; font-size: 20px; }
 .folio-modal-heading p { margin: 0; color: #9bb2cb; font-size: 12px; }
+.folio-created-date { display:flex; justify-content:space-between; gap:12px; margin:0 0 18px; padding:11px 13px; border:1px solid #1b3957; border-radius:10px; background:#09182b; font-size:12px; }
+.folio-created-date span { color:#91a8c1; }
+.folio-created-date strong { color:#e2eaf5; }
 
 .modal-close-button {
   flex: 0 0 36px;

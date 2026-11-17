@@ -47,6 +47,7 @@ export class FolioDetails implements OnChanges {
   paymentMethod: PaymentMethod = PaymentMethod.CASH;
   paymentAmount: number | null = null;
   paymentDescription = '';
+  readonly today = new Date();
   payerSearch = '';
   payerResultsOpen = false;
   copiedRecipient = false;
@@ -56,6 +57,7 @@ export class FolioDetails implements OnChanges {
       this.recipientId = this.primaryGuestId;
       this.payerId = this.folio?.payerId ?? this.primaryGuestId;
       this.serviceProviderId = this.folio?.serviceProviderId ?? null;
+      this.paymentAmount = this.folio && Number(this.folio.balance) > 0 ? Number(this.folio.balance) : null;
       this.updatePayerLabel();
     }
     if (changes['profiles']) {
@@ -89,7 +91,7 @@ export class FolioDetails implements OnChanges {
   }
 
   payerLabel(profile: ProfileResponse | null): string {
-    return profile ? `${profile.id} + ${this.profileName(profile)}` : this.payerId ? `${this.payerId}` : '';
+    return profile ? `${profile.id} ${this.profileName(profile)}` : this.payerId ? `${this.payerId}` : '';
   }
 
   selectPayer(profile: ProfileResponse): void {

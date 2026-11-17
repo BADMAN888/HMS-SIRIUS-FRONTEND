@@ -6,6 +6,7 @@ export interface RoomResponse {
   roomNumber: string;
   floor: number | null;
   status: RoomStatus;
+  clean: boolean;
   roomView: RoomView;
   hotelId: number | null;
   categoryId: number | null;
