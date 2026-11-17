@@ -27,3 +27,34 @@ body {
   background-color: #ffffff;
   color: #1f2937;
 }
+
+.room-status-badge {
+  --room-status-background: #172a47;
+  --room-status-foreground: #dbe8f8;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  padding: 7px 10px;
+  border-radius: 6px;
+  background: var(--room-status-background);
+  color: var(--room-status-foreground);
+  font-weight: 700;
+}
+
+.room-status-badge.available { --room-status-background: #15532f; --room-status-foreground: #88f2b3; }
+.room-status-badge.occupied { --room-status-background: #3d4857; --room-status-foreground: #d4dce7; }
+.room-status-badge.cleaning { --room-status-background: #77590c; --room-status-foreground: #ffdc71; }
+.room-status-badge.dirty { --room-status-background: #8b2224; --room-status-foreground: #f5a6a6; }
+
+.reservation-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 9px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.reservation-status-badge.reserved { background: #29344b; color: #b9c5d8; }
+.reservation-status-badge.in-house { background: #183f37; color: #67d3b3; }

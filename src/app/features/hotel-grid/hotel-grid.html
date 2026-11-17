@@ -1,44 +1,31 @@
 <div class="hotel-grid-page">
   <div class="grid-header">
-    <div>
-      <h1>Шахматка номерів</h1>
-      <p>Доступність номерів і бронювання на обраний період</p>
-      <div class="room-cleanliness-legend"><span><i class="clean-indicator"></i> Чистий</span><span><i class="dirty-indicator"></i> Брудний</span></div>
-    </div>
-
-    <div class="grid-period">
-      <span>{{ days[0] | date:'dd MMM yyyy':'':'uk' }}</span>
-      <span>—</span>
-      <span>{{ days[days.length - 1] | date:'dd MMM yyyy':'':'uk' }}</span>
-    </div>
-
-    <div class="period-controls">
+    <div class="period-controls period-controls-left">
       <button
         type="button"
         (click)="movePeriod(-shiftDays)"
         aria-label="На 10 днів назад"
       >‹</button>
 
-      <div class="date-input">
-        <label for="grid-start-date">Від</label>
-        <input
-          id="grid-start-date"
-          type="date"
-          aria-label="Початкова дата"
-          [(value)]="startDateValue"
-          (change)="startDateValue = $any($event.target).value"
-        >
-      </div>
-
-      <div class="date-input">
-        <label for="grid-end-date">До</label>
-        <input
-          id="grid-end-date"
-          type="date"
-          aria-label="Кінцева дата"
-          [(value)]="endDateValue"
-          (change)="endDateValue = $any($event.target).value"
-        >
+      <div class="calendar-control">
+        <button type="button" class="calendar-trigger" (click)="toggleCalendar()" [attr.aria-expanded]="calendarOpen">
+          ▦ {{ startDateValue | date:'dd MMM yyyy':'':'uk' }}
+        </button>
+        @if (calendarOpen) {
+          <div class="grid-calendar">
+            <div class="grid-calendar-header">
+              <button type="button" aria-label="Попередній місяць" (click)="shiftCalendarMonth(-1)">‹</button>
+              <strong>{{ calendarMonth | date:'LLLL yyyy':'':'uk' }}</strong>
+              <button type="button" aria-label="Наступний місяць" (click)="shiftCalendarMonth(1)">›</button>
+            </div>
+            <div class="grid-calendar-days">
+              @for (weekday of ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд']; track weekday) { <span>{{ weekday }}</span> }
+              @for (day of calendarDays; track day.iso) {
+                <button type="button" [class.other-month]="!day.currentMonth" [class.selected]="day.iso === startDateValue" (click)="selectCalendarDate(day.iso)">{{ day.date | date:'d' }}</button>
+              }
+            </div>
+          </div>
+        }
       </div>
 
       <button
@@ -49,20 +36,12 @@
 
       <button
         type="button"
-        class="apply-button"
-        (click)="applyDateRange()"
-      >Застосувати</button>
-
-      <button
-        type="button"
         class="today-button"
         (click)="goToToday()"
       >Сьогодні</button>
 
-      <a class="new-booking-button" routerLink="/reservations/new">
-        ＋ Нове бронювання
-      </a>
     </div>
+    <a class="new-booking-button" routerLink="/reservations/new">Нове бронювання</a>
   </div>
 
   @if (loading) {
@@ -97,31 +76,28 @@
 
         @for (room of rooms; track room.id) {
           <div class="room-row" [attr.data-room-id]="room.id">
-            <div class="room-cell">
+            <div class="room-cell" [class.status-menu-open]="roomStatusMenuRoomId === room.id">
               <div class="room-heading">
-                <div class="room-number">{{ room.roomNumber }}</div>
-                <button
-                  type="button"
-                  class="cleanliness-indicator"
-                  [class.dirty]="!room.clean"
-                  [disabled]="updatingCleanliness.has(room.id)"
-                  [attr.aria-label]="room.clean ? 'Номер чистий. Натисніть, щоб позначити брудним' : 'Номер брудний. Натисніть, щоб позначити чистим'"
-                  [attr.title]="room.clean ? 'Чистий · натисніть, щоб позначити брудним' : 'Брудний · натисніть, щоб позначити чистим'"
-                  (click)="toggleRoomCleanliness($event, room)"
-                ><span></span></button>
+                <div class="room-number room-status-badge" [class.available]="room.status === roomStatus.AVAILABLE && room.clean" [class.occupied]="room.status === roomStatus.OCCUPIED" [class.cleaning]="room.status === roomStatus.CLEANING" [class.dirty]="room.status === roomStatus.DIRTY || (room.status === roomStatus.AVAILABLE && !room.clean)" [attr.title]="'Поточний статус: ' + room.status + '. Натисніть правою кнопкою, щоб змінити.'" (contextmenu)="openRoomStatusMenu($event, room)">
+                  {{ room.roomNumber }}
+                </div>
+                @if (roomStatusMenuRoomId === room.id) {
+                  <div class="room-status-menu" role="menu" (click)="$event.stopPropagation()">
+                    @for (option of roomStatusOptions; track option.status) {
+                      <button type="button" role="menuitem" [class.current]="room.status === option.status" [disabled]="updatingRoomStatus.has(room.id)" (click)="setRoomStatus(room, option.status)">{{ option.label }}</button>
+                    }
+                  </div>
+                }
               </div>
               <div class="room-info">
-                <span>Floor {{ room.floor }}</span>
                 <span>{{ room.categoryName }}</span>
               </div>
             </div>
 
-            <div class="room-days" [class.out-of-service]="room.status === roomStatus.OUT_OF_SERVICE" [class.out-of-order]="room.status === roomStatus.OUT_OF_ORDER">
+            <div class="room-days">
               @for (day of days; track day.getTime(); let dayIndex = $index) {
                 <div
                   class="room-day"
-                  [class.out-of-service]="room.status === roomStatus.OUT_OF_SERVICE"
-                  [class.out-of-order]="room.status === roomStatus.OUT_OF_ORDER"
                   [class.selected]="isCellSelected(room.id, dayIndex)"
                   [attr.data-day-index]="dayIndex"
                   (pointerdown)="startCellSelection($event, room, dayIndex)"
@@ -136,7 +112,6 @@
                   (pointerdown)="startReservationMove($event, reservation, room)"
                   (click)="openReservation(reservation)"
                   [class.reserved]="reservation.status === 'RESERVED'"
-                  [class.confirmed]="reservation.status === 'CONFIRMED'"
                   [class.in-house]="reservation.status === 'IN_HOUSE'"
                   [class.completed]="reservation.status === 'COMPLETED'"
                   [class.cancelled]="reservation.status === 'CANCELLED'"

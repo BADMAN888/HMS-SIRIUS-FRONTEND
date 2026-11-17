@@ -136,10 +136,11 @@ tbody tr {
   min-width: 48px;
   padding: 7px 10px;
   border-radius: 6px;
-  background: #172a47;
-  color: #dbe8f8;
+  background: var(--room-status-background, #172a47);
+  color: var(--room-status-foreground, #dbe8f8);
   font-weight: 700;
 }
+
 
 .confirmation {
   color: #7fb2ef;
@@ -160,34 +161,6 @@ tbody tr {
   span {
     color: #8190a8;
     font-size: 12px;
-  }
-}
-
-.status {
-  display: inline-flex;
-  padding: 5px 9px;
-  border-radius: 6px;
-  font-size: 11px;
-  font-weight: 700;
-
-  &.reserved {
-    background: #29344b;
-    color: #b9c5d8;
-  }
-
-  &.confirmed {
-    background: #18385d;
-    color: #76b1f0;
-  }
-
-  &.checked-in {
-    background: #183f37;
-    color: #67d3b3;
-  }
-
-  &.completed {
-    background: #29344b;
-    color: #b9c5d8;
   }
 }
 

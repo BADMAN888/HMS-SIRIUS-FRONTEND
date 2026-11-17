@@ -165,8 +165,7 @@ export class ReservationTab implements OnInit {
 
       return overlaps.every(reservation =>
         !reservation.roomLocked &&
-        (reservation.status === ReservationStatus.RESERVED ||
-          reservation.status === ReservationStatus.CONFIRMED)
+        reservation.status === ReservationStatus.RESERVED
       );
     }).sort(
       (a, b) => Number(b.status === RoomStatus.AVAILABLE) - Number(a.status === RoomStatus.AVAILABLE)
@@ -1052,16 +1051,14 @@ export class ReservationTab implements OnInit {
     const reservation = this.reservation();
     return !!reservation &&
       this.isToday(reservation.checkIn) &&
-      (reservation.status === ReservationStatus.RESERVED ||
-        reservation.status === ReservationStatus.CONFIRMED);
+      reservation.status === ReservationStatus.RESERVED;
   }
 
   canMarkNoShow(): boolean {
     const reservation = this.reservation();
     return !!reservation &&
       this.isBeforeToday(reservation.checkIn) &&
-      (reservation.status === ReservationStatus.RESERVED ||
-        reservation.status === ReservationStatus.CONFIRMED);
+      reservation.status === ReservationStatus.RESERVED;
   }
 
   checkInReservation(): void {

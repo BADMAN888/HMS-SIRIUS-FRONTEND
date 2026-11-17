@@ -89,7 +89,7 @@
               (click)="openReservation(reservation.id)"
             >
               <td>
-                <span class="room-number">
+                <span class="room-number room-status-badge" [class.available]="getRoomStatusClass(reservation.roomId) === 'available'" [class.occupied]="getRoomStatusClass(reservation.roomId) === 'occupied'" [class.cleaning]="getRoomStatusClass(reservation.roomId) === 'cleaning'" [class.dirty]="getRoomStatusClass(reservation.roomId) === 'dirty'">
                   {{ getRoomNumber(reservation.roomId) }}
                 </span>
               </td>
@@ -129,10 +129,8 @@
 
               <td>
                 <span
-                  class="status"
+                  class="reservation-status-badge"
                   [class.reserved]="reservation.status === 'RESERVED'"
-                  [class.confirmed]="reservation.status === 'CONFIRMED'"
-                  [class.checked-in]="reservation.status === 'IN_HOUSE'"
                 >
                   {{ reservation.status }}
                 </span>

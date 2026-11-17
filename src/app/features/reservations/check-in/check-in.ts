@@ -29,8 +29,7 @@ export class CheckIn implements OnInit {
   readonly pendingCheckIns = computed(() =>
     this.reservations().filter(
       reservation =>
-        reservation.status === ReservationStatus.RESERVED ||
-        reservation.status === ReservationStatus.CONFIRMED
+        reservation.status === ReservationStatus.RESERVED
     ).length
   );
 
@@ -70,7 +69,7 @@ export class CheckIn implements OnInit {
       )
       .subscribe({
         next: data => {
-          this.reservations.set(data.reservations);
+          this.reservations.set(data.reservations.filter(item => item.status === ReservationStatus.RESERVED));
           this.rooms.set(data.rooms);
         },
         error: error => {
@@ -98,6 +97,19 @@ export class CheckIn implements OnInit {
 
   getRoomNumber(roomId: number): string {
     return this.rooms().find(room => room.id === roomId)?.roomNumber ?? `#${roomId}`;
+  }
+
+  getRoomStatus(roomId: number): string {
+    return this.rooms().find(room => room.id === roomId)?.status ?? '';
+  }
+
+  getRoomStatusClass(roomId: number): string {
+    const room = this.rooms().find(item => item.id === roomId);
+    if (!room) return 'occupied';
+    if (room.status === 'OCCUPIED') return 'occupied';
+    if (room.status === 'CLEANING') return 'cleaning';
+    if (room.status === 'DIRTY' || !room.clean) return 'dirty';
+    return 'available';
   }
 
   private formatDate(date: Date): string {

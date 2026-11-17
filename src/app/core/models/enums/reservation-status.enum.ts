@@ -1,6 +1,5 @@
 export enum ReservationStatus {
   RESERVED = 'RESERVED',
-  CONFIRMED = 'CONFIRMED',
   IN_HOUSE = 'IN_HOUSE',
   COMPLETED = 'COMPLETED',
   CANCELLED = 'CANCELLED',

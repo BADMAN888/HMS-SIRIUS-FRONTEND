@@ -127,6 +127,15 @@ export class CheckOut implements OnInit {
     return this.rooms().find(room => room.id === roomId)?.roomNumber ?? `#${roomId}`;
   }
 
+  getRoomStatusClass(roomId: number): string {
+    const room = this.rooms().find(item => item.id === roomId);
+    if (!room) return 'occupied';
+    if (room.status === 'OCCUPIED') return 'occupied';
+    if (room.status === 'CLEANING') return 'cleaning';
+    if (room.status === 'DIRTY' || !room.clean) return 'dirty';
+    return 'available';
+  }
+
   private formatDate(date: Date): string {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');

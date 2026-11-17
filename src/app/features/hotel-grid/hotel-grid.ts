@@ -29,6 +29,8 @@ export class HotelGrid implements OnInit {
   readonly dayWidth = 92;
   readonly roomColumnWidth = 150;
   readonly shiftDays = 10;
+  calendarOpen = false;
+  calendarMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 
   days: Date[] = [];
   rooms: HotelGridRoomResponse[] = [];
@@ -39,7 +41,14 @@ export class HotelGrid implements OnInit {
   loading = false;
   error = '';
   readonly roomStatus = RoomStatus;
-  readonly updatingCleanliness = new Set<number>();
+  readonly roomStatusOptions = [
+    { status: RoomStatus.AVAILABLE, label: 'Доступний' },
+    { status: RoomStatus.OCCUPIED, label: 'Зайнятий' },
+    { status: RoomStatus.CLEANING, label: 'Прибирання' },
+    { status: RoomStatus.DIRTY, label: 'Брудний' }
+  ];
+  readonly updatingRoomStatus = new Set<number>();
+  roomStatusMenuRoomId: number | null = null;
 
   private gridStart!: Date;
   private gridEnd!: Date;
@@ -55,7 +64,7 @@ export class HotelGrid implements OnInit {
     const today = this.startOfDay(new Date());
 
     this.gridStart = today;
-    this.gridEnd = this.addDays(today, 31);
+    this.gridEnd = this.addDays(today, 30);
 
     this.syncDateInputs();
     this.updateDays();
@@ -73,7 +82,7 @@ export class HotelGrid implements OnInit {
 
   goToToday(): void {
     this.gridStart = this.startOfDay(new Date());
-    this.gridEnd = this.addDays(this.gridStart, 31);
+    this.gridEnd = this.addDays(this.gridStart, 30);
 
     this.syncDateInputs();
     this.updateDays();
@@ -81,29 +90,48 @@ export class HotelGrid implements OnInit {
   }
 
   applyDateRange(): void {
-    if (!this.startDateValue || !this.endDateValue) {
-      this.error = 'Вибери початкову та кінцеву дату.';
+    if (!this.startDateValue) {
+      this.error = 'Вибери початкову дату.';
       return;
     }
 
     const start = this.parseInputDate(this.startDateValue);
-    const end = this.parseInputDate(this.endDateValue);
 
-    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
-      this.error = 'Вкажи коректний діапазон дат.';
-      return;
-    }
-
-    if (end <= start) {
-      this.error = 'Кінцева дата має бути пізніше початкової.';
+    if (Number.isNaN(start.getTime())) {
+      this.error = 'Вкажи коректну дату.';
       return;
     }
 
     this.gridStart = start;
-    this.gridEnd = end;
+    this.gridEnd = this.addDays(start, 30);
 
     this.updateDays();
     this.loadGrid();
+  }
+
+  toggleCalendar(): void {
+    this.calendarOpen = !this.calendarOpen;
+    const selected = this.parseInputDate(this.startDateValue);
+    if (!Number.isNaN(selected.getTime())) this.calendarMonth = new Date(selected.getFullYear(), selected.getMonth(), 1);
+  }
+
+  shiftCalendarMonth(offset: number): void {
+    this.calendarMonth = new Date(this.calendarMonth.getFullYear(), this.calendarMonth.getMonth() + offset, 1);
+  }
+
+  get calendarDays(): { date: Date; iso: string; currentMonth: boolean }[] {
+    const first = new Date(this.calendarMonth.getFullYear(), this.calendarMonth.getMonth(), 1);
+    const start = this.addDays(first, -((first.getDay() + 6) % 7));
+    return Array.from({ length: 42 }, (_, index) => {
+      const date = this.addDays(start, index);
+      return { date, iso: this.formatDate(date), currentMonth: date.getMonth() === this.calendarMonth.getMonth() };
+    });
+  }
+
+  selectCalendarDate(iso: string): void {
+    this.startDateValue = iso;
+    this.applyDateRange();
+    this.calendarOpen = false;
   }
 
   private syncDateInputs(): void {
@@ -163,25 +191,35 @@ export class HotelGrid implements OnInit {
     );
   }
 
-  toggleRoomCleanliness(event: MouseEvent, room: HotelGridRoomResponse): void {
+  openRoomStatusMenu(event: MouseEvent, room: HotelGridRoomResponse): void {
+    event.preventDefault();
     event.stopPropagation();
-    if (this.updatingCleanliness.has(room.id)) return;
+    this.roomStatusMenuRoomId = room.id;
+  }
 
-    this.updatingCleanliness.add(room.id);
-    this.roomService.updateRoomCleanliness(room.id, { clean: !room.clean }).subscribe({
+  setRoomStatus(room: HotelGridRoomResponse, status: RoomStatus): void {
+    if (this.updatingRoomStatus.has(room.id)) return;
+    this.updatingRoomStatus.add(room.id);
+    this.roomService.updateRoomStatus(room.id, { status }).subscribe({
       next: updatedRoom => {
         this.rooms = this.rooms.map(item => item.id === room.id
-          ? { ...item, clean: updatedRoom.clean }
+          ? { ...item, status: updatedRoom.status, clean: updatedRoom.clean }
           : item);
-        this.updatingCleanliness.delete(room.id);
+        this.roomStatusMenuRoomId = null;
+        this.updatingRoomStatus.delete(room.id);
         this.cdr.detectChanges();
       },
       error: error => {
-        this.error = error?.error?.message || 'Не вдалося змінити стан чистоти номера.';
-        this.updatingCleanliness.delete(room.id);
+        this.error = error?.error?.message || 'Не вдалося змінити статус номера.';
+        this.updatingRoomStatus.delete(room.id);
         this.cdr.detectChanges();
       }
     });
+  }
+
+  @HostListener('document:click')
+  closeRoomStatusMenu(): void {
+    this.roomStatusMenuRoomId = null;
   }
 
   startCellSelection(event: PointerEvent, room: HotelGridRoomResponse, dayIndex: number): void {

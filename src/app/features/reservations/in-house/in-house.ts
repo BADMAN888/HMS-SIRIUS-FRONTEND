@@ -3,10 +3,8 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { finalize } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatTableModule } from '@angular/material/table';
 import { ReservationService } from '../../../core/services/reservation.service';
 
 import { ReservationStatus } from '../../../core/models/enums/reservation-status.enum';
@@ -18,10 +16,8 @@ import {ReservationResponse} from '../../../core/models/reservation/reservation-
   imports: [
     DatePipe,
     MatButtonModule,
-    MatCardModule,
     MatIconModule,
-    MatProgressSpinnerModule,
-    MatTableModule
+    MatProgressSpinnerModule
   ],
   templateUrl: './in-house.html',
   styleUrl: './in-house.scss'
@@ -33,15 +29,6 @@ export class InHouseComponent implements OnInit {
   readonly guests = signal<ReservationResponse[]>([]);
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
-
-  readonly displayedColumns = [
-    'guest',
-    'roomNumber',
-    'confirmationNumber',
-    'checkIn',
-    'checkOut',
-    'status'
-  ];
 
   ngOnInit(): void {
     this.loadGuests();
@@ -76,6 +63,10 @@ export class InHouseComponent implements OnInit {
     ]
       .filter(Boolean)
       .join(' ');
+  }
+
+  getCommentText(reservation: ReservationResponse): string {
+    return reservation.comments?.map(comment => comment.text).join(', ') || '—';
   }
 
   openReservation(id: number): void {
