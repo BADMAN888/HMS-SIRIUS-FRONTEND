@@ -1,0 +1,58 @@
+<section class="page">
+  <form class="filters" (submit)="$event.preventDefault(); applyFilters()">
+    <div class="filter-section">
+      <h2><mat-icon>hotel</mat-icon> Бронювання</h2>
+      <div class="filter-grid">
+        <label>Номер підтвердження<input [(ngModel)]="filters['confirmationNumber']" name="confirmationNumber" (ngModelChange)="applyFilters()"></label>
+        <label>Номер кімнати<select [(ngModel)]="filters['roomNumber']" name="roomNumber" (ngModelChange)="applyFilters()"><option value="">Усі номери</option>@for (room of rooms(); track room.id) {<option [value]="room.roomNumber">{{ room.roomNumber }}</option>}</select></label>
+        <label>Тариф<select [(ngModel)]="filters['rate']" name="rate" (ngModelChange)="applyFilters()"><option value="">Усі тарифи</option>@for (rate of rates(); track rate.id) {<option [value]="rate.id">{{ rate.name }}</option>}</select></label>
+        <label>Статус<select [(ngModel)]="filters['status']" name="status" (ngModelChange)="applyFilters()"><option value="">Усі статуси</option>@for (status of statuses; track status) {<option [value]="status">{{ status }}</option>}</select></label>
+        <label>Зовнішній номер бронювання<input [(ngModel)]="filters['externalBookingNumber']" name="externalBookingNumber" (ngModelChange)="applyFilters()"></label>
+        <label>Джерело бронювання<input [(ngModel)]="filters['bookingSource']" name="bookingSource" (ngModelChange)="applyFilters()"></label>
+        <label>Компанія-джерело<select [(ngModel)]="filters['sourceCompany']" name="sourceCompany" (ngModelChange)="applyFilters()"><option value="">Усі компанії</option>@for (company of companies(); track company.id) {<option [value]="company.id">{{ company.shortName || company.fullName }}</option>}</select></label>
+        <label>Компанія-оператор<select [(ngModel)]="filters['operatorCompany']" name="operatorCompany" (ngModelChange)="applyFilters()"><option value="">Усі компанії</option>@for (company of companies(); track company.id) {<option [value]="company.id">{{ company.shortName || company.fullName }}</option>}</select></label>
+      </div>
+      <div class="date-grid">
+        @for (period of [{kind:'checkIn', label:'Заїзд'}, {kind:'checkOut', label:'Виїзд'}, {kind:'created', label:'Створено'}]; track period.kind) {
+          <div class="period-field"><span class="period-label">{{ period.label }}</span><button class="period-trigger" type="button" (click)="openCalendar($any(period.kind))"><mat-icon>calendar_month</mat-icon>{{ rangeLabel($any(period.kind)) }}<mat-icon class="period-chevron">{{ calendarOpen() === period.kind ? 'expand_less' : 'expand_more' }}</mat-icon></button>
+            @if (calendarOpen() === period.kind) {
+              <div class="period-picker"><div class="calendar-header"><button type="button" aria-label="Попередній місяць" (click)="shiftCalendarMonth(-1)">‹</button><strong>{{ calendarMonth() | date:'LLLL yyyy':'':'uk' }}</strong><button type="button" aria-label="Наступний місяць" (click)="shiftCalendarMonth(1)">›</button></div>
+                <div class="calendar-grid">@for (weekday of ['Пн','Вт','Ср','Чт','Пт','Сб','Нд']; track weekday) {<span class="weekday">{{ weekday }}</span>}@for (day of calendarDays(); track day.iso) {<button type="button" class="calendar-day" [class.other-month]="!day.currentMonth" [class.selected]="isCalendarDateSelected(day.iso)" [class.in-range]="isCalendarDateInRange(day.iso)" (click)="selectCalendarDate(day.iso)">{{ day.date | date:'d' }}</button>}</div>
+                <div class="picker-hint">Оберіть початкову дату, потім кінцеву</div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+
+    <div class="filter-section">
+      <h2><mat-icon>person</mat-icon> Гість у бронюванні</h2>
+      <div class="filter-grid">
+        <label>Ім’я<input [(ngModel)]="filters['firstName']" name="firstName" (ngModelChange)="applyFilters()"></label>
+        <label>Прізвище<input [(ngModel)]="filters['lastName']" name="lastName" (ngModelChange)="applyFilters()"></label>
+        <label>По батькові<input [(ngModel)]="filters['middleName']" name="middleName" (ngModelChange)="applyFilters()"></label>
+        <label>Телефон<input [(ngModel)]="filters['phoneNumber']" name="phoneNumber" (ngModelChange)="applyFilters()"></label>
+        <label>Email<input type="email" [(ngModel)]="filters['email']" name="email" (ngModelChange)="applyFilters()"></label>
+        <label>Дата народження<input type="date" [(ngModel)]="filters['dateOfBirth']" name="dateOfBirth" (ngModelChange)="applyFilters()"></label>
+        <label>Національність<select [(ngModel)]="filters['nationality']" name="nationality" (ngModelChange)="applyFilters()"><option value="">Усі</option>@for (nationality of nationalities; track nationality) {<option [value]="nationality">{{ nationality.replaceAll('_', ' ') }}</option>}</select></label>
+        <label>VIP<select [(ngModel)]="filters['vip']" name="vip" (ngModelChange)="applyFilters()"><option value="">Усі</option><option value="true">Так</option><option value="false">Ні</option></select></label>
+        <label>Чорний список<select [(ngModel)]="filters['inBlackList']" name="inBlackList" (ngModelChange)="applyFilters()"><option value="">Усі</option><option value="true">Так</option><option value="false">Ні</option></select></label>
+      </div>
+    </div>
+    <div class="filter-actions">
+      <span>Знайдено: <strong>{{ results().length }}</strong></span>
+      <button mat-stroked-button class="refresh-button" type="button" (click)="load()" [disabled]="loading()"><mat-icon>refresh</mat-icon>Оновити</button>
+      <button mat-button type="button" (click)="clearFilters()">Очистити фільтри</button>
+    </div>
+  </form>
+
+  @if (loading()) { <div class="state-container"><mat-spinner diameter="40"/><p>Завантаження бронювань і профайлів…</p></div> }
+  @else if (error()) { <div class="state-container error-state"><mat-icon>error_outline</mat-icon><p>{{ error() }}</p><button mat-stroked-button (click)="load()">Спробувати ще раз</button></div> }
+  @else if (results().length === 0) { <div class="state-container"><mat-icon>search_off</mat-icon><h2>Бронювань не знайдено</h2><p>Змініть критерії пошуку або очистіть фільтри.</p></div> }
+  @else {
+    <div class="table-wrapper"><table><thead><tr><th>Підтвердження</th><th>Кімната</th><th>Гість</th><th>Тариф</th><th>Заїзд</th><th>Виїзд</th><th>Статус</th><th>Джерело</th></tr></thead><tbody>
+      @for (r of results(); track r.id) { <tr (click)="openReservation(r.id)"><td class="confirmation">{{ r.confirmationNumber }}</td><td>{{ r.room?.roomNumber || '—' }}</td><td>{{ guestName(r) }}</td><td>{{ r.rate?.name || '—' }}</td><td>{{ r.checkIn | date:'dd.MM.yyyy HH:mm' }}</td><td>{{ r.checkOut | date:'dd.MM.yyyy HH:mm' }}</td><td><span class="status">{{ r.status }}</span></td><td>{{ r.bookingSource || '—' }}</td></tr> }
+    </tbody></table></div>
+  }
+</section>
