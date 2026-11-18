@@ -11,11 +11,29 @@
   input[type='checkbox'] {
     width: 17px;
     height: 17px;
-    accent-color: #48a8ee;
+    appearance: none;
+    display: inline-grid;
+    place-content: center;
+    margin: 0;
+    border: 1px solid #426587;
+    border-radius: 5px;
+    background: linear-gradient(180deg, #102943, #0a1c30);
     cursor: pointer;
+    transition: border-color 140ms ease, background 140ms ease, box-shadow 140ms ease;
   }
 
-  input[type='checkbox']:disabled { cursor: not-allowed; opacity: 0.55; }
+  input[type='checkbox']:checked {
+    border-color: #348dd0;
+    background-color: #1769aa;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='m3 8 3.2 3.2L13 4.5' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 13px;
+  }
+
+  input[type='checkbox']:hover:not(:disabled) { border-color: #65b6f2; }
+  input[type='checkbox']:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(57, 136, 203, 0.3); }
+  input[type='checkbox']:disabled { cursor: not-allowed; opacity: 0.45; }
 }
 
 .create-folio-footer,
@@ -154,7 +172,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(140px, 0.72fr) minmax(0, 1.8fr);
   gap: 18px 20px;
-  align-items: end;
+  align-items: start;
 }
 
 .form-field {
@@ -321,6 +339,7 @@
 
 .service-form-footer {
   grid-column: 3;
+  align-self: end;
   display: flex;
   align-items: end;
   justify-content: space-between;
