@@ -35,12 +35,35 @@ export class CheckOut implements OnInit {
   readonly checkingOutId = signal<number | null>(null);
   readonly totalsByReservationId = signal<Record<number, number>>({});
   readonly amountError = signal(false);
+  readonly showDeparted = signal(false);
+  readonly showPending = signal(true);
 
   readonly pendingCheckOuts = computed(() =>
     this.reservations().filter(
       reservation => reservation.status === ReservationStatus.IN_HOUSE
     ).length
   );
+
+  readonly departedCheckOuts = computed(() =>
+    this.reservations().filter(reservation => reservation.status === ReservationStatus.COMPLETED).length
+  );
+
+  readonly visibleReservations = computed(() => this.reservations()
+    .filter(reservation =>
+      (this.showDeparted() && reservation.status === ReservationStatus.COMPLETED) ||
+      (this.showPending() && reservation.status === ReservationStatus.IN_HOUSE)
+    )
+    .slice()
+    .sort((a, b) => new Date(a.checkOut).getTime() - new Date(b.checkOut).getTime())
+  );
+
+  toggleDeparted(): void {
+    this.showDeparted.update(value => !value);
+  }
+
+  togglePending(): void {
+    this.showPending.update(value => !value);
+  }
 
   ngOnInit(): void {
     this.loadCheckOuts();

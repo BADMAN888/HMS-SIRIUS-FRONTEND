@@ -1,0 +1,127 @@
+<div class="calculator-backdrop" (click)="close()">
+  <section class="calculator-dialog" role="dialog" aria-modal="true" aria-labelledby="booking-calculator-title" (click)="$event.stopPropagation()">
+    <header class="calculator-header">
+      <div class="calculator-title-icon" aria-hidden="true">▦</div>
+      <div>
+        <h2 id="booking-calculator-title">Калькулятор бронювань</h2>
+        <p>Розрахуйте вартість проживання до створення бронювання</p>
+      </div>
+      <button class="calculator-close" type="button" aria-label="Закрити калькулятор" (click)="close()">×</button>
+    </header>
+
+    @if (loading()) {
+      <div class="calculator-state">Завантаження категорій і тарифів…</div>
+    } @else {
+      <div class="calculator-fields">
+        @if (hotels.length > 1) {
+          <label class="calculator-field full-field">
+            <span>Готель</span>
+            <select [ngModel]="hotelId()" (ngModelChange)="selectHotel($event)">
+              @for (hotel of hotels; track hotel.id) { <option [ngValue]="hotel.id">{{ hotel.name }}</option> }
+            </select>
+          </label>
+        }
+        <div class="calculator-field full-field period-field">
+          <span>Період проживання</span>
+          <button class="period-trigger" type="button" (click)="togglePeriodPicker()" [attr.aria-expanded]="periodPickerOpen()">
+            <span class="period-icon" aria-hidden="true">▦</span><strong>{{ periodLabel() }}</strong><span class="period-chevron">{{ periodPickerOpen() ? '⌃' : '⌄' }}</span>
+          </button>
+          @if (periodPickerOpen()) {
+            <div class="period-picker">
+              <div class="period-time-controls">
+                <div class="period-time-field">
+                  <span>Час заїзду</span>
+                  <button class="period-time-input" type="button" [class.open]="activeTimePicker() === 'checkIn'" (click)="toggleTimePicker('checkIn')" [attr.aria-expanded]="activeTimePicker() === 'checkIn'"><span class="period-clock" aria-hidden="true"></span><strong>{{ checkInTime() }}</strong></button>
+                  @if (activeTimePicker() === 'checkIn') {
+                    <div class="period-time-picker" role="dialog" aria-label="Час заїзду">
+                      <div class="period-time-picker-title">Заїзд <strong>{{ checkInTime() }}</strong></div>
+                      <div class="period-time-headings"><span>ГОД</span><span>ХВ</span></div>
+                      <div class="period-time-wheels">
+                        <div class="period-time-wheel" aria-label="Година заїзду">
+                          @for (hour of timeHours; track hour) { <button type="button" [id]="'calc-time-checkIn-hour-' + hour" [class.selected]="checkInTime().slice(0, 2) === hour" (click)="selectTimePart('checkIn', 'hour', hour)">{{ hour }}</button> }
+                        </div>
+                        <div class="period-time-wheel" aria-label="Хвилина заїзду">
+                          @for (minute of timeMinutes; track minute) { <button type="button" [id]="'calc-time-checkIn-minute-' + minute" [class.selected]="checkInTime().slice(3, 5) === minute" (click)="selectTimePart('checkIn', 'minute', minute)">{{ minute }}</button> }
+                        </div>
+                      </div>
+                    </div>
+                  }
+                </div>
+                <div class="period-time-field">
+                  <span>Час виїзду</span>
+                  <button class="period-time-input" type="button" [class.open]="activeTimePicker() === 'checkOut'" (click)="toggleTimePicker('checkOut')" [attr.aria-expanded]="activeTimePicker() === 'checkOut'"><span class="period-clock" aria-hidden="true"></span><strong>{{ checkOutTime() }}</strong></button>
+                  @if (activeTimePicker() === 'checkOut') {
+                    <div class="period-time-picker period-time-picker-right" role="dialog" aria-label="Час виїзду">
+                      <div class="period-time-picker-title">Виїзд <strong>{{ checkOutTime() }}</strong></div>
+                      <div class="period-time-headings"><span>ГОД</span><span>ХВ</span></div>
+                      <div class="period-time-wheels">
+                        <div class="period-time-wheel" aria-label="Година виїзду">
+                          @for (hour of timeHours; track hour) { <button type="button" [id]="'calc-time-checkOut-hour-' + hour" [class.selected]="checkOutTime().slice(0, 2) === hour" (click)="selectTimePart('checkOut', 'hour', hour)">{{ hour }}</button> }
+                        </div>
+                        <div class="period-time-wheel" aria-label="Хвилина виїзду">
+                          @for (minute of timeMinutes; track minute) { <button type="button" [id]="'calc-time-checkOut-minute-' + minute" [class.selected]="checkOutTime().slice(3, 5) === minute" (click)="selectTimePart('checkOut', 'minute', minute)">{{ minute }}</button> }
+                        </div>
+                      </div>
+                    </div>
+                  }
+                </div>
+              </div>
+              <div class="calculator-calendar-header">
+                <button type="button" aria-label="Попередній місяць" (click)="shiftCalendarMonth(-1)">‹</button>
+                <strong>{{ calendarMonth() | date:'LLLL yyyy':'':'uk' }}</strong>
+                <button type="button" aria-label="Наступний місяць" (click)="shiftCalendarMonth(1)">›</button>
+              </div>
+              <div class="calculator-calendar-grid">
+                @for (weekday of ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд']; track weekday) { <span>{{ weekday }}</span> }
+                @for (day of calendarDays(); track day.iso) {
+                  <button type="button" [class.other-month]="!day.currentMonth" [class.selected]="isDateSelected(day.iso)" [class.in-range]="isDateInRange(day.iso)" (click)="selectDate(day.iso)">{{ day.date | date:'d' }}</button>
+                }
+              </div>
+              <p class="period-picker-hint">Оберіть дату заїзду, потім дату виїзду. Час можна змінити окремо.</p>
+            </div>
+          }
+        </div>
+        <label class="calculator-field">
+          <span>Категорія номера</span>
+          <select [ngModel]="categoryId()" (ngModelChange)="selectCategory($event)">
+            <option [ngValue]="null">Оберіть категорію</option>
+            @for (category of availableCategories(); track category.id) { <option [ngValue]="category.id">{{ category.name }}</option> }
+          </select>
+        </label>
+        <label class="calculator-field">
+          <span>Тариф</span>
+          <select [ngModel]="rateId()" (ngModelChange)="selectRate($event)" [disabled]="!availableRates().length">
+            <option [ngValue]="null">Оберіть тариф</option>
+            @for (rate of availableRates(); track rate.id) { <option [ngValue]="rate.id">{{ rate.name }}</option> }
+          </select>
+        </label>
+        <label class="calculator-field full-field">
+          <span>Статус туристичного збору</span>
+          <select [ngModel]="taxStatus()" (ngModelChange)="updateTaxStatus($event)">
+            @for (option of taxStatusOptions; track option.value) { <option [ngValue]="option.value">{{ option.label }}</option> }
+          </select>
+        </label>
+      </div>
+
+      @if (error()) { <div class="calculator-error" role="alert">{{ error() }}</div> }
+
+      @if (estimate(); as result) {
+        <section class="estimate-card" aria-live="polite">
+          <div class="estimate-heading"><span>Розрахунок</span><strong>{{ result.nights }} {{ result.nights === 1 ? 'ніч' : 'ночей' }}</strong></div>
+          <div class="estimate-row"><span>Проживання</span><strong>{{ result.accommodation | currency:result.currency:'symbol-narrow':'1.2-2':'uk-UA' }}</strong></div>
+          <div class="estimate-row"><span>Туристичний збір <small>(1 гість)</small></span><strong>{{ result.touristTax | currency:result.currency:'symbol-narrow':'1.2-2':'uk-UA' }}</strong></div>
+          <div class="estimate-total"><span>Разом</span><strong>{{ result.total | currency:result.currency:'symbol-narrow':'1.2-2':'uk-UA' }}</strong></div>
+        </section>
+      }
+
+      <footer class="calculator-actions">
+        <button class="calculator-secondary" type="button" (click)="close()">Скасувати</button>
+        @if (estimate()) {
+          <button class="calculator-primary" type="button" (click)="book()">Забронювати</button>
+        } @else {
+          <button class="calculator-primary" type="button" [disabled]="calculating() || !selectedRate() || (taxStatus() !== taxStatuses.EXEMPT && facilitiesLoading())" (click)="calculate()">{{ calculating() ? 'Обчислення…' : facilitiesLoading() && taxStatus() !== taxStatuses.EXEMPT ? 'Завантаження збору…' : 'Обчислити' }}</button>
+        }
+      </footer>
+    }
+  </section>
+</div>

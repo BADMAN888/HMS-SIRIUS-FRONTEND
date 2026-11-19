@@ -114,6 +114,33 @@
   background: #102943;
 }
 
+.period-controls .calculator-trigger {
+  display: inline-grid;
+  place-items: center;
+  width: 38px;
+  min-width: 38px;
+  padding: 0;
+  border-color: #2a5277;
+  background: linear-gradient(145deg, #153b5c, #0e2943);
+  color: #a9d8f7;
+}
+
+.calculator-trigger svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.period-controls .calculator-trigger:hover {
+  border-color: #4d9ad0;
+  background: #17456a;
+  color: #e3f4ff;
+}
+
 .date-input {
   display: flex;
   flex-direction: column;

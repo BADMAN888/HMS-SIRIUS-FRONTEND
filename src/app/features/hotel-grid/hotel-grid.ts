@@ -10,12 +10,13 @@ import { ReservationRequest } from '../../core/models/reservation/reservation-re
 import { ReservationResponse } from '../../core/models/reservation/reservation-response.model';
 import { RoomStatus } from '../../core/models/enums/room-status.enum';
 import { RoomService } from '../../core/services/room.service';
+import { BookingCalculator, BookingCalculatorHotel } from './booking-calculator/booking-calculator';
 
 
 @Component({
   selector: 'app-hotel-grid',
   standalone: true,
-  imports: [DatePipe, RouterLink],
+  imports: [DatePipe, RouterLink, BookingCalculator],
   templateUrl: './hotel-grid.html',
   styleUrl: './hotel-grid.scss'
 })
@@ -49,6 +50,7 @@ export class HotelGrid implements OnInit {
   ];
   readonly updatingRoomStatus = new Set<number>();
   roomStatusMenuRoomId: number | null = null;
+  calculatorOpen = false;
 
   private gridStart!: Date;
   private gridEnd!: Date;
@@ -76,6 +78,12 @@ export class HotelGrid implements OnInit {
         rooms: group.rooms.sort((a, b) => a.roomNumber.localeCompare(b.roomNumber, 'uk', { numeric: true }))
       }))
       .sort((a, b) => a.categoryName.localeCompare(b.categoryName, 'uk'));
+  }
+
+  get calculatorHotels(): BookingCalculatorHotel[] {
+    const hotels = new Map<number, string>();
+    for (const room of this.rooms) hotels.set(room.hotelId, room.hotelName);
+    return [...hotels].map(([id, name]) => ({ id, name }));
   }
 
   ngOnInit(): void {

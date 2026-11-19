@@ -1,10 +1,15 @@
 <div class="check-out-page">
-  <div class="page-header">
-    <div>
-      <h1>Виїзди</h1>
-      <p>Гості, які виїжджають у вибрану дату</p>
+  <div class="summary-row">
+    <div class="summary">
+      <button type="button" class="summary-card" [class.active]="showDeparted()" [attr.aria-pressed]="showDeparted()" (click)="toggleDeparted()">
+        <span class="summary-label">Виїхало</span>
+        <strong>{{ departedCheckOuts() }}</strong>
+      </button>
+      <button type="button" class="summary-card" [class.active]="showPending()" [attr.aria-pressed]="showPending()" (click)="togglePending()">
+        <span class="summary-label">Очікують виїзду</span>
+        <strong>{{ pendingCheckOuts() }}</strong>
+      </button>
     </div>
-
     <div class="date-selector">
       <label for="check-out-date">Дата виїзду</label>
 
@@ -17,43 +22,25 @@
     </div>
   </div>
 
-  @if (error()) {
-    <div class="error-message">
-      {{ error() }}
-    </div>
-  }
-
   @if (loading()) {
     <div class="state-message">
       Завантаження виїздів…
     </div>
   } @else if (error()) {
-    <div class="state-message">
-      Не вдалося завантажити дані. Спробуйте повторити запит.
+    <div class="error-message">
+      {{ error() }}
     </div>
-  } @else if (reservations().length === 0) {
+  } @else if (visibleReservations().length === 0) {
     <div class="empty-state">
       <div class="empty-icon">✓</div>
 
-      <h2>Виїздів немає</h2>
+      <h2>Немає виїздів для вибраних фільтрів</h2>
 
       <p>
-        На {{ selectedDate() }} не заплановано виїздів.
+        Змініть дату або увімкніть потрібну категорію.
       </p>
     </div>
   } @else {
-    <div class="summary">
-      <div class="summary-card">
-        <span class="summary-label">Усього виїздів</span>
-        <strong>{{ reservations().length }}</strong>
-      </div>
-
-      <div class="summary-card">
-        <span class="summary-label">Очікують виїзду</span>
-        <strong>{{ pendingCheckOuts() }}</strong>
-      </div>
-    </div>
-
     <div class="table-wrapper">
       <table>
         <thead>
@@ -70,7 +57,7 @@
         </thead>
 
         <tbody>
-          @for (reservation of reservations(); track reservation.id) {
+          @for (reservation of visibleReservations(); track reservation.id) {
             <tr
               class="reservation-row"
               (click)="openReservation(reservation.id)"

@@ -194,14 +194,46 @@
         @if (stayPickerOpen()) {
           <div class="stay-picker">
             <div class="stay-time-controls">
-              <label>
-                <span>Час заїзду</span>
-                <input class="text-input" type="time" [ngModel]="checkInTime()" [ngModelOptions]="{ standalone: true }" (ngModelChange)="setStayTime('checkIn', $event)" />
-              </label>
-              <label>
-                <span>Час виїзду</span>
-                <input class="text-input" type="time" [ngModel]="checkOutTime()" [ngModelOptions]="{ standalone: true }" (ngModelChange)="setStayTime('checkOut', $event)" />
-              </label>
+              <div class="stay-time-field">
+                <span class="stay-time-label">Час заїзду</span>
+                <button class="stay-time-input" type="button" [class.open]="activeStayTimePicker() === 'checkIn'" (click)="toggleStayTimePicker('checkIn')" [attr.aria-expanded]="activeStayTimePicker() === 'checkIn'">
+                  <span class="stay-time-clock" aria-hidden="true"></span><strong>{{ checkInTime() }}</strong>
+                </button>
+                @if (activeStayTimePicker() === 'checkIn') {
+                  <div class="stay-time-picker" role="dialog" aria-label="Вибір часу заїзду">
+                    <div class="stay-time-picker-heading"><span>Час заїзду</span><strong>{{ checkInTime() }}</strong></div>
+                    <div class="stay-time-wheel-labels"><span>ГОД</span><span>ХВ</span></div>
+                    <div class="stay-time-wheels">
+                      <div class="stay-time-wheel" aria-label="Година">
+                        @for (hour of stayTimeHours; track hour) { <button type="button" [id]="'stay-time-checkIn-hour-' + hour" [class.selected]="checkInTime().slice(0, 2) === hour" (click)="selectStayTimePart('checkIn', 'hour', hour)">{{ hour }}</button> }
+                      </div>
+                      <div class="stay-time-wheel" aria-label="Хвилина">
+                        @for (minute of stayTimeMinutes; track minute) { <button type="button" [id]="'stay-time-checkIn-minute-' + minute" [class.selected]="checkInTime().slice(3, 5) === minute" (click)="selectStayTimePart('checkIn', 'minute', minute)">{{ minute }}</button> }
+                      </div>
+                    </div>
+                  </div>
+                }
+              </div>
+              <div class="stay-time-field">
+                <span class="stay-time-label">Час виїзду</span>
+                <button class="stay-time-input" type="button" [class.open]="activeStayTimePicker() === 'checkOut'" (click)="toggleStayTimePicker('checkOut')" [attr.aria-expanded]="activeStayTimePicker() === 'checkOut'">
+                  <span class="stay-time-clock" aria-hidden="true"></span><strong>{{ checkOutTime() }}</strong>
+                </button>
+                @if (activeStayTimePicker() === 'checkOut') {
+                  <div class="stay-time-picker" role="dialog" aria-label="Вибір часу виїзду">
+                    <div class="stay-time-picker-heading"><span>Час виїзду</span><strong>{{ checkOutTime() }}</strong></div>
+                    <div class="stay-time-wheel-labels"><span>ГОД</span><span>ХВ</span></div>
+                    <div class="stay-time-wheels">
+                      <div class="stay-time-wheel" aria-label="Година">
+                        @for (hour of stayTimeHours; track hour) { <button type="button" [id]="'stay-time-checkOut-hour-' + hour" [class.selected]="checkOutTime().slice(0, 2) === hour" (click)="selectStayTimePart('checkOut', 'hour', hour)">{{ hour }}</button> }
+                      </div>
+                      <div class="stay-time-wheel" aria-label="Хвилина">
+                        @for (minute of stayTimeMinutes; track minute) { <button type="button" [id]="'stay-time-checkOut-minute-' + minute" [class.selected]="checkOutTime().slice(3, 5) === minute" (click)="selectStayTimePart('checkOut', 'minute', minute)">{{ minute }}</button> }
+                      </div>
+                    </div>
+                  </div>
+                }
+              </div>
             </div>
             <div class="stay-calendar-header">
               <button type="button" aria-label="Попередній місяць" (click)="shiftStayMonth(-1)">‹</button>
@@ -347,7 +379,7 @@
             />
 
             @if (reservationNumberCopied()) {
-              <span class="copied-label">✓</span>
+              <span class="copied-label" role="status"><span aria-hidden="true">✓</span> Скопійовано</span>
             }
           </div>
         }
@@ -420,71 +452,6 @@
           </p>
         }
       </section>
-
-      @if (isCreateMode()) {
-        <section class="block">
-          <h2>Коментар</h2>
-          <textarea
-            class="text-input comment-input"
-            [value]="autoComment()"
-            (input)="autoComment.set($any($event.target).value)"
-            placeholder="Додайте коментар до бронювання..."
-            rows="4"
-          ></textarea>
-        </section>
-      } @else {
-        <section class="block">
-          <h2>Коментарі</h2>
-
-          <textarea
-            class="text-input comment-input"
-            [value]="newComment()"
-            (input)="newComment.set($any($event.target).value)"
-            placeholder="Введіть коментар..."
-            rows="4"
-          ></textarea>
-
-          <button
-            class="secondary-button"
-            type="button"
-            [disabled]="commentBusy() || !newComment().trim()"
-            (click)="addComment()"
-          >
-            Зберегти коментар
-          </button>
-
-          @if (commentsLoading()) {
-            <p class="muted">Завантаження коментарів…</p>
-          } @else {
-            <div class="comments-list">
-              @for (comment of comments(); track comment.id) {
-                <button
-                  class="comment-item"
-                  [class.selected]="selectedCommentId() === comment.id"
-                  type="button"
-                  (click)="selectedCommentId.set(comment.id)"
-                >
-                  <span>{{ comment.text }}</span>
-                  <small>
-                    {{ comment.createdAt | date:'dd.MM.yyyy HH:mm' }}
-                  </small>
-                </button>
-              } @empty {
-                <p class="muted">Коментарів поки немає.</p>
-              }
-            </div>
-          }
-
-          <button
-            class="danger-button"
-            type="button"
-            [disabled]="commentBusy() || selectedCommentId() === null"
-            (click)="deleteSelectedComment()"
-          >
-            Видалити вибраний коментар
-          </button>
-        </section>
-      }
 
       <section class="block">
         <h2>Додаткові гості</h2>
@@ -563,6 +530,50 @@
           }
         </div>
       </section>
+
+      @if (isCreateMode()) {
+        <section class="block">
+          <h2>Коментар</h2>
+          <textarea
+            class="text-input comment-input"
+            [value]="autoComment()"
+            (input)="autoComment.set($any($event.target).value)"
+            placeholder="Додайте коментар до бронювання..."
+            rows="4"
+          ></textarea>
+        </section>
+      } @else {
+        <section class="block">
+          <h2>Коментарі</h2>
+          <textarea
+            class="text-input comment-input"
+            [value]="newComment()"
+            (input)="newComment.set($any($event.target).value)"
+            placeholder="Введіть коментар..."
+            rows="4"
+          ></textarea>
+          <button class="secondary-button" type="button" [disabled]="commentBusy() || !newComment().trim()" (click)="addComment()">
+            Зберегти коментар
+          </button>
+          @if (commentsLoading()) {
+            <p class="muted">Завантаження коментарів…</p>
+          } @else {
+            <div class="comments-list">
+              @for (comment of comments(); track comment.id) {
+                <button class="comment-item" [class.selected]="selectedCommentId() === comment.id" type="button" (click)="selectedCommentId.set(comment.id)">
+                  <span>{{ comment.text }}</span>
+                  <small>{{ comment.createdAt | date:'dd.MM.yyyy HH:mm' }}</small>
+                </button>
+              } @empty {
+                <p class="muted">Коментарів поки немає.</p>
+              }
+            </div>
+          }
+          <button class="danger-button" type="button" [disabled]="commentBusy() || selectedCommentId() === null" (click)="deleteSelectedComment()">
+            Видалити вибраний коментар
+          </button>
+        </section>
+      }
     </div>
 
     @if (saveError()) {

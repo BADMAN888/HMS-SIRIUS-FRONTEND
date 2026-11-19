@@ -129,6 +129,11 @@ export class ReservationTab implements OnInit {
   });
   readonly checkInTime = computed(() => this.editCheckIn().slice(11, 16) || '14:00');
   readonly checkOutTime = computed(() => this.editCheckOut().slice(11, 16) || '12:00');
+  readonly stayTimeHours = Array.from({ length: 24 }, (_, hour) => String(hour).padStart(2, '0'));
+  readonly stayTimeMinutes = Array.from({ length: 60 }, (_, minute) => String(minute).padStart(2, '0'));
+  readonly activeStayTimePicker = signal<'checkIn' | 'checkOut' | null>(null);
+  private readonly hourPickedForTime = signal<'checkIn' | 'checkOut' | null>(null);
+  private readonly minutePickedForTime = signal<'checkIn' | 'checkOut' | null>(null);
   private stayDateSelection: 'checkIn' | 'checkOut' = 'checkIn';
   readonly editAdults = signal(1);
   readonly editChildren = signal(0);
@@ -611,6 +616,21 @@ export class ReservationTab implements OnInit {
           this.paymentCategoryAutoSelected = true;
           this.selectFirstRate(room.categoryId ?? 0);
         }
+        const categoryId = Number(query.get('categoryId'));
+        if (!room && Number.isInteger(categoryId) && categoryId > 0) {
+          this.editRoomCategoryId.set(categoryId);
+          this.editPaymentCategoryId.set(categoryId);
+          this.paymentCategoryAutoSelected = true;
+          this.selectFirstRate(categoryId);
+        }
+        const rateId = Number(query.get('rateId'));
+        if (Number.isInteger(rateId) && rateId > 0 && this.rates().some(rate => rate.id === rateId && rate.categoryId === (room?.categoryId ?? categoryId))) {
+          this.editRateId.set(rateId);
+        }
+        const taxStatus = query.get('taxStatus');
+        if (taxStatus && Object.values(TaxStatus).includes(taxStatus as TaxStatus)) {
+          this.editTaxStatus.set(taxStatus as TaxStatus);
+        }
         const checkIn = query.get('checkIn');
         const checkOut = query.get('checkOut');
         if (checkIn) this.editCheckIn.set(this.toDateTimeLocal(checkIn));
@@ -812,6 +832,44 @@ export class ReservationTab implements OnInit {
     const next = date ? `${date}T${value}` : '';
     if (isCheckIn) this.editCheckIn.set(next);
     else this.editCheckOut.set(next);
+  }
+
+  toggleStayTimePicker(which: 'checkIn' | 'checkOut'): void {
+    const next = this.activeStayTimePicker() === which ? null : which;
+    this.activeStayTimePicker.set(next);
+    this.hourPickedForTime.set(null);
+    this.minutePickedForTime.set(null);
+    if (next) {
+      const [hour, minute] = (which === 'checkIn' ? this.checkInTime() : this.checkOutTime()).split(':');
+      window.setTimeout(() => {
+        document.getElementById(`stay-time-${which}-hour-${hour}`)?.scrollIntoView({ block: 'center' });
+        document.getElementById(`stay-time-${which}-minute-${minute}`)?.scrollIntoView({ block: 'center' });
+      });
+    }
+  }
+
+  selectStayTimePart(which: 'checkIn' | 'checkOut', part: 'hour' | 'minute', value: string): void {
+    const current = which === 'checkIn' ? this.checkInTime() : this.checkOutTime();
+    const [hour, minute] = current.split(':');
+    this.setStayTime(which, part === 'hour' ? `${value}:${minute}` : `${hour}:${value}`);
+    if (part === 'hour') {
+      this.hourPickedForTime.set(which);
+      this.minutePickedForTime.set(null);
+      return;
+    }
+
+    const confirmingSameMinute = this.minutePickedForTime() === which && minute === value;
+    if (this.hourPickedForTime() === which || confirmingSameMinute) {
+      this.closeStayTimePicker();
+    } else {
+      this.minutePickedForTime.set(which);
+    }
+  }
+
+  closeStayTimePicker(): void {
+    this.activeStayTimePicker.set(null);
+    this.hourPickedForTime.set(null);
+    this.minutePickedForTime.set(null);
   }
 
   private formatIsoDate(date: Date): string {
