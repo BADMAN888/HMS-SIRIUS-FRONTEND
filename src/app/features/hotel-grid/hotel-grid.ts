@@ -27,7 +27,7 @@ export class HotelGrid implements OnInit {
   private readonly cdr = inject(ChangeDetectorRef);
 
   readonly dayWidth = 92;
-  readonly roomColumnWidth = 150;
+  readonly roomColumnWidth = 140;
   readonly shiftDays = 10;
   calendarOpen = false;
   calendarMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
@@ -58,6 +58,24 @@ export class HotelGrid implements OnInit {
 
   get numberOfDays(): number {
     return this.days.length;
+  }
+
+  get roomGroups(): { categoryId: number; categoryName: string; rooms: HotelGridRoomResponse[] }[] {
+    const groups = new Map<number, { categoryId: number; categoryName: string; rooms: HotelGridRoomResponse[] }>();
+    for (const room of this.rooms) {
+      let group = groups.get(room.categoryId);
+      if (!group) {
+        group = { categoryId: room.categoryId, categoryName: room.categoryName, rooms: [] };
+        groups.set(room.categoryId, group);
+      }
+      group.rooms.push(room);
+    }
+    return [...groups.values()]
+      .map(group => ({
+        ...group,
+        rooms: group.rooms.sort((a, b) => a.roomNumber.localeCompare(b.roomNumber, 'uk', { numeric: true }))
+      }))
+      .sort((a, b) => a.categoryName.localeCompare(b.categoryName, 'uk'));
   }
 
   ngOnInit(): void {

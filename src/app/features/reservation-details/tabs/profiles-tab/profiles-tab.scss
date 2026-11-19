@@ -49,9 +49,9 @@
   grid-template-columns: minmax(280px, 0.9fr) minmax(0, 1.65fr);
   grid-template-areas:
     'guests personal'
-    'balance comment'
-    'history documents';
-  align-items: start;
+    'balance documents'
+    'history comment';
+  align-items: stretch;
   gap: 18px;
 }
 
@@ -111,7 +111,7 @@
   gap: 10px;
   width: 100%;
   min-width: 0;
-  padding: 11px 9px;
+  padding: 12px 10px;
   color: #b7c9dc;
   text-align: left;
   background: transparent;
@@ -201,13 +201,15 @@
   }
 
   strong {
-    font-size: 12px;
-    font-weight: 600;
+    color: #e8f3ff;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: .01em;
   }
 
   small {
     color: #829bb5;
-    font-size: 10px;
+    font-size: 11px;
   }
 }
 
@@ -800,10 +802,10 @@
     grid-template-areas:
       'guests'
       'personal'
-      'comment'
       'balance'
       'documents'
-      'history';
+      'history'
+      'comment';
   }
 
   .profiles-layout.create-mode {

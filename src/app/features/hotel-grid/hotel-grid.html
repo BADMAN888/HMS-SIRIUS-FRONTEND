@@ -74,7 +74,9 @@
           }
         </div>
 
-        @for (room of rooms; track room.id) {
+        @for (group of roomGroups; track group.categoryId) {
+          <div class="category-heading">{{ group.categoryName }}</div>
+          @for (room of group.rooms; track room.id) {
           <div class="room-row" [attr.data-room-id]="room.id">
             <div class="room-cell" [class.status-menu-open]="roomStatusMenuRoomId === room.id">
               <div class="room-heading">
@@ -88,9 +90,6 @@
                     }
                   </div>
                 }
-              </div>
-              <div class="room-info">
-                <span>{{ room.categoryName }}</span>
               </div>
             </div>
 
@@ -137,6 +136,7 @@
               }
             </div>
           </div>
+          }
         }
 
         @if (rooms.length === 0) {
