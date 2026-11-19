@@ -47,9 +47,9 @@
           <tr>
             <th>Номер</th>
             <th>Гість</th>
-            <th>Підтвердження</th>
             <th>Заїзд</th>
             <th>Виїзд</th>
+            <th>Сума</th>
             <th>Статус</th>
             <th>Коментарі</th>
           </tr>
@@ -63,7 +63,6 @@
                 </span>
               </td>
               <td>{{ getGuestName(reservation) }}</td>
-              <td><span class="confirmation">{{ reservation.confirmationNumber }}</span></td>
               <td>
                 <div class="date-cell">
                   <strong>{{ reservation.checkIn | date:'dd.MM.yyyy' }}</strong>
@@ -76,6 +75,7 @@
                   <span>{{ reservation.checkOut | date:'HH:mm' }}</span>
                 </div>
               </td>
+              <td><span class="amount" [class.amount-unavailable]="amountError()" [title]="amountError() ? 'Не вдалося завантажити дані рахунків і нарахувань.' : ''">{{ amountError() ? '—' : (getReservationTotal(reservation.id) | number:'1.2-2') + ' ₴' }}</span></td>
               <td><span class="reservation-status-badge in-house">{{ reservation.status }}</span></td>
               <td><span class="comments">{{ getCommentText(reservation) }}</span></td>
             </tr>

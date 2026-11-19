@@ -74,7 +74,8 @@ td {
 }
 
 
-.confirmation { color: #7fb2ef; font-family: monospace; font-size: 13px; }
+.amount { color: #e8eef7; font-weight: 600; white-space: nowrap; }
+.amount-unavailable { color: #8190a8; }
 .date-cell { display: flex; flex-direction: column; gap: 4px; }
 .date-cell strong { color: #e8eef7; font-size: 13px; }
 .date-cell span { color: #8190a8; font-size: 12px; }

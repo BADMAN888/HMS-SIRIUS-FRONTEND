@@ -15,6 +15,7 @@ import { FolioReopenRequest } from '../../../../core/models/billing/folio-reopen
 import { FacilityType } from '../../../../core/models/enums/facility-type.enum';
 import { FolioStatus } from '../../../../core/models/enums/folio-status.enum';
 import { ProfileResponse } from '../../../../core/models/profile/profile-response.model';
+import { ReservationResponse } from '../../../../core/models/reservation/reservation-response.model';
 
 import { AccrualService } from '../../../../core/services/accrual.service';
 
@@ -59,6 +60,7 @@ export class AccrualTab implements OnInit {
   readonly primaryGuestId = signal<number | null>(null);
   readonly primaryGuest = signal<ProfileResponse | null>(null);
   readonly profiles = signal<ProfileResponse[]>([]);
+  readonly reservations = signal<ReservationResponse[]>([]);
 
   readonly facilities = signal<FacilityResponse[]>([]);
   readonly selectedFacilityId = signal<number | null>(null);
@@ -232,6 +234,7 @@ export class AccrualTab implements OnInit {
         const hotelId = reservation.room?.hotelId;
         this.primaryGuestId.set(reservation.primaryGuest?.id ?? null);
         this.primaryGuest.set(reservation.primaryGuest ?? null);
+        this.reservations.set([reservation]);
         this.profileService.getAll().subscribe({
           next: profiles => this.profiles.set(profiles ?? []),
           error: () => this.profiles.set(reservation.primaryGuest ? [reservation.primaryGuest] : [])
@@ -246,6 +249,14 @@ export class AccrualTab implements OnInit {
         }
 
         this.hotelId.set(hotelId);
+        this.reservationService.getAll().subscribe({
+          next: reservations => {
+            const sameHotel = (reservations ?? []).filter(item => item.room?.hotelId === hotelId);
+            if (!sameHotel.some(item => item.id === reservation.id)) sameHotel.push(reservation);
+            this.reservations.set(sameHotel);
+          },
+          error: () => this.reservations.set([reservation])
+        });
         this.legalEntityService.getByHotelId(hotelId).subscribe({
           next: entities => this.legalEntities.set(entities ?? []),
           error: () => this.legalEntities.set([])
@@ -461,7 +472,7 @@ export class AccrualTab implements OnInit {
 
   saveFolioParties(folio: FolioResponse, request: FolioPartiesRequest): void {
     if (this.saving()) return;
-    if (![request.recipientId, request.payerId].every(id => Number.isInteger(id) && id > 0)) {
+    if (![request.recipientId, request.payerId, request.reservationId].every(id => Number.isInteger(id) && id > 0)) {
       this.error.set('Вкажи коректні ID одержувача та платника.');
       return;
     }
@@ -471,6 +482,7 @@ export class AccrualTab implements OnInit {
     this.folioService.updateParties(folio.id, request).subscribe({
       next: updatedFolio => {
         this.setFolioData(this.folios().map(item => item.id === updatedFolio.id ? updatedFolio : item));
+        this.refreshFolios();
         this.success.set('Одержувача та платника рахунку збережено.');
         this.saving.set(false);
       },
@@ -550,7 +562,7 @@ export class AccrualTab implements OnInit {
     const accrualIds = this.selectedAccruals().map(accrual => accrual.id);
     if (!hotelId || !reservationId || accrualIds.length === 0 || this.saving()) return;
 
-    if ([parties.recipientId, parties.payerId].some(id =>
+    if ([parties.recipientId, parties.payerId, parties.reservationId].some(id =>
       id === null || !Number.isInteger(id) || id <= 0
     )) {
       this.error.set('Вкажи коректні ID одержувача та платника.');
@@ -559,7 +571,7 @@ export class AccrualTab implements OnInit {
 
     const request: FolioRequest = {
       hotelId,
-      reservationId,
+      reservationId: parties.reservationId,
       recipientId: parties.recipientId,
       payerId: parties.payerId,
       serviceProviderId: parties.serviceProviderId

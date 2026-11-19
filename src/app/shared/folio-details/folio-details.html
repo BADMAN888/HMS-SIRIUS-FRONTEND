@@ -11,17 +11,18 @@
         <div class="form-field">
           <span>Одержувач послуги</span>
           <button class="recipient-copy" type="button" [disabled]="!primaryGuestId" (click)="copyRecipient()" title="Натисніть, щоб скопіювати ID одержувача">
-            {{ payerLabel(primaryGuest) }} <small>{{ copiedRecipient ? 'Скопійовано' : 'Натисніть, щоб скопіювати ID' }}</small>
+            {{ profileLabel(primaryGuest) }} <small>{{ copiedRecipient ? 'Скопійовано' : 'Натисніть, щоб скопіювати ID' }}</small>
           </button>
         </div>
         <div class="form-field payer-field">
           <span>Платник</span>
-          @if (payerId !== null) { <strong class="selected-payer">{{ payerLabel(selectedPayer) }}</strong> }
-          <input type="search" [ngModel]="payerSearch" [ngModelOptions]="{standalone: true}" (ngModelChange)="onPayerSearch($event)" (focus)="payerResultsOpen = true" [disabled]="saving" placeholder="Пошук за ID або ім'ям" />
+          @if (payerReservationId !== null) { <strong class="selected-payer">{{ payerLabel(selectedPayerReservation) }}</strong> }
+          <input type="search" [ngModel]="payerSearch" [ngModelOptions]="{standalone: true}" (ngModelChange)="onPayerSearch($event)" (focus)="payerResultsOpen = true" [disabled]="saving" placeholder="ID бронювання або ім'я гостя" />
+          <small class="payer-hint">Рахунок відображатиметься у вибраному бронюванні.</small>
           @if (payerResultsOpen && payerSearch) {
             <div class="payer-results" role="listbox">
-              @for (profile of payerMatches; track profile.id) {
-                <button type="button" role="option" (click)="selectPayer(profile)">{{ payerLabel(profile) }}</button>
+              @for (reservation of payerMatches; track reservation.id) {
+                <button type="button" role="option" (click)="selectPayer(reservation)">{{ payerLabel(reservation) }}</button>
               } @empty { <span class="no-payer-results">Нічого не знайдено</span> }
             </div>
           }
@@ -44,7 +45,7 @@
       <div class="folio-details-total"><span>Разом до рахунку</span><strong>{{ draftTotal | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}</strong></div>
       <div class="folio-modal-actions">
         <button class="secondary-button" type="button" [disabled]="saving" (click)="close.emit()">Скасувати</button>
-        <button class="primary-button" type="button" [disabled]="saving || !draftAccruals.length || payerId === null || !primaryGuestId" (click)="createFolio()">{{ saving ? 'Створення…' : 'Створити й додати нарахування' }}</button>
+        <button class="primary-button" type="button" [disabled]="saving || !draftAccruals.length || payerId === null || payerReservationId === null || !primaryGuestId" (click)="createFolio()">{{ saving ? 'Створення…' : 'Створити й додати нарахування' }}</button>
       </div>
     </section>
   </div>
@@ -66,17 +67,18 @@
       <div class="form-field">
         <span>Одержувач послуги</span>
         <button class="recipient-copy" type="button" [disabled]="!primaryGuestId" (click)="copyRecipient()" title="Натисніть, щоб скопіювати ID одержувача">
-          {{ payerLabel(primaryGuest) }} <small>{{ copiedRecipient ? 'Скопійовано' : 'Натисніть, щоб скопіювати ID' }}</small>
+          {{ profileLabel(primaryGuest) }} <small>{{ copiedRecipient ? 'Скопійовано' : 'Натисніть, щоб скопіювати ID' }}</small>
         </button>
       </div>
       <div class="form-field payer-field">
         <span>Платник</span>
-        @if (payerId !== null) { <strong class="selected-payer">{{ payerLabel(selectedPayer) }}</strong> }
-        <input type="search" [ngModel]="payerSearch" [ngModelOptions]="{standalone: true}" (ngModelChange)="onPayerSearch($event)" (focus)="payerResultsOpen = true" [disabled]="saving || !isOpen()" placeholder="Пошук за ID або ім'ям" />
+        @if (payerReservationId !== null) { <strong class="selected-payer">{{ payerLabel(selectedPayerReservation) }}</strong> }
+        <input type="search" [ngModel]="payerSearch" [ngModelOptions]="{standalone: true}" (ngModelChange)="onPayerSearch($event)" (focus)="payerResultsOpen = true" [disabled]="saving || !isOpen()" placeholder="ID бронювання або ім'я гостя" />
+        <small class="payer-hint">Рахунок відображатиметься у вибраному бронюванні.</small>
         @if (payerResultsOpen && payerSearch) {
           <div class="payer-results" role="listbox">
-            @for (profile of payerMatches; track profile.id) {
-              <button type="button" role="option" (click)="selectPayer(profile)">{{ payerLabel(profile) }}</button>
+            @for (reservation of payerMatches; track reservation.id) {
+              <button type="button" role="option" (click)="selectPayer(reservation)">{{ payerLabel(reservation) }}</button>
             } @empty { <span class="no-payer-results">Нічого не знайдено</span> }
           </div>
         }
@@ -94,7 +96,7 @@
     @if (isOpen()) {
       <div class="folio-party-save-row">
         <span>За замовчуванням використовується ID основного гостя.</span>
-        <button class="secondary-button" type="button" [disabled]="saving || !recipientId || !payerId" (click)="saveParties()">Зберегти дані</button>
+        <button class="secondary-button" type="button" [disabled]="saving || !recipientId || !payerId || !payerReservationId" (click)="saveParties()">Зберегти дані</button>
       </div>
     }
 

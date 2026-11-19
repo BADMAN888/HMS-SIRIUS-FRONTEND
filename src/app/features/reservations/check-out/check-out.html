@@ -60,7 +60,6 @@
         <tr>
           <th>Номер</th>
           <th>Гість</th>
-          <th>Підтвердження</th>
           <th>Заїзд</th>
           <th>Виїзд</th>
           <th>Статус</th>
@@ -89,12 +88,6 @@
                 @if (reservation.guestMiddleName) {
                   {{ reservation.guestMiddleName }}
                 }
-              </td>
-
-              <td>
-                <span class="confirmation">
-                  {{ reservation.confirmationNumber }}
-                </span>
               </td>
 
               <td>
@@ -134,7 +127,7 @@
 
               <td>
                 <span class="amount">
-                  {{ reservation.totalAmount | number:'1.2-2' }} ₴
+                  @if (amountError()) { — } @else { {{ getReservationTotal(reservation.id) | number:'1.2-2' }} ₴ }
                 </span>
               </td>
 
@@ -144,7 +137,9 @@
                   class="check-out-button"
                   [disabled]="
                     checkingOutId() !== null ||
-                    reservation.status !== 'IN_HOUSE'
+                    reservation.status !== 'IN_HOUSE' ||
+                    amountError() ||
+                    getReservationTotal(reservation.id) !== 0
                   "
                   (click)="$event.stopPropagation(); checkOut(reservation)"
                 >
@@ -154,6 +149,10 @@
                     Виїзд оформлено
                   } @else if (reservation.status !== 'IN_HOUSE') {
                     Не заселений
+                  } @else if (amountError()) {
+                    Сума недоступна
+                  } @else if (getReservationTotal(reservation.id) !== 0) {
+                    Спочатку закрийте баланс
                   } @else {
                     Зареєструвати виїзд
                   }

@@ -10,6 +10,7 @@ import { PaymentRequest } from '../../core/models/billing/payment-request.model'
 import { FolioStatus } from '../../core/models/enums/folio-status.enum';
 import { PaymentMethod } from '../../core/models/enums/payment-method.enum';
 import { ProfileResponse } from '../../core/models/profile/profile-response.model';
+import { ReservationResponse } from '../../core/models/reservation/reservation-response.model';
 
 @Component({
   selector: 'app-folio-details',
@@ -26,6 +27,8 @@ export class FolioDetails implements OnChanges {
   @Input() primaryGuestId: number | null = null;
   @Input() primaryGuest: ProfileResponse | null = null;
   @Input() profiles: ProfileResponse[] = [];
+  @Input() reservations: ReservationResponse[] = [];
+  @Input() currentReservationId: number | null = null;
   @Input() legalEntities: LegalEntityResponse[] = [];
   @Input() saving = false;
   @Input() error = '';
@@ -42,6 +45,7 @@ export class FolioDetails implements OnChanges {
 
   recipientId: number | null = null;
   payerId: number | null = null;
+  payerReservationId: number | null = null;
   serviceProviderId: number | null = null;
   paymentMethods = Object.values(PaymentMethod);
   paymentMethod: PaymentMethod = PaymentMethod.CASH;
@@ -55,12 +59,16 @@ export class FolioDetails implements OnChanges {
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['folio'] || changes['primaryGuestId']) {
       this.recipientId = this.primaryGuestId;
-      this.payerId = this.folio?.payerId ?? this.primaryGuestId;
+      this.payerReservationId = this.folio?.reservationId ?? this.currentReservationId;
+      this.payerId = this.selectedPayerReservation?.primaryGuest?.id ?? this.folio?.payerId ?? this.primaryGuestId;
       this.serviceProviderId = this.folio?.serviceProviderId ?? null;
       this.paymentAmount = this.folio && Number(this.folio.balance) > 0 ? Number(this.folio.balance) : null;
       this.updatePayerLabel();
     }
-    if (changes['profiles']) {
+    if (changes['profiles'] || changes['reservations']) {
+      if (this.selectedPayerReservation) {
+        this.payerId = this.selectedPayerReservation.primaryGuest?.id ?? null;
+      }
       this.updatePayerLabel();
     }
     if (this.creationMode && (changes['creationMode'] || changes['legalEntities']) && this.serviceProviderId === null) {
@@ -72,17 +80,16 @@ export class FolioDetails implements OnChanges {
     return (this.folio?.accruals ?? []).filter(accrual => accrual.active);
   }
 
-  get payerMatches(): ProfileResponse[] {
+  get payerMatches(): ReservationResponse[] {
     const query = this.payerSearch.trim().toLocaleLowerCase();
     if (!query) return [];
-    return this.profiles
-      .filter(profile => `${profile.id} ${this.profileName(profile)}`.toLocaleLowerCase().includes(query))
+    return this.reservations
+      .filter(reservation => `${reservation.id} ${reservationGuestName(reservation)}`.toLocaleLowerCase().includes(query))
       .slice(0, 8);
   }
 
-  get selectedPayer(): ProfileResponse | null {
-    return this.profiles.find(profile => profile.id === this.payerId)
-      ?? (this.primaryGuest?.id === this.payerId ? this.primaryGuest : null);
+  get selectedPayerReservation(): ReservationResponse | null {
+    return this.reservations.find(reservation => reservation.id === this.payerReservationId) ?? null;
   }
 
   profileName(profile: ProfileResponse | null): string {
@@ -90,12 +97,19 @@ export class FolioDetails implements OnChanges {
     return [profile.firstName, profile.middleName, profile.lastName].filter(Boolean).join(' ');
   }
 
-  payerLabel(profile: ProfileResponse | null): string {
-    return profile ? `${profile.id} ${this.profileName(profile)}` : this.payerId ? `${this.payerId}` : '';
+  profileLabel(profile: ProfileResponse | null): string {
+    return profile ? `${profile.id} ${this.profileName(profile)}` : '';
   }
 
-  selectPayer(profile: ProfileResponse): void {
-    this.payerId = profile.id;
+  payerLabel(reservation: ReservationResponse | null): string {
+    if (!reservation) return this.payerReservationId ? `${this.payerReservationId}` : '';
+    const guestName = reservationGuestName(reservation);
+    return guestName ? `${reservation.id} ${guestName}` : `${reservation.id} · Головного гостя не вказано`;
+  }
+
+  selectPayer(reservation: ReservationResponse): void {
+    this.payerReservationId = reservation.id;
+    this.payerId = reservation.primaryGuest?.id ?? null;
     this.payerSearch = '';
     this.payerResultsOpen = false;
   }
@@ -103,6 +117,7 @@ export class FolioDetails implements OnChanges {
   onPayerSearch(query: string): void {
     this.payerSearch = query;
     this.payerId = null;
+    this.payerReservationId = null;
     this.payerResultsOpen = true;
   }
 
@@ -116,19 +131,21 @@ export class FolioDetails implements OnChanges {
   }
 
   createFolio(): void {
-    if (this.saving || !this.isValidPartyId(this.primaryGuestId) || !this.isValidPartyId(this.payerId)) return;
+    if (this.saving || !this.isValidPartyId(this.primaryGuestId) || !this.isValidPartyId(this.payerId) || !this.isValidPartyId(this.payerReservationId)) return;
     this.folioCreate.emit({
       recipientId: this.primaryGuestId,
-      payerId: this.payerId,
+      payerId: this.selectedPayerReservation?.primaryGuest?.id ?? this.payerId,
+      reservationId: this.payerReservationId ?? this.currentReservationId ?? 0,
       serviceProviderId: this.serviceProviderId
     });
   }
 
   saveParties(): void {
-    if (this.saving || !this.isValidPartyId(this.recipientId) || !this.isValidPartyId(this.payerId)) return;
+    if (this.saving || !this.isValidPartyId(this.recipientId) || !this.isValidPartyId(this.payerId) || !this.isValidPartyId(this.payerReservationId)) return;
     this.partiesSave.emit({
       recipientId: this.recipientId,
-      payerId: this.payerId,
+      payerId: this.selectedPayerReservation?.primaryGuest?.id ?? this.payerId,
+      reservationId: this.payerReservationId ?? 0,
       serviceProviderId: this.serviceProviderId
     });
   }
@@ -168,9 +185,13 @@ export class FolioDetails implements OnChanges {
   }
 
   private updatePayerLabel(): void {
-    if (this.payerId === null || this.payerSearch) return;
-    const profile = this.profiles.find(item => item.id === this.payerId)
-      ?? (this.primaryGuest?.id === this.payerId ? this.primaryGuest : null);
-    if (profile) this.payerSearch = this.payerLabel(profile);
+    if (this.payerReservationId === null || this.payerSearch) return;
+    const reservation = this.reservations.find(item => item.id === this.payerReservationId);
+    if (reservation) this.payerSearch = this.payerLabel(reservation);
   }
+}
+
+function reservationGuestName(reservation: ReservationResponse): string {
+  const guest = reservation.primaryGuest;
+  return guest ? [guest.lastName, guest.firstName].filter(Boolean).join(' ') : '';
 }

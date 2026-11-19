@@ -72,7 +72,6 @@
         <tr>
           <th>Номер</th>
           <th>Гість</th>
-          <th>Підтвердження</th>
           <th>Заїзд</th>
           <th>Виїзд</th>
           <th>Статус</th>
@@ -101,12 +100,6 @@
                 @if (reservation.guestMiddleName) {
                   {{ reservation.guestMiddleName }}
                 }
-              </td>
-
-              <td>
-                <span class="confirmation">
-                  {{ reservation.confirmationNumber }}
-                </span>
               </td>
 
               <td>

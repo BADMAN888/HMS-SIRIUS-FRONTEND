@@ -7,6 +7,11 @@ import { RoomService } from '../../../core/services/room.service';
 import { RoomResponse } from '../../../core/models/hotel/room-response.model';
 import { ReservationCheckOutResponse } from '../../../core/models/reservation/reservation-check-out-response.model';
 import { ReservationStatus } from '../../../core/models/enums/reservation-status.enum';
+import { FolioService } from '../../../core/services/folio.service';
+import { AccrualService } from '../../../core/services/accrual.service';
+import { FolioResponse } from '../../../core/models/billing/folio-response.model';
+import { AccrualResponse } from '../../../core/models/billing/accrual-response.model';
+import { FolioStatus } from '../../../core/models/enums/folio-status.enum';
 
 @Component({
   selector: 'app-check-out',
@@ -19,6 +24,8 @@ export class CheckOut implements OnInit {
   private readonly reservationService = inject(ReservationService);
   private readonly router = inject(Router);
   private readonly roomService = inject(RoomService);
+  private readonly folioService = inject(FolioService);
+  private readonly accrualService = inject(AccrualService);
 
   readonly reservations = signal<ReservationCheckOutResponse[]>([]);
   readonly selectedDate = signal(this.formatDate(new Date()));
@@ -26,6 +33,8 @@ export class CheckOut implements OnInit {
   readonly error = signal('');
   readonly rooms = signal<RoomResponse[]>([]);
   readonly checkingOutId = signal<number | null>(null);
+  readonly totalsByReservationId = signal<Record<number, number>>({});
+  readonly amountError = signal(false);
 
   readonly pendingCheckOuts = computed(() =>
     this.reservations().filter(
@@ -55,6 +64,7 @@ export class CheckOut implements OnInit {
   private loadCheckOuts(): void {
     this.loading.set(true);
     this.error.set('');
+    this.amountError.set(false);
 
     forkJoin({
       reservations: this.reservationService.getByCheckOutDate(
@@ -62,7 +72,15 @@ export class CheckOut implements OnInit {
       ),
       rooms: this.roomService.getAll().pipe(
         catchError(() => of([] as RoomResponse[]))
-      )
+      ),
+      folios: this.folioService.getAll().pipe(catchError(() => {
+        this.amountError.set(true);
+        return of([] as FolioResponse[]);
+      })),
+      accruals: this.accrualService.getAll().pipe(catchError(() => {
+        this.amountError.set(true);
+        return of([] as AccrualResponse[]);
+      }))
     })
       .pipe(
         finalize(() => this.loading.set(false))
@@ -71,9 +89,11 @@ export class CheckOut implements OnInit {
         next: data => {
           this.reservations.set(data.reservations);
           this.rooms.set(data.rooms);
+          this.totalsByReservationId.set(this.calculateTotals(data.folios, data.accruals));
         },
         error: error => {
           this.reservations.set([]);
+          this.totalsByReservationId.set({});
 
           this.error.set(
             error?.error?.message ||
@@ -87,7 +107,9 @@ export class CheckOut implements OnInit {
   checkOut(reservation: ReservationCheckOutResponse): void {
     if (
       this.checkingOutId() !== null ||
-      reservation.status !== ReservationStatus.IN_HOUSE
+      reservation.status !== ReservationStatus.IN_HOUSE ||
+      this.amountError() ||
+      this.getReservationTotal(reservation.id) !== 0
     ) {
       return;
     }
@@ -110,6 +132,23 @@ export class CheckOut implements OnInit {
           );
         }
       });
+  }
+
+  getReservationTotal(reservationId: number): number {
+    return this.totalsByReservationId()[reservationId] ?? 0;
+  }
+
+  private calculateTotals(folios: FolioResponse[], accruals: AccrualResponse[]): Record<number, number> {
+    const totals: Record<number, number> = {};
+    for (const folio of folios) {
+      if (folio.status !== FolioStatus.OPEN || folio.reservationId === null) continue;
+      totals[folio.reservationId] = Math.round(((totals[folio.reservationId] ?? 0) + Number(folio.balance ?? 0)) * 100) / 100;
+    }
+    for (const accrual of accruals) {
+      if (!accrual.active || accrual.folioId !== null || accrual.reservationId === null) continue;
+      totals[accrual.reservationId] = Math.round(((totals[accrual.reservationId] ?? 0) + Number(accrual.amount ?? 0)) * 100) / 100;
+    }
+    return totals;
   }
 
   formatTime(value: string): string {
