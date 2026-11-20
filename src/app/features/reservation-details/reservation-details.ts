@@ -41,6 +41,7 @@ export class ReservationDetails {
   private readonly guestProfileWorkflow = inject(GuestProfileWorkflowService);
 
   readonly activeTab = signal<ReservationDetailsTab>('reservation');
+  readonly profileToSelect = signal<number | null>(null);
 
   selectTab(tab: ReservationDetailsTab): void {
     this.activeTab.set(tab);
@@ -55,5 +56,10 @@ export class ReservationDetails {
 
   returnToReservation(): void {
     this.activeTab.set('reservation');
+  }
+
+  openGuestProfile(profileId: number): void {
+    this.profileToSelect.set(profileId);
+    this.activeTab.set('profiles');
   }
 }

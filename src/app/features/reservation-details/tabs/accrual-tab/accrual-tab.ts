@@ -1,4 +1,5 @@
 import { CurrencyPipe, DatePipe } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
@@ -9,11 +10,15 @@ import { FacilityResponse } from '../../../../core/models/billing/facility-respo
 import { FolioResponse } from '../../../../core/models/billing/folio-response.model';
 import { LegalEntityResponse } from '../../../../core/models/legal-entity-response.model';
 import { PaymentRequest } from '../../../../core/models/billing/payment-request.model';
+import { BalanceOperationRequest } from '../../../../core/models/billing/balance-operation-request.model';
+import { BalanceAccountResponse } from '../../../../core/models/billing/balance-account-response.model';
 import { FolioPartiesRequest } from '../../../../core/models/billing/folio-parties-request.model';
 import { FolioRequest } from '../../../../core/models/billing/folio-request.model';
 import { FolioReopenRequest } from '../../../../core/models/billing/folio-reopen-request.model';
 import { FacilityType } from '../../../../core/models/enums/facility-type.enum';
 import { FolioStatus } from '../../../../core/models/enums/folio-status.enum';
+import { PaymentMethod } from '../../../../core/models/enums/payment-method.enum';
+import { BalanceAccountStatus } from '../../../../core/models/enums/balance-account-status.enum';
 import { ProfileResponse } from '../../../../core/models/profile/profile-response.model';
 import { ReservationResponse } from '../../../../core/models/reservation/reservation-response.model';
 
@@ -24,6 +29,7 @@ import { FolioService } from '../../../../core/services/folio.service';
 import { LegalEntityService } from '../../../../core/services/legal-entity.service';
 import { PaymentService } from '../../../../core/services/payment.service';
 import { ProfileService } from '../../../../core/services/profile.service';
+import { BalanceAccountService } from '../../../../core/services/balance-account.service';
 import { ReservationService } from '../../../../core/services/reservation.service';
 import {FacilityService} from '../../../../core/services/ facility.service';
 import { FolioDetails } from '../../../../shared/folio-details/folio-details';
@@ -46,6 +52,7 @@ export class AccrualTab implements OnInit {
   private readonly accrualService = inject(AccrualService);
   private readonly paymentService = inject(PaymentService);
   private readonly profileService = inject(ProfileService);
+  private readonly balanceAccountService = inject(BalanceAccountService);
 
   readonly loading = signal(true);
   readonly saving = signal(false);
@@ -59,6 +66,13 @@ export class AccrualTab implements OnInit {
   readonly hotelId = signal<number | null>(null);
   readonly primaryGuestId = signal<number | null>(null);
   readonly primaryGuest = signal<ProfileResponse | null>(null);
+  readonly guestBalanceAccounts = signal<BalanceAccountResponse[]>([]);
+  readonly folioPayerBalance = signal(0);
+  readonly activeGuestBalance = computed(() =>
+    this.guestBalanceAccounts()
+      .filter(account => account.status === BalanceAccountStatus.ACTIVE)
+      .reduce((total, account) => total + Number(account.balance ?? 0), 0)
+  );
   readonly profiles = signal<ProfileResponse[]>([]);
   readonly reservations = signal<ReservationResponse[]>([]);
 
@@ -249,6 +263,7 @@ export class AccrualTab implements OnInit {
         }
 
         this.hotelId.set(hotelId);
+        this.loadGuestBalanceAccounts(reservation.primaryGuest?.id ?? null, hotelId);
         this.reservationService.getAll().subscribe({
           next: reservations => {
             const sameHotel = (reservations ?? []).filter(item => item.room?.hotelId === hotelId);
@@ -463,6 +478,7 @@ export class AccrualTab implements OnInit {
     this.selectedFolioId.set(folio.id);
     this.error.set('');
     this.success.set('');
+    this.loadFolioPayerBalance(folio.payerId ?? this.primaryGuestId(), this.hotelId());
     this.folioDetailsOpen.set(true);
   }
 
@@ -757,6 +773,11 @@ export class AccrualTab implements OnInit {
       return;
     }
 
+    if (request.method === PaymentMethod.BALANCE) {
+      this.addBalancePayment(folio, request);
+      return;
+    }
+
     this.saving.set(true);
     this.error.set('');
     this.success.set('');
@@ -773,6 +794,80 @@ export class AccrualTab implements OnInit {
         );
       }
     });
+  }
+
+  private addBalancePayment(folio: FolioResponse, request: PaymentRequest): void {
+    const payerId = folio.payerId ?? this.primaryGuestId();
+    const hotelId = this.hotelId();
+    if (payerId === null || hotelId === null) {
+      this.error.set('Для оплати з авансу потрібно вказати платника рахунку.');
+      this.success.set('');
+      return;
+    }
+
+    this.saving.set(true);
+    this.error.set('');
+    this.success.set('');
+    this.balanceAccountService.payFolioFromProfileBalance(
+      payerId,
+      hotelId,
+      folio.id,
+      { amount: request.amount, description: request.description } satisfies BalanceOperationRequest
+    ).subscribe({
+      next: () => {
+        this.success.set('Платіж з авансового рахунку успішно додано.');
+        this.loadGuestBalanceAccounts(this.primaryGuestId(), this.hotelId());
+        this.refreshFolios();
+      },
+      error: error => {
+        this.saving.set(false);
+        this.error.set(this.getBalancePaymentError(error, payerId, request.amount));
+      }
+    });
+  }
+
+  private getBalancePaymentError(error: HttpErrorResponse, payerId: number, amount: number): string {
+    const message = String(error?.error?.message ?? error?.message ?? '');
+    if (message.includes('Insufficient balance')) {
+      return `На активному авансі платника №${payerId} недостатньо коштів для оплати ${amount.toFixed(2)} ₴. Перевірте, на який профайл зараховано депозит, або змініть платника рахунку.`;
+    }
+    if (message.includes('does not belong to the folio payer')) {
+      return `Аванс має належати платнику рахунку №${payerId}. Отримувач послуги може мати інший профайл.`;
+    }
+    if (message.includes('Cannot pay a closed folio')) {
+      return 'Цей рахунок уже закритий. Відкрийте його повторно, перш ніж реєструвати оплату.';
+    }
+    if (message.includes('Folio has no outstanding balance')) {
+      return 'На рахунку вже немає суми до сплати. Оновіть дані рахунку.';
+    }
+    if (error?.status === 404) {
+      return 'Сервер не знайшов маршрут оплати з авансу. Перезапустіть бекенд і повторіть спробу.';
+    }
+    return message || 'Не вдалося провести оплату з авансового рахунку.';
+  }
+
+  private loadFolioPayerBalance(profileId: number | null, hotelId: number | null): void {
+    this.folioPayerBalance.set(0);
+    if (profileId === null || hotelId === null) return;
+
+    this.balanceAccountService.getAllByProfileAndHotel(profileId, hotelId).pipe(
+      catchError(() => of([] as BalanceAccountResponse[]))
+    ).subscribe(accounts => {
+      if (this.detailFolio()?.payerId !== null && this.detailFolio()?.payerId !== profileId) return;
+      this.folioPayerBalance.set(accounts
+        .filter(account => account.status === BalanceAccountStatus.ACTIVE)
+        .reduce((total, account) => total + Number(account.balance ?? 0), 0));
+    });
+  }
+
+  private loadGuestBalanceAccounts(profileId: number | null, hotelId: number | null): void {
+    if (profileId === null || hotelId === null) {
+      this.guestBalanceAccounts.set([]);
+      return;
+    }
+    this.balanceAccountService.getAllByProfileAndHotel(profileId, hotelId).pipe(
+      catchError(() => of([] as BalanceAccountResponse[]))
+    ).subscribe(accounts => this.guestBalanceAccounts.set(accounts ?? []));
   }
 
   trackAccrual(_: number, accrual: AccrualResponse): number {
@@ -805,6 +900,11 @@ export class AccrualTab implements OnInit {
       this.selectedFolioId.set(
         folios.find(folio => folio.status === FolioStatus.OPEN)?.id ?? null
       );
+    }
+
+    const selectedFolio = folios.find(folio => folio.id === this.selectedFolioId());
+    if (selectedFolio) {
+      this.loadFolioPayerBalance(selectedFolio.payerId ?? this.primaryGuestId(), this.hotelId());
     }
   }
 

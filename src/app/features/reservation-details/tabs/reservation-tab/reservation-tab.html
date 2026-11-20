@@ -438,18 +438,9 @@
 
         @if (!isCreateMode()) {
           <div class="info-row">
-            <span>Тариф</span>
-            <strong>{{ reservation()?.rate?.name }}</strong>
+            <span>Баланс</span>
+            <strong>{{ reservationBalance() === null ? '—' : (reservationBalance() | number:'1.2-2') + ' ₴' }}</strong>
           </div>
-
-          <div class="info-row">
-            <span>Рахунок</span>
-            <strong>{{ reservation()?.folioId ?? 'Не створений' }}</strong>
-          </div>
-
-          <p class="muted">
-            Баланс буде доступний після підключення даних нарахувань і платежів із рахунку.
-          </p>
         }
       </section>
 
@@ -509,7 +500,14 @@
             @if (getProfileById(guestId); as guest) {
               <div class="additional-guest">
                 <div>
-                  <strong>{{ getProfileFullName(guest) }}</strong>
+                  <div class="additional-guest-heading">
+                    <button class="profile-link" type="button" (click)="openProfile(guestId)">
+                      {{ getProfileFullName(guest) }}
+                    </button>
+                    @if (guest.comment) {
+                      <small class="profile-comment">{{ guest.comment }}</small>
+                    }
+                  </div>
                   <small>
                     {{ guest.phoneNumber || 'Телефон не вказаний' }}
                   </small>
@@ -545,6 +543,23 @@
       } @else {
         <section class="block">
           <h2>Коментарі</h2>
+          @if (commentsLoading()) {
+            <p class="muted">Завантаження коментарів…</p>
+          } @else {
+            <div class="comments-list">
+              @for (comment of comments(); track comment.id) {
+                <div class="comment-item">
+                  <div class="comment-content">
+                    <span>{{ comment.text }}</span>
+                    <small>{{ comment.createdAt | date:'dd.MM.yyyy HH:mm' }}</small>
+                  </div>
+                  <button class="remove-button comment-remove" type="button" [disabled]="commentBusy()" aria-label="Видалити коментар" (click)="deleteComment(comment.id)">×</button>
+                </div>
+              } @empty {
+                <p class="muted">Коментарів поки немає.</p>
+              }
+            </div>
+          }
           <textarea
             class="text-input comment-input"
             [value]="newComment()"
@@ -554,23 +569,6 @@
           ></textarea>
           <button class="secondary-button" type="button" [disabled]="commentBusy() || !newComment().trim()" (click)="addComment()">
             Зберегти коментар
-          </button>
-          @if (commentsLoading()) {
-            <p class="muted">Завантаження коментарів…</p>
-          } @else {
-            <div class="comments-list">
-              @for (comment of comments(); track comment.id) {
-                <button class="comment-item" [class.selected]="selectedCommentId() === comment.id" type="button" (click)="selectedCommentId.set(comment.id)">
-                  <span>{{ comment.text }}</span>
-                  <small>{{ comment.createdAt | date:'dd.MM.yyyy HH:mm' }}</small>
-                </button>
-              } @empty {
-                <p class="muted">Коментарів поки немає.</p>
-              }
-            </div>
-          }
-          <button class="danger-button" type="button" [disabled]="commentBusy() || selectedCommentId() === null" (click)="deleteSelectedComment()">
-            Видалити вибраний коментар
           </button>
         </section>
       }
@@ -622,14 +620,16 @@
             Копіювати бронювання
           </button>
 
-          <button
-            class="danger-button"
-            type="button"
-            [disabled]="actionBusy()"
-            (click)="cancelReservation()"
-          >
-            Скасувати бронювання
-          </button>
+          @if (canCancelReservation()) {
+            <button
+              class="danger-button"
+              type="button"
+              [disabled]="actionBusy()"
+              (click)="cancelReservation()"
+            >
+              Скасувати бронювання
+            </button>
+          }
 
           @if (canMarkNoShow()) {
             <button

@@ -118,4 +118,16 @@ export class BalanceAccountService {
       request
     );
   }
+
+  payFolioFromProfileBalance(
+    profileId: number,
+    hotelId: number,
+    folioId: number,
+    request: BalanceOperationRequest
+  ): Observable<BalanceAccountResponse[]> {
+    return this.http.post<BalanceAccountResponse[]>(
+      `${this.apiUrl}/profile/${profileId}/hotel/${hotelId}/pay-folio/${folioId}`,
+      request
+    );
+  }
 }

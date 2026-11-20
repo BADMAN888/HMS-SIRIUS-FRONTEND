@@ -135,20 +135,26 @@
         <div class="payment-fields">
           <div class="form-field">
             <label for="folioPaymentMethod">Спосіб оплати</label>
-            <select id="folioPaymentMethod" name="folioPaymentMethod" [(ngModel)]="paymentMethod" [disabled]="saving">
+            <select id="folioPaymentMethod" name="folioPaymentMethod" [ngModel]="paymentMethod" (ngModelChange)="onPaymentMethodChange($event)" [disabled]="saving">
               @for (method of paymentMethods; track method) { <option [ngValue]="method">{{ formatPaymentMethod(method) }}</option> }
             </select>
           </div>
           <div class="form-field">
             <label for="folioPaymentAmount">Сума оплати</label>
-            <input id="folioPaymentAmount" name="folioPaymentAmount" type="number" min="0.01" [max]="folio.balance" step="0.01" [(ngModel)]="paymentAmount" [disabled]="saving || folio.balance <= 0" required />
+            <input id="folioPaymentAmount" name="folioPaymentAmount" type="number" min="0.01" [max]="paymentAmountLimit" step="0.01" [(ngModel)]="paymentAmount" [disabled]="saving || paymentAmountLimit <= 0" required />
           </div>
         </div>
+        @if (paymentMethod === 'BALANCE') {
+          <p class="payment-balance-hint">
+            Аванс платника профайлу №{{ payerId ?? folio.payerId ?? primaryGuestId ?? '—' }}:
+            {{ availableBalance | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}
+          </p>
+        }
         <div class="form-field">
           <label for="folioPaymentDescription">Примітка до оплати</label>
           <input id="folioPaymentDescription" name="folioPaymentDescription" type="text" [(ngModel)]="paymentDescription" placeholder="Необов'язково" [disabled]="saving" />
         </div>
-        <button class="secondary-button" type="submit" [disabled]="saving || folio.balance <= 0">Зареєструвати оплату</button>
+        <button class="secondary-button" type="submit" [disabled]="saving || paymentAmountLimit <= 0">Зареєструвати оплату</button>
       </form>
     }
 

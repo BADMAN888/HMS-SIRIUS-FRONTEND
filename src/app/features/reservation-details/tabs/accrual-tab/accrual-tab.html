@@ -308,6 +308,7 @@
           [folio]="invoice"
           [primaryGuestId]="primaryGuestId()"
           [primaryGuest]="primaryGuest()"
+          [availableBalance]="folioPayerBalance()"
           [profiles]="profiles()"
           [reservations]="reservations()"
           [currentReservationId]="reservationId()"
@@ -374,6 +375,12 @@
         <span>Загальний баланс</span>
         <strong>
           {{ balance() | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}
+        </strong>
+      </div>
+      <div class="guest-advance-balance">
+        <span>Активні аванси гостя</span>
+        <strong>
+          {{ activeGuestBalance() | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}
         </strong>
       </div>
     </section>

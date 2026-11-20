@@ -26,6 +26,7 @@ export class FolioDetails implements OnChanges {
   @Input() draftTotal = 0;
   @Input() primaryGuestId: number | null = null;
   @Input() primaryGuest: ProfileResponse | null = null;
+  @Input() availableBalance = 0;
   @Input() profiles: ProfileResponse[] = [];
   @Input() reservations: ReservationResponse[] = [];
   @Input() currentReservationId: number | null = null;
@@ -64,6 +65,9 @@ export class FolioDetails implements OnChanges {
       this.serviceProviderId = this.folio?.serviceProviderId ?? null;
       this.paymentAmount = this.folio && Number(this.folio.balance) > 0 ? Number(this.folio.balance) : null;
       this.updatePayerLabel();
+    }
+    if ((changes['availableBalance'] || changes['folio']) && this.paymentMethod === PaymentMethod.BALANCE) {
+      this.setBalancePaymentAmount();
     }
     if (changes['profiles'] || changes['reservations']) {
       if (this.selectedPayerReservation) {
@@ -152,14 +156,34 @@ export class FolioDetails implements OnChanges {
 
   submitPayment(): void {
     if (!this.folio || this.saving || this.paymentAmount === null || !Number.isFinite(this.paymentAmount) || this.paymentAmount <= 0) return;
+    if (this.paymentMethod === PaymentMethod.BALANCE && this.paymentAmount > this.availableBalance) return;
     this.paymentSubmit.emit({
       folioId: this.folio.id,
       method: this.paymentMethod,
       amount: this.paymentAmount,
       description: this.paymentDescription.trim() || null
     });
-    this.paymentAmount = null;
-    this.paymentDescription = '';
+  }
+
+  onPaymentMethodChange(method: PaymentMethod): void {
+    this.paymentMethod = method;
+    if (method === PaymentMethod.BALANCE) {
+      this.setBalancePaymentAmount();
+    } else if (this.folio) {
+      this.paymentAmount = Number(this.folio.balance) > 0 ? Number(this.folio.balance) : null;
+    }
+  }
+
+  get paymentAmountLimit(): number {
+    const folioBalance = Number(this.folio?.balance ?? 0);
+    return this.paymentMethod === PaymentMethod.BALANCE
+      ? Math.min(folioBalance, this.availableBalance)
+      : folioBalance;
+  }
+
+  private setBalancePaymentAmount(): void {
+    const limit = this.paymentAmountLimit;
+    this.paymentAmount = limit > 0 ? Math.round(limit * 100) / 100 : null;
   }
 
   isOpen(): boolean {

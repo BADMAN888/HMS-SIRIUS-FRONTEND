@@ -59,9 +59,11 @@
     <app-reservation-tab
       [hidden]="activeTab() !== 'reservation'"
       (createGuestProfile)="createGuestProfile($event)"
+      (openGuestProfile)="openGuestProfile($event)"
     />
     <app-profiles-tab
       [hidden]="activeTab() !== 'profiles'"
+      [profileToSelect]="profileToSelect()"
       (returnToReservation)="returnToReservation()"
     />
 

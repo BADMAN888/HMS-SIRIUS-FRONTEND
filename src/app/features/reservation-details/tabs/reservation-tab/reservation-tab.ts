@@ -41,6 +41,11 @@ import { CompanyResponse } from '../../../../core/models/company-response.model'
 import { TaxStatus } from '../../../../core/models/enums/tax-status.enum';
 import { RoomStatus } from '../../../../core/models/enums/room-status.enum';
 import { ReservationStatus } from '../../../../core/models/enums/reservation-status.enum';
+import { FolioService } from '../../../../core/services/folio.service';
+import { AccrualService } from '../../../../core/services/accrual.service';
+import { FolioResponse } from '../../../../core/models/billing/folio-response.model';
+import { AccrualResponse } from '../../../../core/models/billing/accrual-response.model';
+import { FolioStatus } from '../../../../core/models/enums/folio-status.enum';
 
 @Component({
   selector: 'app-reservation-tab',
@@ -69,8 +74,11 @@ export class ReservationTab implements OnInit {
   private readonly rateService = inject(RateService);
   private readonly roomCategoryService = inject(RoomCategoryService);
   private readonly companyService = inject(CompanyService);
+  private readonly folioService = inject(FolioService);
+  private readonly accrualService = inject(AccrualService);
 
   readonly reservation = signal<ReservationResponse | null>(null);
+  readonly reservationBalance = signal<number | null>(null);
 
   readonly isCreateMode = signal(false);
   readonly isCopyMode = signal(false);
@@ -202,6 +210,7 @@ export class ReservationTab implements OnInit {
     phoneNumber: string;
     email: string;
   }>();
+  @Output() readonly openGuestProfile = new EventEmitter<number>();
 
   private handledCreatedProfileRequestId = 0;
   private handledRemovedProfileEventId = 0;
@@ -676,6 +685,7 @@ export class ReservationTab implements OnInit {
         this.allReservations.set(data.reservations);
 
         this.reservation.set(data.reservation);
+        this.loadReservationBalance(data.reservation.id);
         this.initializeForm(data.reservation);
 
         if (this.isCopyMode()) {
@@ -940,6 +950,14 @@ export class ReservationTab implements OnInit {
     return reservation.status !== ReservationStatus.CANCELLED &&
       reservation.status !== ReservationStatus.COMPLETED &&
       reservation.status !== ReservationStatus.NO_SHOW;
+  }
+
+  canCancelReservation(): boolean {
+    const status = this.reservation()?.status;
+    return status !== ReservationStatus.IN_HOUSE &&
+      status !== ReservationStatus.COMPLETED &&
+      status !== ReservationStatus.CANCELLED &&
+      status !== ReservationStatus.NO_SHOW;
   }
 
   save(): void {
@@ -1218,6 +1236,10 @@ export class ReservationTab implements OnInit {
     return this.profiles().find(profile => profile.id === id);
   }
 
+  openProfile(profileId: number): void {
+    this.openGuestProfile.emit(profileId);
+  }
+
   loadComments(): void {
     const reservation = this.reservation();
 
@@ -1238,6 +1260,27 @@ export class ReservationTab implements OnInit {
           );
         }
       });
+  }
+
+  private loadReservationBalance(reservationId: number): void {
+    this.reservationBalance.set(null);
+    forkJoin({
+      folios: this.folioService.getAll().pipe(catchError(() => of([] as FolioResponse[]))),
+      accruals: this.accrualService.getAll().pipe(catchError(() => of([] as AccrualResponse[])))
+    }).subscribe(({ folios, accruals }) => {
+      let total = 0;
+      for (const folio of folios) {
+        if (folio.status === FolioStatus.OPEN && folio.reservationId === reservationId) {
+          total += Number(folio.balance ?? 0);
+        }
+      }
+      for (const accrual of accruals) {
+        if (accrual.active && accrual.folioId === null && accrual.reservationId === reservationId) {
+          total += Number(accrual.amount ?? 0);
+        }
+      }
+      this.reservationBalance.set(Math.round(total * 100) / 100);
+    });
   }
 
   addComment(): void {
@@ -1267,19 +1310,13 @@ export class ReservationTab implements OnInit {
       });
   }
 
-  deleteSelectedComment(): void {
+  deleteComment(commentId: number): void {
     const reservation = this.reservation();
-    const commentId = this.selectedCommentId();
 
     if (
       !reservation ||
-      commentId === null ||
       this.commentBusy()
     ) {
-      return;
-    }
-
-    if (!window.confirm('Видалити вибраний коментар?')) {
       return;
     }
 
@@ -1292,7 +1329,9 @@ export class ReservationTab implements OnInit {
           this.comments.update(items =>
             items.filter(item => item.id !== commentId)
           );
-          this.selectedCommentId.set(null);
+          if (this.selectedCommentId() === commentId) {
+            this.selectedCommentId.set(null);
+          }
         },
         error: error => {
           this.saveError.set(

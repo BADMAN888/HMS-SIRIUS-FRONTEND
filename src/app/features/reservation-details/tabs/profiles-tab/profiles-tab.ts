@@ -4,6 +4,7 @@ import {
   computed,
   effect,
   EventEmitter,
+  Input,
   inject,
   OnInit,
   Output,
@@ -92,6 +93,16 @@ export class ProfilesTab implements OnInit {
   private readonly balanceAccountService = inject(BalanceAccountService);
 
   @Output() readonly returnToReservation = new EventEmitter<void>();
+  private requestedProfileId: number | null = null;
+
+  @Input()
+  set profileToSelect(profileId: number | null) {
+    if (profileId === null) {
+      return;
+    }
+    this.requestedProfileId = profileId;
+    this.selectRequestedProfile();
+  }
 
   readonly reservation = signal<ReservationResponse | null>(null);
   readonly profiles = signal<ProfileResponse[]>([]);
@@ -267,7 +278,7 @@ export class ProfilesTab implements OnInit {
 
         this.profiles.set(reservationProfiles);
 
-        if (reservationProfiles.length > 0) {
+        if (!this.selectRequestedProfile() && reservationProfiles.length > 0) {
           this.selectProfile(reservationProfiles[0]);
         }
       },
@@ -294,6 +305,19 @@ export class ProfilesTab implements OnInit {
       profile.firstName,
       profile.middleName
     ].filter(Boolean).join(' ');
+  }
+
+  private selectRequestedProfile(): boolean {
+    if (this.requestedProfileId === null) {
+      return false;
+    }
+    const profile = this.profiles().find(item => item.id === this.requestedProfileId);
+    if (!profile) {
+      return false;
+    }
+    this.selectProfile(profile);
+    this.requestedProfileId = null;
+    return true;
   }
 
   selectProfile(profile: ProfileResponse): void {

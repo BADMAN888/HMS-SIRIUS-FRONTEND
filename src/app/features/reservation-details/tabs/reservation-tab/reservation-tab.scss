@@ -563,8 +563,8 @@ $color-tab-active: #3b9bea;
 
 .comment-item {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
+  justify-content: space-between;
   gap: 8px;
   width: 100%;
   padding: 12px;
@@ -575,22 +575,28 @@ $color-tab-active: #3b9bea;
   color: $color-text-main;
   text-align: left;
   overflow-wrap: anywhere;
-  cursor: pointer;
+}
+
+.comment-content {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+  overflow-wrap: anywhere;
 
   small {
     color: $color-text-muted;
     font-size: 11px;
   }
+}
 
-  &.selected {
-    border-color: $color-border-focus;
-    background: $color-comment-selected-bg;
-  }
+.comment-remove {
+  flex: 0 0 auto;
+}
 
-  &:focus-visible {
-    outline: 2px solid $color-border-focus;
-    outline-offset: 2px;
-  }
+.profile-comment {
+  color: $color-text-muted;
+  overflow-wrap: anywhere;
 }
 
 .additional-guests {
@@ -626,6 +632,31 @@ $color-tab-active: #3b9bea;
     color: $color-text-muted;
     font-size: 12px;
     overflow-wrap: anywhere;
+  }
+}
+
+.additional-guest-heading {
+  display: flex !important;
+  align-items: baseline;
+  flex-direction: row !important;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.profile-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: $color-text-main;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    color: $color-border-focus;
+    text-decoration: underline;
   }
 }
 
