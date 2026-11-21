@@ -316,6 +316,7 @@
           [saving]="saving()"
           [error]="error()"
           [success]="success()"
+          (payerChanged)="onFolioPayerChanged($event)"
           (close)="closeFolioDetails()"
           (partiesSave)="saveFolioParties(invoice, $event)"
           (paymentSubmit)="addPayment(invoice, $event)"

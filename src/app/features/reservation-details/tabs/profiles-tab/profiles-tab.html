@@ -373,6 +373,13 @@
                             <span>
                               {{ getBalanceTransactionLabel(transaction.type) }}
                               · {{ transaction.description || 'Без коментаря' }}
+                              <small>
+                                Профіль №{{ transaction.payerId ?? account.profileId }} · готель №{{ transaction.hotelId ?? account.hotelId }}
+                                @if (transaction.folioId) { · рахунок №{{ transaction.folioId }} }
+                                @if (transaction.paymentId) { · оплата №{{ transaction.paymentId }} }
+                                @if (transaction.performedByUserId) { · користувач №{{ transaction.performedByUserId }} }
+                                · баланс після операції {{ transaction.balanceAfter | number:'1.2-2' }} {{ account.currency }}
+                              </small>
                             </span>
                             <strong>{{ transaction.amount | number:'1.2-2' }} {{ account.currency }}</strong>
                           </div>

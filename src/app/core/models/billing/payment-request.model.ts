@@ -5,4 +5,5 @@ export interface PaymentRequest {
   method: PaymentMethod;
   amount: number;
   description?: string | null;
+  idempotencyKey?: string;
 }

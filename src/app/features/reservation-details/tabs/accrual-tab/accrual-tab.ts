@@ -68,6 +68,7 @@ export class AccrualTab implements OnInit {
   readonly primaryGuest = signal<ProfileResponse | null>(null);
   readonly guestBalanceAccounts = signal<BalanceAccountResponse[]>([]);
   readonly folioPayerBalance = signal(0);
+  private payerBalanceRequestSequence = 0;
   readonly activeGuestBalance = computed(() =>
     this.guestBalanceAccounts()
       .filter(account => account.status === BalanceAccountStatus.ACTIVE)
@@ -486,6 +487,10 @@ export class AccrualTab implements OnInit {
     if (!this.saving()) this.folioDetailsOpen.set(false);
   }
 
+  onFolioPayerChanged(profileId: number | null): void {
+    this.loadFolioPayerBalance(profileId, this.hotelId());
+  }
+
   saveFolioParties(folio: FolioResponse, request: FolioPartiesRequest): void {
     if (this.saving()) return;
     if (![request.recipientId, request.payerId, request.reservationId].every(id => Number.isInteger(id) && id > 0)) {
@@ -812,7 +817,7 @@ export class AccrualTab implements OnInit {
       payerId,
       hotelId,
       folio.id,
-      { amount: request.amount, description: request.description } satisfies BalanceOperationRequest
+      { amount: request.amount, description: request.description, idempotencyKey: request.idempotencyKey } satisfies BalanceOperationRequest
     ).subscribe({
       next: () => {
         this.success.set('Платіж з авансового рахунку успішно додано.');
@@ -847,16 +852,17 @@ export class AccrualTab implements OnInit {
   }
 
   private loadFolioPayerBalance(profileId: number | null, hotelId: number | null): void {
+    const requestSequence = ++this.payerBalanceRequestSequence;
     this.folioPayerBalance.set(0);
     if (profileId === null || hotelId === null) return;
 
-    this.balanceAccountService.getAllByProfileAndHotel(profileId, hotelId).pipe(
-      catchError(() => of([] as BalanceAccountResponse[]))
-    ).subscribe(accounts => {
-      if (this.detailFolio()?.payerId !== null && this.detailFolio()?.payerId !== profileId) return;
-      this.folioPayerBalance.set(accounts
-        .filter(account => account.status === BalanceAccountStatus.ACTIVE)
-        .reduce((total, account) => total + Number(account.balance ?? 0), 0));
+    this.balanceAccountService.getByProfileAndHotel(profileId, hotelId).pipe(
+      catchError(() => of(null as BalanceAccountResponse | null))
+    ).subscribe(account => {
+      if (requestSequence !== this.payerBalanceRequestSequence) return;
+      this.folioPayerBalance.set(account?.status === BalanceAccountStatus.ACTIVE
+        ? Number(account.balance ?? 0)
+        : 0);
     });
   }
 

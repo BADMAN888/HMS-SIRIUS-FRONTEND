@@ -10,23 +10,20 @@
       <div class="folio-details-parties">
         <div class="form-field">
           <span>Одержувач послуги</span>
-          <button class="recipient-copy" type="button" [disabled]="!primaryGuestId" (click)="copyRecipient()" title="Натисніть, щоб скопіювати ID одержувача">
-            {{ profileLabel(primaryGuest) }} <small>{{ copiedRecipient ? 'Скопійовано' : 'Натисніть, щоб скопіювати ID' }}</small>
+          <select [(ngModel)]="recipientId" [ngModelOptions]="{standalone: true}" [disabled]="saving || !recipientProfiles.length">
+            @for (profile of recipientProfiles; track profile.id) { <option [ngValue]="profile.id">{{ profileLabel(profile) }}</option> }
+          </select>
+          <button class="recipient-copy" type="button" [disabled]="!recipientId" (click)="copyRecipient()" title="Натисніть, щоб скопіювати ID одержувача">
+            <small>{{ copiedRecipient ? 'ID скопійовано' : 'Натисніть, щоб скопіювати ID' }}</small>
           </button>
         </div>
-        <div class="form-field payer-field">
+        <label class="form-field payer-field">
           <span>Платник</span>
-          @if (payerReservationId !== null) { <strong class="selected-payer">{{ payerLabel(selectedPayerReservation) }}</strong> }
-          <input type="search" [ngModel]="payerSearch" [ngModelOptions]="{standalone: true}" (ngModelChange)="onPayerSearch($event)" (focus)="payerResultsOpen = true" [disabled]="saving" placeholder="ID бронювання або ім'я гостя" />
-          <small class="payer-hint">Рахунок відображатиметься у вибраному бронюванні.</small>
-          @if (payerResultsOpen && payerSearch) {
-            <div class="payer-results" role="listbox">
-              @for (reservation of payerMatches; track reservation.id) {
-                <button type="button" role="option" (click)="selectPayer(reservation)">{{ payerLabel(reservation) }}</button>
-              } @empty { <span class="no-payer-results">Нічого не знайдено</span> }
-            </div>
-          }
-        </div>
+          <select [ngModel]="payerId" [ngModelOptions]="{standalone: true}" (ngModelChange)="selectPayer($event)" [disabled]="saving">
+            @for (profile of payerProfiles; track profile.id) { <option [ngValue]="profile.id">{{ profileLabel(profile) }}</option> }
+          </select>
+          <small class="payer-hint">За замовчуванням — основний гість бронювання. Аванс списується з вибраного профілю.</small>
+        </label>
         <label class="form-field">
           <span>Постачальник послуг</span>
           <select [(ngModel)]="serviceProviderId" [ngModelOptions]="{standalone: true}" [disabled]="saving">
@@ -45,7 +42,7 @@
       <div class="folio-details-total"><span>Разом до рахунку</span><strong>{{ draftTotal | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}</strong></div>
       <div class="folio-modal-actions">
         <button class="secondary-button" type="button" [disabled]="saving" (click)="close.emit()">Скасувати</button>
-        <button class="primary-button" type="button" [disabled]="saving || !draftAccruals.length || payerId === null || payerReservationId === null || !primaryGuestId" (click)="createFolio()">{{ saving ? 'Створення…' : 'Створити й додати нарахування' }}</button>
+        <button class="primary-button" type="button" [disabled]="saving || !draftAccruals.length || payerId === null || payerReservationId === null || recipientId === null" (click)="createFolio()">{{ saving ? 'Створення…' : 'Створити й додати нарахування' }}</button>
       </div>
     </section>
   </div>
@@ -66,23 +63,20 @@
     <div class="folio-details-parties">
       <div class="form-field">
         <span>Одержувач послуги</span>
-        <button class="recipient-copy" type="button" [disabled]="!primaryGuestId" (click)="copyRecipient()" title="Натисніть, щоб скопіювати ID одержувача">
-          {{ profileLabel(primaryGuest) }} <small>{{ copiedRecipient ? 'Скопійовано' : 'Натисніть, щоб скопіювати ID' }}</small>
+        <select [(ngModel)]="recipientId" [ngModelOptions]="{standalone: true}" [disabled]="saving || !isOpen() || !recipientProfiles.length">
+          @for (profile of recipientProfiles; track profile.id) { <option [ngValue]="profile.id">{{ profileLabel(profile) }}</option> }
+        </select>
+        <button class="recipient-copy" type="button" [disabled]="!recipientId" (click)="copyRecipient()" title="Натисніть, щоб скопіювати ID одержувача">
+          <small>{{ copiedRecipient ? 'ID скопійовано' : 'Натисніть, щоб скопіювати ID' }}</small>
         </button>
       </div>
-      <div class="form-field payer-field">
+      <label class="form-field payer-field">
         <span>Платник</span>
-        @if (payerReservationId !== null) { <strong class="selected-payer">{{ payerLabel(selectedPayerReservation) }}</strong> }
-        <input type="search" [ngModel]="payerSearch" [ngModelOptions]="{standalone: true}" (ngModelChange)="onPayerSearch($event)" (focus)="payerResultsOpen = true" [disabled]="saving || !isOpen()" placeholder="ID бронювання або ім'я гостя" />
-        <small class="payer-hint">Рахунок відображатиметься у вибраному бронюванні.</small>
-        @if (payerResultsOpen && payerSearch) {
-          <div class="payer-results" role="listbox">
-            @for (reservation of payerMatches; track reservation.id) {
-              <button type="button" role="option" (click)="selectPayer(reservation)">{{ payerLabel(reservation) }}</button>
-            } @empty { <span class="no-payer-results">Нічого не знайдено</span> }
-          </div>
-        }
-      </div>
+        <select [ngModel]="payerId" [ngModelOptions]="{standalone: true}" (ngModelChange)="selectPayer($event)" [disabled]="saving || !isOpen()">
+          @for (profile of payerProfiles; track profile.id) { <option [ngValue]="profile.id">{{ profileLabel(profile) }}</option> }
+        </select>
+        <small class="payer-hint">За замовчуванням — основний гість бронювання. Аванс списується з вибраного профілю.</small>
+      </label>
       <label class="form-field">
         <span>Постачальник послуг</span>
         <select [(ngModel)]="serviceProviderId" [ngModelOptions]="{standalone: true}" [disabled]="saving || !isOpen()">
@@ -95,7 +89,7 @@
     </div>
     @if (isOpen()) {
       <div class="folio-party-save-row">
-        <span>За замовчуванням використовується ID основного гостя.</span>
+        <span>Одержувач — гість бронювання; платник вибирається окремо. Збережіть платника й одержувача перед оплатою.</span>
         <button class="secondary-button" type="button" [disabled]="saving || !recipientId || !payerId || !payerReservationId" (click)="saveParties()">Зберегти дані</button>
       </div>
     }
@@ -129,6 +123,27 @@
       <span>Баланс: {{ folio.balance | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}</span>
     </div>
 
+    @if (folio.payments.length > 0) {
+      <h3 class="folio-accruals-title">Історія оплат</h3>
+      <div class="table-scroll">
+        <table class="accrual-table">
+          <thead><tr><th>Дата</th><th>Спосіб</th><th>Платник</th><th>Авансовий рахунок</th><th>Виконав</th><th>Сума</th></tr></thead>
+          <tbody>
+            @for (payment of folio.payments; track payment.id) {
+              <tr>
+                <td class="date-cell">{{ payment.paidAt | date: 'dd.MM.yyyy HH:mm' : '' : 'uk-UA' }}</td>
+                <td>{{ formatPaymentMethod(payment.method) }}</td>
+                <td>{{ payment.payerId ? 'Профіль №' + payment.payerId : 'Не зафіксований' }}</td>
+                <td>{{ payment.balanceAccountId ? '№' + payment.balanceAccountId : '—' }}</td>
+                <td>{{ payment.performedByUserId ? 'Користувач №' + payment.performedByUserId : '—' }}</td>
+                <td class="amount-cell">{{ payment.amount | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+
     @if (isOpen()) {
       <form class="payment-form" (ngSubmit)="submitPayment()">
         <h3>Додати оплату</h3>
@@ -141,20 +156,24 @@
           </div>
           <div class="form-field">
             <label for="folioPaymentAmount">Сума оплати</label>
-            <input id="folioPaymentAmount" name="folioPaymentAmount" type="number" min="0.01" [max]="paymentAmountLimit" step="0.01" [(ngModel)]="paymentAmount" [disabled]="saving || paymentAmountLimit <= 0" required />
+            <input id="folioPaymentAmount" name="folioPaymentAmount" type="number" min="0.01" [max]="paymentAmountLimit" step="0.01" [ngModel]="paymentAmount" (ngModelChange)="onPaymentAmountChange($event)" [disabled]="saving || paymentAmountLimit <= 0" required />
           </div>
         </div>
         @if (paymentMethod === 'BALANCE') {
-          <p class="payment-balance-hint">
-            Аванс платника профайлу №{{ payerId ?? folio.payerId ?? primaryGuestId ?? '—' }}:
+          <div class="payment-balance-hint" [class.no-payment-balance]="availableBalance <= 0">
+            Аванс платника профілю №{{ payerId ?? folio.payerId ?? primaryGuestId ?? '—' }}:
             {{ availableBalance | currency: 'UAH' : 'symbol-narrow' : '1.2-2' : 'uk-UA' }}
-          </p>
+            @if (availableBalance <= 0) {
+              <small>Поповніть аванс цього профайлу, змініть платника на власника авансу або виберіть інший спосіб оплати.</small>
+            }
+          </div>
         }
+        @if (partyChangesPending) { <small class="payer-hint">Спочатку збережіть нового платника, щоб провести оплату саме з його авансу.</small> }
         <div class="form-field">
           <label for="folioPaymentDescription">Примітка до оплати</label>
-          <input id="folioPaymentDescription" name="folioPaymentDescription" type="text" [(ngModel)]="paymentDescription" placeholder="Необов'язково" [disabled]="saving" />
+          <input id="folioPaymentDescription" name="folioPaymentDescription" type="text" [ngModel]="paymentDescription" (ngModelChange)="onPaymentDescriptionChange($event)" placeholder="Необов'язково" [disabled]="saving" />
         </div>
-        <button class="secondary-button" type="submit" [disabled]="saving || paymentAmountLimit <= 0">Зареєструвати оплату</button>
+        <button class="secondary-button" type="submit" [disabled]="saving || partyChangesPending || paymentAmountLimit <= 0 || paymentAmount === null || paymentExceedsFolioBalance || paymentExceedsPayerBalance">Зареєструвати оплату</button>
       </form>
     }
 

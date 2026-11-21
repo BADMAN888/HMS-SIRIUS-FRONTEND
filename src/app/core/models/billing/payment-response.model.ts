@@ -8,4 +8,7 @@ export interface PaymentResponse {
   description: string | null;
   paidAt: string;
   reversalOfPaymentId: number | null;
+  payerId: number | null;
+  balanceAccountId: number | null;
+  performedByUserId: number | null;
 }

@@ -10,4 +10,8 @@ export interface BalanceTransactionResponse {
   reservationId: number | null;
   folioId: number | null;
   createdAt: string;
+  paymentId: number | null;
+  payerId: number | null;
+  hotelId: number | null;
+  performedByUserId: number | null;
 }
