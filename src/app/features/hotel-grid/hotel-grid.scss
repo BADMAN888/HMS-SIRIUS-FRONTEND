@@ -5,7 +5,7 @@
 
 .hotel-grid-page {
   min-height: 100%;
-  padding: 24px;
+  padding: 24px 10px 8px;
   box-sizing: border-box;
   background: #071426;
   color: #e8f0fa;
@@ -573,7 +573,7 @@
 
 @media (max-width: 700px) {
   .hotel-grid-page {
-    padding: 14px;
+    padding: 14px 6px 6px;
   }
 
   .grid-header h1 {

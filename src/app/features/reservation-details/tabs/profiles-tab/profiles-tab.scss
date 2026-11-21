@@ -46,21 +46,22 @@
 
 .profiles-layout {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(12, minmax(0, 1fr));
   grid-template-areas:
-    'guests personal'
-    'balance documents'
-    'history comment';
+    'guests guests guests guests guests personal personal personal personal personal personal personal'
+    'comment comment comment comment comment comment documents documents documents documents documents documents'
+    'history history history history history history balance balance balance balance balance balance';
   align-items: stretch;
-  width: min(100%, 1240px);
-  margin-inline: auto;
+  width: 100%;
+  max-width: none;
+  margin-inline: 0;
   gap: 18px;
 }
 
 .profiles-layout.create-mode {
   grid-template-areas:
-    'guests personal'
-    'guests comment';
+    'guests guests guests guests guests personal personal personal personal personal personal personal'
+    'guests guests guests guests guests comment comment comment comment comment comment comment';
 }
 
 .profiles-sidebar,
@@ -143,9 +144,9 @@
 
 .profile-list-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 34px;
+  grid-template-columns: minmax(0, 1fr) 40px;
   align-items: center;
-  gap: 5px;
+  gap: 8px;
 
   & + & {
     margin-top: 5px;
@@ -154,15 +155,16 @@
 
 .remove-profile-button {
   display: grid;
-  width: 30px;
-  height: 30px;
+  width: 36px;
+  height: 36px;
+  padding: 0;
   place-items: center;
   color: #f3a2a2;
-  background: #351e2a;
-  border: 1px solid #633343;
-  border-radius: 7px;
+  background: #241c2a;
+  border: 1px solid #543343;
+  border-radius: 9px;
   font: inherit;
-  font-size: 19px;
+  font-size: 22px;
   cursor: pointer;
 
   &:hover:not(:disabled) {
@@ -478,26 +480,6 @@
   }
 }
 
-.account-open-button {
-  padding: 6px 9px;
-  color: #b9d6ef;
-  background: #102b46;
-  border: 1px solid #2a4d6b;
-  border-radius: 7px;
-  font: inherit;
-  font-size: 10px;
-  cursor: pointer;
-
-  &:hover {
-    background: #174064;
-  }
-}
-
-.balance-account.editing {
-  border-color: #28618d;
-  box-shadow: 0 0 0 1px rgba(40, 97, 141, 0.2);
-}
-
 .comment-input {
   display: block;
   width: 100%;
@@ -533,15 +515,13 @@
   }
 }
 
-.transactions-toggle {
+.balance-actions-closed {
+  justify-content: flex-end;
   margin-top: 10px;
-  padding: 0;
-  color: #8fc5f2;
-  background: transparent;
-  border: 0;
-  font: inherit;
-  font-size: 10px;
-  cursor: pointer;
+}
+
+.transactions-toggle {
+  margin-left: auto;
 }
 
 .balance-transactions {
@@ -563,6 +543,14 @@
   strong {
     color: #c4d5e5;
     white-space: nowrap;
+  }
+
+  strong.transaction-credit {
+    color: #9be4c1;
+  }
+
+  strong.transaction-debit {
+    color: #f0a3a3;
   }
 }
 
@@ -752,6 +740,19 @@
   }
 }
 
+.history-table tbody tr.history-reservation-row {
+  cursor: pointer;
+
+  &:hover {
+    background: rgba(24, 62, 94, 0.5);
+  }
+
+  &:focus-visible {
+    outline: 2px solid #3987c5;
+    outline-offset: -2px;
+  }
+}
+
 .empty-message,
 .state-message {
   padding: 18px;
@@ -790,7 +791,7 @@
 
 @media (max-width: 950px) {
   .profiles-layout {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(12, minmax(0, 1fr));
   }
 
   .content-card {
@@ -805,10 +806,10 @@
     grid-template-areas:
       'guests'
       'personal'
-      'balance'
+      'comment'
       'documents'
       'history'
-      'comment';
+      'balance';
   }
 
   .profiles-layout.create-mode {

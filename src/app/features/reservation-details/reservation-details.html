@@ -58,11 +58,13 @@
   <main class="tab-content">
     <app-reservation-tab
       [hidden]="activeTab() !== 'reservation'"
+      [active]="activeTab() === 'reservation'"
       (createGuestProfile)="createGuestProfile($event)"
       (openGuestProfile)="openGuestProfile($event)"
     />
     <app-profiles-tab
       [hidden]="activeTab() !== 'profiles'"
+      [active]="activeTab() === 'profiles'"
       [profileToSelect]="profileToSelect()"
       (returnToReservation)="returnToReservation()"
     />

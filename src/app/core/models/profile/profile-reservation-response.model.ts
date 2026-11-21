@@ -1,4 +1,5 @@
 export interface ProfileReservationResponse {
+  reservationId: number;
   confirmationNumber: string;
   checkIn: string;
   checkOut: string;

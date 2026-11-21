@@ -12,7 +12,7 @@ import {
 } from '@angular/core';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { finalize } from 'rxjs/operators';
 
@@ -85,7 +85,11 @@ interface DocumentForm {
   styleUrl: './profiles-tab.scss'
 })
 export class ProfilesTab implements OnInit {
+  private tabIsActive = false;
+  private initialized = false;
+
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly profileService = inject(ProfileService);
   private readonly guestDocumentService = inject(GuestDocumentService);
   private readonly reservationService = inject(ReservationService);
@@ -93,6 +97,16 @@ export class ProfilesTab implements OnInit {
   private readonly balanceAccountService = inject(BalanceAccountService);
 
   @Output() readonly returnToReservation = new EventEmitter<void>();
+
+  @Input()
+  set active(value: boolean) {
+    const becameActive = value && !this.tabIsActive;
+    this.tabIsActive = value;
+    if (becameActive && this.initialized) {
+      this.refreshOnTabActivation();
+    }
+  }
+
   private requestedProfileId: number | null = null;
 
   @Input()
@@ -149,7 +163,6 @@ export class ProfilesTab implements OnInit {
   readonly accountAmounts = signal<Record<number, string>>({});
   readonly accountDescriptions = signal<Record<number, string>>({});
   readonly expandedAccountId = signal<number | null>(null);
-  readonly editingAccountId = signal<number | null>(null);
   readonly loadingBalanceAccounts = signal(false);
   readonly balanceActionBusy = signal(false);
   readonly balanceError = signal('');
@@ -233,7 +246,16 @@ export class ProfilesTab implements OnInit {
   };
 
   ngOnInit(): void {
+    this.initialized = true;
     this.route.paramMap.subscribe(params => this.loadRoute(params.get('id')));
+  }
+
+  private refreshOnTabActivation(): void {
+    if (this.creatingProfile()) return;
+    const reservationId = Number(this.route.snapshot.paramMap.get('id'));
+    if (Number.isInteger(reservationId) && reservationId > 0) {
+      this.loadProfiles(reservationId);
+    }
   }
 
   private loadRoute(idParam: string | null): void {
@@ -278,8 +300,17 @@ export class ProfilesTab implements OnInit {
 
         this.profiles.set(reservationProfiles);
 
-        if (!this.selectRequestedProfile() && reservationProfiles.length > 0) {
-          this.selectProfile(reservationProfiles[0]);
+        const requestedProfileSelected = this.selectRequestedProfile();
+        if (!requestedProfileSelected && reservationProfiles.length > 0) {
+          const currentProfile = reservationProfiles.find(
+            profile => profile.id === this.selectedProfileId()
+          );
+          if (currentProfile) {
+            this.loadHistory(currentProfile.id);
+            this.loadBalanceAccounts(currentProfile.id);
+          } else {
+            this.selectProfile(reservationProfiles[0]);
+          }
         }
       },
       error: error => {
@@ -330,6 +361,11 @@ export class ProfilesTab implements OnInit {
     this.cancelDocumentForm();
     this.loadHistory(profile.id);
     this.loadBalanceAccounts(profile.id);
+  }
+
+  openReservationFromHistory(reservationId: number): void {
+    if (!Number.isInteger(reservationId) || reservationId <= 0) return;
+    this.router.navigate(['/reservations', reservationId]);
   }
 
   private loadHistory(profileId: number): void {
@@ -599,7 +635,15 @@ export class ProfilesTab implements OnInit {
     this.balanceAccountService.getAllByProfileAndHotel(profileId, hotelId).pipe(
       finalize(() => this.loadingBalanceAccounts.set(false))
     ).subscribe({
-      next: accounts => this.balanceAccounts.set(accounts),
+      next: accounts => {
+        this.balanceAccounts.set(accounts);
+        const expandedAccountId = this.expandedAccountId();
+        if (expandedAccountId !== null && accounts.some(account => account.id === expandedAccountId)) {
+          this.loadAccountTransactions(expandedAccountId);
+        } else if (expandedAccountId !== null) {
+          this.expandedAccountId.set(null);
+        }
+      },
       error: error => {
         this.balanceAccounts.set([]);
         this.balanceError.set(
@@ -625,7 +669,6 @@ export class ProfilesTab implements OnInit {
     ).subscribe({
       next: account => {
         this.balanceAccounts.update(accounts => [account, ...accounts]);
-        this.editingAccountId.set(account.id);
         this.balanceSuccess.set('Авансовий рахунок створено.');
       },
       error: error => {
@@ -754,10 +797,6 @@ export class ProfilesTab implements OnInit {
     this.loadAccountTransactions(accountId);
   }
 
-  toggleAccountEditor(accountId: number): void {
-    this.editingAccountId.update(current => current === accountId ? null : accountId);
-  }
-
   private loadAccountTransactions(accountId: number): void {
     this.balanceAccountService.getTransactions(accountId).subscribe({
       next: transactions => this.balanceTransactions.update(items => ({
@@ -784,6 +823,12 @@ export class ProfilesTab implements OnInit {
     };
 
     return labels[type];
+  }
+
+  isCreditTransaction(type: BalanceTransactionType): boolean {
+    return type === BalanceTransactionType.DEPOSIT
+      || type === BalanceTransactionType.REFUND
+      || type === BalanceTransactionType.ADJUSTMENT_CREDIT;
   }
 
   openNewDocumentForm(): void {

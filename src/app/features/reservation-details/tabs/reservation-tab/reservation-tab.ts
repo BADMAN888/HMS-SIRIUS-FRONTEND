@@ -5,6 +5,7 @@ import {
   effect,
   EventEmitter,
   inject,
+  Input,
   OnInit,
   Output,
   signal
@@ -64,6 +65,18 @@ import { FolioStatus } from '../../../../core/models/enums/folio-status.enum';
   styleUrl: './reservation-tab.scss'
 })
 export class ReservationTab implements OnInit {
+  private tabIsActive = false;
+  private initialized = false;
+
+  @Input()
+  set active(value: boolean) {
+    const becameActive = value && !this.tabIsActive;
+    this.tabIsActive = value;
+    if (becameActive && this.initialized) {
+      this.refreshOnTabActivation();
+    }
+  }
+
   private readonly route = inject(ActivatedRoute);
   readonly router = inject(Router);
 
@@ -339,6 +352,19 @@ export class ReservationTab implements OnInit {
   });
 
   ngOnInit(): void {
+    this.initialized = true;
+    let previousId = this.route.snapshot.paramMap.get('id');
+    this.route.paramMap.subscribe(params => {
+      const routeId = params.get('id');
+      if (routeId === previousId) return;
+      previousId = routeId;
+      const nextId = Number(routeId);
+      if (routeId && Number.isInteger(nextId) && nextId > 0) {
+        this.isCreateMode.set(false);
+        this.isCopyMode.set(false);
+        this.loadDataAndReservation(nextId);
+      }
+    });
     const idParam = this.route.snapshot.paramMap.get('id');
     const id = idParam ? Number(idParam) : null;
 
@@ -374,6 +400,19 @@ export class ReservationTab implements OnInit {
     this.error.set('Некоректний ID бронювання.');
     this.loading.set(false);
     this.loadingEditData.set(false);
+  }
+
+  private refreshOnTabActivation(): void {
+    const reservationId = Number(this.route.snapshot.paramMap.get('id'));
+    if (!Number.isInteger(reservationId) || reservationId <= 0 || this.isCreateMode()) return;
+
+    this.reservationService.getById(reservationId).subscribe({
+      next: reservation => {
+        this.reservation.set(reservation);
+        this.loadReservationBalance(reservationId);
+      },
+      error: () => this.loadReservationBalance(reservationId)
+    });
   }
 
   getProfileFullName(profile: ProfileResponse): string {

@@ -437,9 +437,13 @@
         />
 
         @if (!isCreateMode()) {
-          <div class="info-row">
-            <span>Баланс</span>
-            <strong>{{ reservationBalance() === null ? '—' : (reservationBalance() | number:'1.2-2') + ' ₴' }}</strong>
+          <div class="reservation-balance-card" aria-live="polite">
+            <div class="reservation-balance-copy">
+              <span>Баланс бронювання</span>
+            </div>
+            <strong [class.has-balance]="(reservationBalance() ?? 0) > 0">
+              {{ reservationBalance() === null ? '—' : (reservationBalance() | number:'1.2-2') + ' ₴' }}
+            </strong>
           </div>
         }
       </section>
@@ -499,11 +503,17 @@
           @for (guestId of editGuestIds(); track guestId) {
             @if (getProfileById(guestId); as guest) {
               <div class="additional-guest">
-                <div>
+                <button
+                  class="additional-guest-profile"
+                  type="button"
+                  (click)="openProfile(guestId)"
+                  [attr.aria-label]="'Відкрити профайл ' + getProfileFullName(guest)"
+                >
+                  <div class="additional-guest-copy">
                   <div class="additional-guest-heading">
-                    <button class="profile-link" type="button" (click)="openProfile(guestId)">
+                    <span class="profile-link">
                       {{ getProfileFullName(guest) }}
-                    </button>
+                    </span>
                     @if (guest.comment) {
                       <small class="profile-comment">{{ guest.comment }}</small>
                     }
@@ -511,13 +521,14 @@
                   <small>
                     {{ guest.phoneNumber || 'Телефон не вказаний' }}
                   </small>
-                </div>
+                  </div>
+                </button>
 
                 <button
                   class="remove-button"
                   type="button"
                   [attr.aria-label]="'Видалити ' + getProfileFullName(guest)"
-                  (click)="removeAdditionalGuest(guestId)"
+                  (click)="$event.stopPropagation(); removeAdditionalGuest(guestId)"
                 >
                   ×
                 </button>

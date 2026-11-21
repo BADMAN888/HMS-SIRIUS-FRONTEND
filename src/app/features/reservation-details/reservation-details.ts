@@ -1,5 +1,5 @@
-import { Component, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { Component, inject, OnInit, signal } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import {
   GuestProfileDraftIntent,
@@ -36,12 +36,25 @@ type ReservationDetailsTab =
   templateUrl: './reservation-details.html',
   styleUrl: './reservation-details.scss'
 })
-export class ReservationDetails {
+export class ReservationDetails implements OnInit {
   readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   private readonly guestProfileWorkflow = inject(GuestProfileWorkflowService);
+  private currentReservationId: string | null = null;
 
   readonly activeTab = signal<ReservationDetailsTab>('reservation');
   readonly profileToSelect = signal<number | null>(null);
+
+  ngOnInit(): void {
+    this.route.paramMap.subscribe(params => {
+      const reservationId = params.get('id');
+      if (this.currentReservationId !== null && reservationId !== this.currentReservationId) {
+        this.activeTab.set('reservation');
+        this.profileToSelect.set(null);
+      }
+      this.currentReservationId = reservationId;
+    });
+  }
 
   selectTab(tab: ReservationDetailsTab): void {
     this.activeTab.set(tab);

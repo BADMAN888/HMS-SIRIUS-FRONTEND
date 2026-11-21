@@ -549,6 +549,48 @@ $color-tab-active: #3b9bea;
   }
 }
 
+.reservation-balance-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 17px;
+  padding: 16px 18px;
+  border: 1px solid rgba(57, 135, 197, 0.4);
+  border-radius: 12px;
+  background: #0d223a;
+
+  .reservation-balance-copy {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  span {
+    color: #b6cbe0;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  small {
+    color: #829bb5;
+    font-size: 10px;
+  }
+
+  strong {
+    color: #f0f7ff;
+    font-size: 20px;
+    font-weight: 750;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  strong.has-balance {
+    color: #80d9b0;
+  }
+}
+
 .comment-input {
   resize: vertical;
   margin-bottom: 12px;
@@ -606,29 +648,43 @@ $color-tab-active: #3b9bea;
 }
 
 .additional-guest {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
-  padding: 12px;
+  padding: 7px 9px 7px 12px;
   border: 1px solid $color-border-comment;
   border-radius: 8px;
   background: $color-input-bg;
 
-  div {
-    display: flex;
-    min-width: 0;
-    flex-direction: column;
-    gap: 5px;
-  }
+}
 
-  strong {
-    overflow-wrap: anywhere;
-    color: $color-text-main;
-    font-size: 13px;
-  }
+.additional-guest-profile {
+  display: flex;
+  min-width: 0;
+  width: 100%;
+  padding: 5px 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
 
-  small {
+  &:focus-visible {
+    outline: 2px solid $color-border-focus;
+    outline-offset: 2px;
+    border-radius: 5px;
+  }
+}
+
+.additional-guest-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 5px;
+
+  > small {
     color: $color-text-muted;
     font-size: 12px;
     overflow-wrap: anywhere;

@@ -3,7 +3,6 @@
   <header class="profiles-header">
     <div>
       <h2>Профайли гостей</h2>
-      <p>Персональні дані, документи та історія проживання</p>
     </div>
 
     <span class="profiles-count">
@@ -21,9 +20,6 @@
         <header class="section-header guests-header">
           <div>
             <h3>{{ creatingProfile() ? 'Новий профайл' : 'Гості бронювання' }}</h3>
-            @if (!creatingProfile()) {
-              <p>Профайли, прив’язані до цього бронювання</p>
-            }
           </div>
         </header>
 
@@ -294,7 +290,7 @@
             } @else if (balanceAccounts().length > 0) {
               <div class="balance-accounts">
                 @for (account of balanceAccounts(); track account.id) {
-                  <article class="balance-account" [class.editing]="editingAccountId() === account.id">
+                  <article class="balance-account">
                     <header class="balance-account-header">
                       <div>
                         <strong>Рахунок №{{ account.id }}</strong>
@@ -303,16 +299,9 @@
                       <strong class="balance-amount">
                         {{ account.balance | number:'1.2-2' }} {{ account.currency }}
                       </strong>
-                      <button
-                        type="button"
-                        class="account-open-button"
-                        (click)="toggleAccountEditor(account.id)"
-                      >
-                        {{ editingAccountId() === account.id ? 'Згорнути' : 'Відкрити' }}
-                      </button>
                     </header>
 
-                    @if (account.status === balanceAccountStatuses.ACTIVE && editingAccountId() === account.id) {
+                    @if (account.status === balanceAccountStatuses.ACTIVE) {
                       <div class="balance-operation-form">
                         <input
                           type="number"
@@ -348,23 +337,32 @@
                           </button>
                           <button
                             type="button"
-                            class="danger-button"
+                            class="secondary-button"
                             [disabled]="balanceActionBusy() || account.balance !== 0"
                             (click)="closeBalanceAccount(account)"
                           >
                             Закрити рахунок
                           </button>
+                          <button
+                            type="button"
+                            class="secondary-button transactions-toggle"
+                            (click)="toggleAccountTransactions(account.id)"
+                          >
+                            {{ expandedAccountId() === account.id ? 'Сховати історію' : 'Історія операцій' }}
+                          </button>
                         </div>
                       </div>
+                    } @else {
+                      <div class="balance-actions balance-actions-closed">
+                        <button
+                          type="button"
+                          class="secondary-button transactions-toggle"
+                          (click)="toggleAccountTransactions(account.id)"
+                        >
+                          {{ expandedAccountId() === account.id ? 'Сховати історію' : 'Історія операцій' }}
+                        </button>
+                      </div>
                     }
-
-                    <button
-                      type="button"
-                      class="transactions-toggle"
-                      (click)="toggleAccountTransactions(account.id)"
-                    >
-                      {{ expandedAccountId() === account.id ? 'Сховати рух коштів' : 'Історія операцій' }}
-                    </button>
 
                     @if (expandedAccountId() === account.id) {
                       <div class="balance-transactions">
@@ -374,14 +372,15 @@
                               {{ getBalanceTransactionLabel(transaction.type) }}
                               · {{ transaction.description || 'Без коментаря' }}
                               <small>
-                                Профіль №{{ transaction.payerId ?? account.profileId }} · готель №{{ transaction.hotelId ?? account.hotelId }}
                                 @if (transaction.folioId) { · рахунок №{{ transaction.folioId }} }
                                 @if (transaction.paymentId) { · оплата №{{ transaction.paymentId }} }
                                 @if (transaction.performedByUserId) { · користувач №{{ transaction.performedByUserId }} }
                                 · баланс після операції {{ transaction.balanceAfter | number:'1.2-2' }} {{ account.currency }}
                               </small>
                             </span>
-                            <strong>{{ transaction.amount | number:'1.2-2' }} {{ account.currency }}</strong>
+                            <strong [class.transaction-credit]="isCreditTransaction(transaction.type)" [class.transaction-debit]="!isCreditTransaction(transaction.type)">
+                              {{ isCreditTransaction(transaction.type) ? 'Плюс +' : 'Мінус −' }}{{ transaction.amount | number:'1.2-2' }} {{ account.currency }}
+                            </strong>
                           </div>
                         } @empty {
                           <p class="empty-message">Операцій ще немає.</p>
@@ -557,7 +556,6 @@
             <header class="section-header">
               <div>
                 <h3>Історія проживання</h3>
-                <p>Попередні та поточні бронювання цього гостя</p>
               </div>
             </header>
 
@@ -578,9 +576,19 @@
                   </thead>
 
                   <tbody>
-                    @for (item of history(); track item.confirmationNumber) {
-                      <tr>
-                        <td>{{ item.confirmationNumber }}</td>
+                    @for (item of history(); track item.reservationId) {
+                      <tr
+                        class="history-reservation-row"
+                        role="link"
+                        tabindex="0"
+                        [attr.aria-label]="'Відкрити бронювання ' + item.confirmationNumber"
+                        (click)="openReservationFromHistory(item.reservationId)"
+                        (keydown.enter)="openReservationFromHistory(item.reservationId)"
+                        (keydown.space)="$event.preventDefault(); openReservationFromHistory(item.reservationId)"
+                      >
+                        <td>
+                          {{ item.confirmationNumber }}
+                        </td>
                         <td>{{ item.checkIn | date:'dd.MM.yyyy HH:mm' }}</td>
                         <td>{{ item.checkOut | date:'dd.MM.yyyy HH:mm' }}</td>
                         <td>{{ item.roomCategory }}</td>
