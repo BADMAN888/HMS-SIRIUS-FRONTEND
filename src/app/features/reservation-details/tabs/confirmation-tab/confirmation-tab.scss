@@ -1,3 +1,10 @@
+.confirmation-document {
+  display: grid;
+  gap: 20px;
+  min-height: 70vh;
+  color: #e2e8f0;
+}
+
 .registration-form {
   display: grid;
   gap: 16px;
@@ -34,6 +41,13 @@
 
   label { color: #cbd5e1; }
 
+  .preview-width-label { white-space: nowrap; }
+
+  .preview-width-input {
+    width: 100px;
+    accent-color: #38a2e8;
+  }
+
   select,
   button {
     min-height: 40px;
@@ -58,10 +72,53 @@
 
 .document-preview {
   display: block;
-  width: 100%;
+  width: 80%;
+  margin: 0 auto 12px;
   height: auto;
+  border-radius: 6px;
   background: #fff;
 }
+
+.email-form {
+  display: flex;
+  align-items: end;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid #19334e;
+  border-radius: 10px;
+  background: #0b2038;
+
+  label {
+    display: grid;
+    flex: 1;
+    gap: 6px;
+    color: #cbd5e1;
+    font-size: 13px;
+  }
+
+  input,
+  button {
+    min-height: 40px;
+    box-sizing: border-box;
+    padding: 0 12px;
+    border: 1px solid #29445f;
+    border-radius: 8px;
+    color: #f8fafc;
+    background: #071a30;
+    font: inherit;
+  }
+
+  button {
+    border-color: #277fc0;
+    background: #1769aa;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  button:disabled { opacity: .6; cursor: wait; }
+}
+
+.email-success { color: #86efac; font-size: 13px; }
 
 .preview-state,
 .form-error {
@@ -75,4 +132,5 @@
 @media (max-width: 760px) {
   .form-toolbar,
   .form-actions { align-items: stretch; flex-direction: column; }
+  .email-form { align-items: stretch; flex-direction: column; }
 }

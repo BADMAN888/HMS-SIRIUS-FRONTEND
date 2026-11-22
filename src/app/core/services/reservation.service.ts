@@ -54,6 +54,10 @@ export class ReservationService {
     return this.http.get(`${this.apiUrl}/${id}/confirmation/preview`, { responseType: 'blob' });
   }
 
+  sendBookingConfirmation(id: number, email: string, subject: string): Observable<void> {
+    return this.http.post<void>(`${this.apiUrl}/${id}/confirmation/email`, { email, subject });
+  }
+
   getByStatus(status: ReservationStatus): Observable<ReservationResponse[]> {
     return this.http.get<ReservationResponse[]>(`${this.apiUrl}/status/${status}`);
   }

@@ -16,6 +16,7 @@ export class RegistrationFormTab implements OnInit, OnDestroy {
   private readonly reservationService = inject(ReservationService);
 
   readonly format = signal<RegistrationCardFormat>('PDF');
+  readonly previewWidth = signal(80);
   readonly previewUrl = signal<string | null>(null);
   readonly loadingPreview = signal(true);
   readonly downloading = signal(false);

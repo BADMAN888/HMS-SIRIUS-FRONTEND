@@ -16,12 +16,55 @@
         <option value="DOCX">Word (.docx)</option>
         <option value="XLSX">Excel (.xlsx)</option>
       </select>
+      <label class="preview-width-label" for="confirmation-preview-width">Ширина {{ previewWidth() }}%</label>
+      <input
+        class="preview-width-input"
+        id="confirmation-preview-width"
+        type="range"
+        min="40"
+        max="100"
+        step="5"
+        [value]="previewWidth()"
+        (input)="previewWidth.set(+$any($event.target).value)"
+        aria-label="Ширина прев’ю документа"
+      />
       <button type="button" [disabled]="loadingPreview()" (click)="print()">Друкувати</button>
       <button type="button" [disabled]="downloading() || loadingPreview()" (click)="download()">
         {{ downloading() ? 'Завантаження…' : 'Завантажити' }}
       </button>
     </div>
   </header>
+
+  <form class="email-form" (submit)="sendEmail($event)">
+    <label>
+      Адреса електронної пошти
+      <input
+        type="email"
+        name="recipientEmail"
+        autocomplete="email"
+        required
+        [value]="recipientEmail()"
+        (input)="recipientEmail.set($any($event.target).value)"
+      />
+    </label>
+    <label>
+      Тема повідомлення
+      <input
+        type="text"
+        name="emailSubject"
+        required
+        maxlength="200"
+        [value]="emailSubject()"
+        (input)="emailSubject.set($any($event.target).value)"
+      />
+    </label>
+    <button type="submit" [disabled]="sendingEmail() || !recipientEmail().trim() || !emailSubject().trim()">
+      {{ sendingEmail() ? 'Надсилання…' : 'Надіслати' }}
+    </button>
+    @if (emailSent()) {
+      <span class="email-success" role="status">Підтвердження надіслано.</span>
+    }
+  </form>
 
   @if (error()) {
     <div class="form-error" role="alert">{{ error() }}</div>
@@ -30,6 +73,6 @@
   @if (loadingPreview()) {
     <div class="preview-state">Формування перегляду…</div>
   } @else if (previewUrl(); as imageUrl) {
-    <img class="document-preview" [src]="imageUrl" alt="Підтвердження бронювання" />
+    <img class="document-preview" [style.width.%]="previewWidth()" [src]="imageUrl" alt="Підтвердження бронювання" />
   }
 </section>

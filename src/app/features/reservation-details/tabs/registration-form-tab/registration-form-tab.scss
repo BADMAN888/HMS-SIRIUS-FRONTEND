@@ -1,6 +1,6 @@
 .registration-form {
   display: grid;
-  gap: 16px;
+  gap: 20px;
   min-height: 70vh;
   color: #e2e8f0;
 }
@@ -34,6 +34,13 @@
 
   label { color: #cbd5e1; }
 
+  .preview-width-label { white-space: nowrap; }
+
+  .preview-width-input {
+    width: 100px;
+    accent-color: #38a2e8;
+  }
+
   select,
   button {
     min-height: 40px;
@@ -58,8 +65,10 @@
 
 .document-preview {
   display: block;
-  width: 100%;
+  width: 80%;
+  margin: 0 auto 12px;
   height: auto;
+  border-radius: 6px;
   background: #fff;
 }
 

@@ -16,9 +16,14 @@ export class ConfirmationTab implements OnInit, OnDestroy {
   private readonly reservationService = inject(ReservationService);
 
   readonly format = signal<ConfirmationFormat>('PDF');
+  readonly previewWidth = signal(80);
   readonly previewUrl = signal<string | null>(null);
   readonly loadingPreview = signal(true);
   readonly downloading = signal(false);
+  readonly sendingEmail = signal(false);
+  readonly emailSent = signal(false);
+  readonly recipientEmail = signal('');
+  readonly emailSubject = signal('Підтвердження бронювання');
   readonly error = signal<string | null>(null);
   private previewObjectUrl: string | null = null;
 
@@ -38,6 +43,11 @@ export class ConfirmationTab implements OnInit, OnDestroy {
       error: error => {
         this.loadingPreview.set(false);
         this.setError(error, 'Не вдалося завантажити перегляд підтвердження бронювання.');
+      }
+    });
+    this.reservationService.getById(id).subscribe({
+      next: reservation => {
+        this.recipientEmail.set(reservation.primaryGuest?.email ?? '');
       }
     });
   }
@@ -87,6 +97,27 @@ export class ConfirmationTab implements OnInit, OnDestroy {
     printWindow.onafterprint = () => printWindow.close();
     image.src = this.previewObjectUrl;
     printWindow.document.body.appendChild(image);
+  }
+
+  sendEmail(event: Event): void {
+    event.preventDefault();
+    const id = Number(this.route.snapshot.paramMap.get('id'));
+    const email = this.recipientEmail().trim();
+    const subject = this.emailSubject().trim();
+    if (!Number.isInteger(id) || id <= 0 || !email || !subject || this.sendingEmail()) return;
+    this.sendingEmail.set(true);
+    this.emailSent.set(false);
+    this.error.set(null);
+    this.reservationService.sendBookingConfirmation(id, email, subject).subscribe({
+      next: () => {
+        this.sendingEmail.set(false);
+        this.emailSent.set(true);
+      },
+      error: error => {
+        this.sendingEmail.set(false);
+        this.setError(error, 'Не вдалося надіслати підтвердження. Перевірте налаштування пошти сервера.');
+      }
+    });
   }
 
   private setError(error: HttpErrorResponse, fallback: string): void {
