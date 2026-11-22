@@ -133,8 +133,7 @@
                       <span class="reservation-lock" aria-label="Номер закріплений">🔒</span>
                     }
                     <div class="reservation-guest">
-                      {{ reservation.guestLastName }}
-                      {{ reservation.guestFirstName }}
+                      {{ reservation.guestName || (reservation.guestLastName + ' ' + reservation.guestFirstName) }}
                     </div>
                     <div class="reservation-phone">
                       {{ reservation.guestPhone }}

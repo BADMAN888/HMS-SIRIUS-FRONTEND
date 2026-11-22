@@ -11,4 +11,5 @@ export interface HotelGridReservationResponse {
   guestFirstName: string | null;
   guestLastName: string | null;
   guestPhone: string | null;
+  guestName: string | null;
 }

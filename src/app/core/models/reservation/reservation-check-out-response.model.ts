@@ -9,6 +9,7 @@ export interface ReservationCheckOutResponse {
   guestFirstName: string;
   guestLastName: string;
   guestMiddleName: string | null;
+  guestName: string | null;
   checkIn: string;
   checkOut: string;
   status: ReservationStatus;

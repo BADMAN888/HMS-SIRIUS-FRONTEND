@@ -4,6 +4,7 @@ import { ReservationStatus } from '../enums/reservation-status.enum';
 import { TaxStatus } from '../enums/tax-status.enum';
 import { ProfileResponse } from '../profile/profile-response.model';
 import { ReservationCommentResponse } from './reservation-comment-response.model';
+import { ReservationCancellationReason } from '../enums/reservation-cancellation-reason.enum';
 import { CompanyResponse } from '../company-response.model';
 
 export interface ReservationResponse {
@@ -14,6 +15,9 @@ export interface ReservationResponse {
   paymentCategoryId: number;
   paymentCategoryName: string;
   primaryGuest: ProfileResponse | null;
+  guestName: string | null;
+  guestPhone: string | null;
+  guestEmail: string | null;
   roomLocked: boolean;
   guestIds: number[];
   checkIn: string;
@@ -23,6 +27,7 @@ export interface ReservationResponse {
   children: number;
   taxStatus: TaxStatus;
   status: ReservationStatus;
+  cancellationReason: ReservationCancellationReason | null;
   comments: ReservationCommentResponse[];
   createdAt: string;
   folioId: number | null;

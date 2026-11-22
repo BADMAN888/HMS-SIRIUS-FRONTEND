@@ -86,7 +86,7 @@ export class InHouseComponent implements OnInit {
       guest?.middleName
     ]
       .filter(Boolean)
-      .join(' ');
+      .join(' ') || reservation.guestName || '—';
   }
 
   getCommentText(reservation: ReservationResponse): string {

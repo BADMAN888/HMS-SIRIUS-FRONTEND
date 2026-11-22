@@ -5,6 +5,7 @@ import { Observable } from 'rxjs';
 
 import { ReservationRequest } from '../models/reservation/reservation-request.model';
 import { ReservationStatus } from '../models/enums/reservation-status.enum';
+import { ReservationCancellationReason } from '../models/enums/reservation-cancellation-reason.enum';
 import { ReservationCheckInResponse } from '../models/reservation/reservation-check-in-response.model';
 import { ReservationCheckOutResponse } from '../models/reservation/reservation-check-out-response.model';
 import { ReservationCommentRequest } from '../models/reservation/reservation-comment-request.model';
@@ -81,8 +82,8 @@ export class ReservationService {
     return this.http.delete<void>(`${this.apiUrl}/${id}`);
   }
 
-  cancel(id: number): Observable<void> {
-    return this.http.patch<void>(`${this.apiUrl}/${id}/cancel`, null);
+  cancel(id: number, reason: ReservationCancellationReason): Observable<void> {
+    return this.http.patch<void>(`${this.apiUrl}/${id}/cancel`, { reason });
   }
 
   checkIn(id: number): Observable<void> {

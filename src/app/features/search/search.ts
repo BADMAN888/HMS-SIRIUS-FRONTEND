@@ -199,7 +199,7 @@ export class SearchComponent implements OnInit {
 
   guestName(r: ReservationResponse): string {
     const p = r.primaryGuest;
-    return p ? [p.lastName, p.firstName, p.middleName].filter(Boolean).join(' ') : '—';
+    return p ? [p.lastName, p.firstName, p.middleName].filter(Boolean).join(' ') : r.guestName || '—';
   }
 
   openReservation(id: number): void { this.router.navigate(['/reservations', id]); }

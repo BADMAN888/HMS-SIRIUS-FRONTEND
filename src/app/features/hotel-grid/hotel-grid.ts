@@ -362,6 +362,9 @@ export class HotelGrid implements OnInit {
       rateId: details.rate.id,
       paymentCategoryId: details.paymentCategoryId,
       primaryGuestId: details.primaryGuest?.id ?? null,
+      guestName: details.guestName ?? '',
+      guestPhone: details.guestPhone ?? '',
+      guestEmail: details.guestEmail ?? '',
       roomLocked: details.roomLocked,
       guestIds: Array.from(new Set([
         ...(details.guestIds ?? []),

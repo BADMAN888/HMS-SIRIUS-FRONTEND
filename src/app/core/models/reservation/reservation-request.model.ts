@@ -5,6 +5,9 @@ export interface ReservationRequest {
   rateId: number;
   paymentCategoryId: number;
   primaryGuestId: number | null;
+  guestName: string;
+  guestPhone: string;
+  guestEmail: string;
   roomLocked: boolean;
   guestIds: number[];
   checkIn: string;

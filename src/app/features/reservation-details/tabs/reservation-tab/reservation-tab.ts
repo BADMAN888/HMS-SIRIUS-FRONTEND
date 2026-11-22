@@ -42,6 +42,7 @@ import { CompanyResponse } from '../../../../core/models/company-response.model'
 import { TaxStatus } from '../../../../core/models/enums/tax-status.enum';
 import { RoomStatus } from '../../../../core/models/enums/room-status.enum';
 import { ReservationStatus } from '../../../../core/models/enums/reservation-status.enum';
+import { ReservationCancellationReason } from '../../../../core/models/enums/reservation-cancellation-reason.enum';
 import { FolioService } from '../../../../core/services/folio.service';
 import { AccrualService } from '../../../../core/services/accrual.service';
 import { FolioResponse } from '../../../../core/models/billing/folio-response.model';
@@ -203,6 +204,19 @@ export class ReservationTab implements OnInit {
   readonly saving = signal(false);
   readonly saved = signal(false);
   readonly actionBusy = signal(false);
+  readonly cancellationDialogOpen = signal(false);
+  readonly selectedCancellationReason = signal<ReservationCancellationReason | null>(null);
+  readonly cancellationError = signal('');
+  readonly cancellationReasons: Array<{ value: ReservationCancellationReason; label: string }> = [
+    { value: ReservationCancellationReason.GUEST_REQUEST, label: 'Скасування за бажанням гостя' },
+    { value: ReservationCancellationReason.CHANGE_OF_PLANS, label: 'Зміна планів' },
+    { value: ReservationCancellationReason.BOOKED_BY_MISTAKE, label: 'Бронювання помилково' },
+    { value: ReservationCancellationReason.DUPLICATE_BOOKING, label: 'Дубльоване бронювання' },
+    { value: ReservationCancellationReason.FOUND_ANOTHER_HOTEL, label: 'Обрано інший готель' },
+    { value: ReservationCancellationReason.TRAVEL_CANCELLED, label: 'Скасування поїздки' },
+    { value: ReservationCancellationReason.UNABLE_TO_ARRIVE, label: 'Гість не може приїхати' },
+    { value: ReservationCancellationReason.DATE_CHANGE, label: 'Зміна дат проживання' }
+  ];
 
   readonly error = signal('');
   readonly saveError = signal('');
@@ -346,9 +360,11 @@ export class ReservationTab implements OnInit {
   });
 
   readonly filteredRates = computed(() => {
-    const categoryId = this.editPaymentCategoryId();
+    const categoryId = this.editRoomCategoryId();
 
-    return this.rates().filter(rate => rate.categoryId === categoryId);
+    return this.rates().filter(rate =>
+      rate.active && (!categoryId || rate.categoryId === categoryId)
+    );
   });
 
   ngOnInit(): void {
@@ -642,6 +658,7 @@ export class ReservationTab implements OnInit {
         this.autoComment.set('');
         this.paymentCategoryAutoSelected = false;
         this.launchedFromGrid = false;
+        this.selectFirstRate(0);
 
         this.selectedGuest.set(null);
         this.guestSearch.set('');
@@ -778,6 +795,7 @@ export class ReservationTab implements OnInit {
     }
 
     this.editPaymentCategoryId.set(reservation.paymentCategoryId ?? 0);
+    this.paymentCategoryAutoSelected = true;
 
     this.editRateId.set(
       reservation.rate?.id ?? (reservation as any).rateId ?? 0
@@ -811,9 +829,9 @@ export class ReservationTab implements OnInit {
       this.guestEmailSearch.set(reservation.primaryGuest.email ?? '');
     } else {
       this.selectedGuest.set(null);
-      this.guestSearch.set('');
-      this.guestPhoneSearch.set('');
-      this.guestEmailSearch.set('');
+      this.guestSearch.set(reservation.guestName ?? '');
+      this.guestPhoneSearch.set(reservation.guestPhone ?? '');
+      this.guestEmailSearch.set(reservation.guestEmail ?? '');
     }
   }
 
@@ -953,32 +971,38 @@ export class ReservationTab implements OnInit {
         (a, b) => Number(b.status === RoomStatus.AVAILABLE) - Number(a.status === RoomStatus.AVAILABLE)
       )[0];
     this.editRoomId.set(room?.id ?? 0);
-    this.selectFirstRate(this.editPaymentCategoryId());
+    this.selectFirstRate(categoryId);
     this.saveError.set('');
   }
 
   private selectFirstRate(categoryId: number): void {
     const firstRate = this.rates().find(
-      rate => rate.categoryId === categoryId && rate.active
+      rate => rate.active && (!categoryId || rate.categoryId === categoryId)
     );
     this.editRateId.set(firstRate?.id ?? 0);
   }
 
   onPaymentCategoryChange(categoryId: number): void {
     this.editPaymentCategoryId.set(categoryId);
+    this.paymentCategoryAutoSelected = true;
   }
 
   onRoomChange(roomId: number): void {
     this.editRoomId.set(roomId);
 
     const room = this.rooms().find(item => item.id === roomId);
-
-    if (
-      room?.categoryId &&
-      room.categoryId !== this.editRoomCategoryId()
-    ) {
-      this.editRoomCategoryId.set(room.categoryId);
+    if (!room) {
+      return;
     }
+
+    const categoryId = room.categoryId ?? 0;
+    this.editRoomCategoryId.set(categoryId);
+    if (categoryId && !this.paymentCategoryAutoSelected) {
+      this.editPaymentCategoryId.set(categoryId);
+      this.paymentCategoryAutoSelected = true;
+    }
+    this.selectFirstRate(categoryId);
+    this.saveError.set('');
   }
 
   toggleRoomLock(): void {
@@ -999,7 +1023,11 @@ export class ReservationTab implements OnInit {
       status !== ReservationStatus.NO_SHOW;
   }
 
-  save(): void {
+  save(
+    guestNameValue = this.guestSearch(),
+    guestPhoneValue = this.guestPhoneSearch(),
+    guestEmailValue = this.guestEmailSearch()
+  ): void {
     const reservation = this.reservation();
 
     if (
@@ -1030,6 +1058,28 @@ export class ReservationTab implements OnInit {
 
     if (!this.editRateId()) {
       missingFields.push('тарифу');
+    }
+
+    const guestName = guestNameValue.trim();
+    const rawGuestPhone = guestPhoneValue.trim();
+    const guestPhone = rawGuestPhone.replace(/[\s().-]/g, '');
+    const guestEmail = guestEmailValue.trim();
+    this.guestSearch.set(guestName);
+    this.guestPhoneSearch.set(guestPhone);
+    this.guestEmailSearch.set(guestEmail);
+
+    if (!guestName) {
+      missingFields.push('ПІБ гостя');
+    }
+
+    if (guestPhone && !/^\+?[0-9]{7,15}$/.test(guestPhone)) {
+      this.saveError.set('Вкажіть коректний номер телефону: від 7 до 15 цифр.');
+      return;
+    }
+
+    if (guestEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(guestEmail)) {
+      this.saveError.set('Вкажіть коректну email-адресу.');
+      return;
     }
 
     if (!this.editCheckIn()) {
@@ -1082,6 +1132,9 @@ export class ReservationTab implements OnInit {
       rateId: this.editRateId(),
       paymentCategoryId: this.editPaymentCategoryId(),
       primaryGuestId: this.editPrimaryGuestId() || null,
+      guestName,
+      guestPhone,
+      guestEmail,
       roomLocked: this.editRoomLocked(),
       guestIds,
       checkIn: this.toLocalDateTime(checkIn),
@@ -1155,7 +1208,36 @@ export class ReservationTab implements OnInit {
   }
 
   cancelReservation(): void {
-    this.runLifecycleAction('cancel');
+    this.selectedCancellationReason.set(null);
+    this.cancellationError.set('');
+    this.cancellationDialogOpen.set(true);
+  }
+
+  closeCancellationDialog(): void {
+    if (this.actionBusy()) return;
+    this.cancellationDialogOpen.set(false);
+    this.cancellationError.set('');
+  }
+
+  confirmCancellation(): void {
+    const reservation = this.reservation();
+    const reason = this.selectedCancellationReason();
+    if (!reservation || !reason || this.actionBusy()) return;
+
+    this.actionBusy.set(true);
+    this.cancellationError.set('');
+    this.reservationService.cancel(reservation.id, reason).pipe(
+      finalize(() => this.actionBusy.set(false))
+    ).subscribe({
+      next: () => {
+        this.cancellationDialogOpen.set(false);
+        this.loadDataAndReservation(reservation.id);
+      },
+      error: error => this.cancellationError.set(
+        error?.error?.message || error?.message ||
+        `Не вдалося скасувати бронювання. HTTP ${error?.status || ''}`
+      )
+    });
   }
 
   markNoShow(): void {
@@ -1209,16 +1291,14 @@ export class ReservationTab implements OnInit {
     return `${year}-${month}-${day}`;
   }
 
-  private runLifecycleAction(action: 'cancel' | 'no-show'): void {
+  private runLifecycleAction(action: 'no-show'): void {
     const reservation = this.reservation();
 
     if (!reservation || this.actionBusy()) {
       return;
     }
 
-    const message = action === 'cancel'
-      ? 'Скасувати це бронювання?'
-      : 'Позначити гостя як такого, що не заїхав?';
+    const message = 'Позначити гостя як такого, що не заїхав?';
 
     if (!window.confirm(message)) {
       return;
@@ -1227,9 +1307,7 @@ export class ReservationTab implements OnInit {
     this.actionBusy.set(true);
     this.saveError.set('');
 
-    const request = action === 'cancel'
-      ? this.reservationService.cancel(reservation.id)
-      : this.reservationService.noShow(reservation.id);
+    const request = this.reservationService.noShow(reservation.id);
 
     request.pipe(
       finalize(() => this.actionBusy.set(false))

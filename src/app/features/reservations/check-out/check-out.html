@@ -69,10 +69,9 @@
               </td>
 
               <td>
-                {{ reservation.guestLastName }}
-                {{ reservation.guestFirstName }}
+                {{ reservation.guestName || (reservation.guestLastName + ' ' + reservation.guestFirstName) }}
 
-                @if (reservation.guestMiddleName) {
+                @if (!reservation.guestName && reservation.guestMiddleName) {
                   {{ reservation.guestMiddleName }}
                 }
               </td>

@@ -97,18 +97,18 @@
 
             <div class="profile-form">
               <div class="form-field">
-                <label>Прізвище *</label>
-                <input
-                  [ngModel]="profileForm().lastName"
-                  (ngModelChange)="updateProfileField('lastName', $event)"
-                />
-              </div>
-
-              <div class="form-field">
                 <label>Ім’я *</label>
                 <input
                   [ngModel]="profileForm().firstName"
                   (ngModelChange)="updateProfileField('firstName', $event)"
+                />
+              </div>
+
+              <div class="form-field">
+                <label>Прізвище *</label>
+                <input
+                  [ngModel]="profileForm().lastName"
+                  (ngModelChange)="updateProfileField('lastName', $event)"
                 />
               </div>
 

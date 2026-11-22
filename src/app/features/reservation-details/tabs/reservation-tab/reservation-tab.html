@@ -9,11 +9,14 @@
       <section class="block">
         <h2>Інформація про гостя</h2>
 
-        <label class="field-label">ПІБ гостя</label>
+        <label class="field-label">ПІБ гостя *</label>
 
         <mat-form-field appearance="outline" class="full-width">
           <input
             matInput
+            required
+            aria-required="true"
+            #guestNameInput
             [value]="guestSearch()"
             (input)="onGuestSearch($any($event.target).value)"
             [matAutocomplete]="guestAutocomplete"
@@ -50,6 +53,9 @@
           <input
             matInput
             type="tel"
+            #guestPhoneInput
+            autocomplete="tel"
+            maxlength="30"
             [value]="guestPhoneSearch()"
             (input)="onGuestPhoneSearch($any($event.target).value)"
             [matAutocomplete]="phoneAutocomplete"
@@ -88,6 +94,9 @@
           <input
             matInput
             type="email"
+            #guestEmailInput
+            autocomplete="email"
+            maxlength="100"
             [value]="guestEmailSearch()"
             (input)="onGuestEmailSearch($any($event.target).value)"
             [matAutocomplete]="emailAutocomplete"
@@ -599,7 +608,7 @@
           class="primary-button"
           type="button"
           [disabled]="saving() || loadingEditData()"
-          (click)="save()"
+          (click)="save(guestNameInput.value, guestPhoneInput.value, guestEmailInput.value)"
         >
           @if (saving()) {
             Збереження…
@@ -663,5 +672,68 @@
         </button>
       </div>
     </footer>
+  }
+
+  @if (cancellationDialogOpen()) {
+    <div class="cancel-dialog-backdrop" (click)="closeCancellationDialog()">
+      <section
+        class="cancel-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="cancel-dialog-title"
+        (click)="$event.stopPropagation()"
+      >
+        <div class="cancel-dialog-heading">
+          <div>
+            <span class="cancel-dialog-eyebrow">Скасування бронювання</span>
+            <h2 id="cancel-dialog-title">Оберіть причину</h2>
+          </div>
+          <button
+            class="cancel-dialog-close"
+            type="button"
+            aria-label="Закрити"
+            [disabled]="actionBusy()"
+            (click)="closeCancellationDialog()"
+          >×</button>
+        </div>
+
+        <div class="cancel-reason-list">
+          @for (reason of cancellationReasons; track reason.value) {
+            <label class="cancel-reason-option">
+              <input
+                type="radio"
+                name="reservation-cancellation-reason"
+                [value]="reason.value"
+                [checked]="selectedCancellationReason() === reason.value"
+                [disabled]="actionBusy()"
+                (change)="selectedCancellationReason.set(reason.value)"
+              />
+              <span>{{ reason.label }}</span>
+            </label>
+          }
+        </div>
+
+        @if (cancellationError()) {
+          <div class="cancel-dialog-error" role="alert">{{ cancellationError() }}</div>
+        }
+
+        <div class="cancel-dialog-actions">
+          <button
+            class="secondary-button"
+            type="button"
+            [disabled]="actionBusy()"
+            (click)="closeCancellationDialog()"
+          >Скасувати</button>
+          <button
+            class="danger-button"
+            type="button"
+            [disabled]="!selectedCancellationReason() || actionBusy()"
+            (click)="confirmCancellation()"
+          >
+            {{ actionBusy() ? 'Скасування…' : 'Підтвердити скасування' }}
+          </button>
+        </div>
+      </section>
+    </div>
   }
 </div>
