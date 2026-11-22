@@ -55,7 +55,7 @@ export class MainLayout {
       route: '/search'
     },
     {
-      label: 'Finance',
+      label: 'Касовий журнал',
       icon: 'account_balance_wallet',
       route: '/finance'
     },

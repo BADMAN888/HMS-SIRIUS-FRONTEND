@@ -178,9 +178,7 @@ export class FolioDetails implements OnChanges {
   submitPayment(): void {
     if (!this.folio || this.saving || this.paymentAmount === null || !Number.isFinite(this.paymentAmount) || this.paymentAmount <= 0) return;
     if (this.partyChangesPending || this.paymentExceedsFolioBalance || this.paymentExceedsPayerBalance) return;
-    const idempotencyKey = this.paymentMethod === PaymentMethod.BALANCE
-      ? (this.balancePaymentIdempotencyKey ??= this.createIdempotencyKey())
-      : undefined;
+    const idempotencyKey = this.balancePaymentIdempotencyKey ??= this.createIdempotencyKey();
     this.paymentSubmit.emit({
       folioId: this.folio.id,
       method: this.paymentMethod,

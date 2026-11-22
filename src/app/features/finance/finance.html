@@ -1,0 +1,88 @@
+<main class="finance-page">
+  <header class="page-heading"><div><span class="eyebrow">ФІНАНСИ</span><h1>Касовий журнал</h1><p>Зміни, рух коштів та операції за юридичними особами</p></div></header>
+  @if (error()) { <div class="alert error">{{ error() }}</div> }
+  @if (notice()) { <div class="alert success">{{ notice() }}</div> }
+  <section class="panel selection-panel">
+    <label>Готель<select [ngModel]="selectedHotelId()" (ngModelChange)="selectHotel($event)"><option [ngValue]="null">Оберіть готель</option>@for (hotel of hotels(); track hotel.id) {<option [ngValue]="hotel.id">{{ hotel.hotelName }}</option>}</select></label>
+    @if (selectedHotelId()) {
+      <label>Каса<select [ngModel]="selectedRegisterId()" (ngModelChange)="selectRegister($event)"><option [ngValue]="null">Оберіть касу</option>@for (register of registers(); track register.id) {<option [ngValue]="register.id">{{ register.name }} · {{ register.legalEntityShortName }}</option>}</select></label>
+      <div class="register-actions">@for (legal of legalEntities(); track legal.id) {@if (!registers().some(register => register.legalEntityId === legal.id)) {<button class="button secondary" (click)="createRegister(legal.id)">Створити касу · {{ legal.shortName }}</button>}}</div>
+    }
+  </section>
+  @if (selectedRegisterId()) {
+    @if (shift(); as current) {
+      <section class="summary-grid">
+        <article class="metric"><span>{{ current.status === 'OPEN' ? 'Зміна відкрита' : 'Зміну закрито' }}</span><strong>#{{ current.id }}</strong><small>{{ current.openedAt | date:'dd.MM.yyyy HH:mm' }} · {{ current.openedByEmail }}</small></article>
+        <article class="metric"><span>Початковий залишок</span><strong>{{ current.openingBalance | currency:'UAH':'symbol':'1.2-2':'uk-UA' }}</strong></article>
+        <article class="metric highlight"><span>Залишок готівки</span><strong>{{ current.currentCash | currency:'UAH':'symbol':'1.2-2':'uk-UA' }}</strong></article>
+        <article class="metric"><span>Оплати готівкою</span><strong>{{ current.cashPayments | currency:'UAH':'symbol':'1.2-2':'uk-UA' }}</strong></article>
+        <article class="metric"><span>Оплати карткою</span><strong>{{ current.cardPayments | currency:'UAH':'symbol':'1.2-2':'uk-UA' }}</strong></article>
+        <article class="metric"><span>Готівкові повернення</span><strong>{{ current.cashRefunds | currency:'UAH':'symbol':'1.2-2':'uk-UA' }}</strong></article>
+        <article class="metric"><span>Службові внесення</span><strong>{{ current.serviceIn | currency:'UAH':'symbol':'1.2-2':'uk-UA' }}</strong></article>
+        <article class="metric"><span>Службові видачі</span><strong>{{ current.serviceOut | currency:'UAH':'symbol':'1.2-2':'uk-UA' }}</strong></article>
+        <article class="metric"><span>Банківські перекази</span><strong>{{ current.bankTransferPayments | currency:'UAH':'symbol':'1.2-2':'uk-UA' }}</strong></article>
+      </section>
+      @if (current.status === 'OPEN') {<section class="panel actions-panel">
+        <div class="panel-title"><div><h2>Дії касира</h2><p>Юридична особа: {{ registers().find(item => item.id === selectedRegisterId())?.legalEntityName }}</p></div><span class="status open">Зміна відкрита</span></div>
+        <div class="actions-row">
+          <button class="button secondary" [disabled]="busy()" (click)="openServiceModal(true)">Службове внесення</button>
+          <button class="button danger" [disabled]="busy()" (click)="openServiceModal(false)">Службова видача</button>
+          <button class="button secondary" [disabled]="busy()" (click)="showXReport()">X-звіт</button>
+          <button class="button primary" [disabled]="busy()" (click)="openCloseModal()">Закрити зміну · Z-звіт</button>
+        </div>
+      </section>} @else {<section class="panel closed-notice"><strong>Зміна закрита</strong><span>Фактичний залишок {{current.closingBalanceActual | currency:'UAH':'symbol':'1.2-2':'uk-UA'}} · різниця {{current.difference | currency:'UAH':'symbol':'1.2-2':'uk-UA'}}</span><label class="compact">Початковий залишок нової зміни<input type="number" min="0" step="0.01" [(ngModel)]="openingBalance"></label><button class="button primary" [disabled]="busy()" (click)="openShift()">Відкрити наступну зміну</button></section>}
+    } @else {
+      <section class="panel open-panel"><div><h2>Зміна закрита</h2><p>Введіть фактичну готівку на початок і відкрийте нову зміну.</p></div><label class="compact">Початковий залишок<input type="number" min="0" step="0.01" [(ngModel)]="openingBalance"></label><button class="button primary" [disabled]="busy()" (click)="openShift()">Відкрити зміну</button></section>
+    }
+  }
+  <section class="panel operations-panel">
+    <div class="panel-title"><div><h2>Операції</h2><p>Кожна операція зберігає прив'язку до своєї юридичної особи</p></div><button class="button secondary" (click)="showCurrentOperations()">Поточна зміна</button></div>
+    <div class="filters"><label>Від<input type="date" [(ngModel)]="fromDate"></label><label>До<input type="date" [(ngModel)]="toDate"></label><button class="button secondary" [disabled]="busy() || !selectedHotelId()" (click)="loadReport()">Звіт за період</button></div>
+    @if (reportMode && totals().length) {<div class="totals-grid">@for (total of totals(); track total.legalEntityId) {<article><strong>{{total.legalEntityShortName}}</strong><small>ЄДРПОУ {{total.edrpou}}</small><span>Надходження <b>{{total.receipts | currency:'UAH':'symbol':'1.2-2':'uk-UA'}}</b></span><span>Видачі <b>{{total.outflows | currency:'UAH':'symbol':'1.2-2':'uk-UA'}}</b></span><span>Чистий рух <b>{{total.netMovement | currency:'UAH':'symbol':'1.2-2':'uk-UA'}}</b></span><span>Готівка / картка / переказ: <b>{{total.cash | currency:'UAH':'symbol':'1.2-2':'uk-UA'}} / {{total.card | currency:'UAH':'symbol':'1.2-2':'uk-UA'}} / {{total.bankTransfer | currency:'UAH':'symbol':'1.2-2':'uk-UA'}}</b></span></article>}</div>}
+    <div class="filters operation-filters"><label>Пошук<input [(ngModel)]="searchText" placeholder="Операція, касир, рахунок, бронювання"></label><label>Юридична особа<select [(ngModel)]="selectedLegalId"><option value="">Усі юридичні особи</option>@for(legal of legalEntities();track legal.id){<option [value]="legal.id">{{legal.shortName}}</option>}</select></label><label>Тип операції<select [(ngModel)]="selectedType"><option value="">Усі типи</option><option value="PAYMENT">Оплата</option><option value="REFUND">Повернення</option><option value="SERVICE_IN">Службове внесення</option><option value="SERVICE_OUT">Службова видача</option></select></label><label>Метод оплати<select [(ngModel)]="selectedMethod"><option value="">Усі методи</option><option value="CASH">Готівка</option><option value="CARD">Картка</option><option value="BANK_TRANSFER">Переказ</option></select></label><button class="button secondary" (click)="toggleSort()">Дата {{sortAscending ? '↑' : '↓'}}</button></div>
+    <div class="table-wrap"><table><thead><tr><th>Дата і час</th><th>Операція</th><th>Юридична особа</th><th>Каса / зміна</th><th>Метод</th><th>Сума</th><th>Касир</th><th>Призначення</th><th>Пов'язано</th></tr></thead><tbody>
+      @for (operation of filteredOperations; track operation.id) {<tr><td>{{ operation.operationDate | date:'dd.MM.yyyy HH:mm' }}</td><td>{{ typeLabel(operation.operationType) }}</td><td>{{ operation.legalEntityName }}</td><td>{{ operation.cashRegisterName }} · #{{ operation.shiftId }}</td><td>{{ methodLabel(operation.paymentMethod) }}</td><td class="amount">{{ operation.amount | currency:'UAH':'symbol':'1.2-2':'uk-UA' }}</td><td>{{ operation.performedByEmail }}</td><td>{{ operation.description || '—' }}</td><td>@if(operation.paymentId){Оплата #{{operation.paymentId}}}@if(operation.reservationId){ · <a [routerLink]="['/reservations', operation.reservationId]">Бронювання {{operation.reservationNumber}}</a>}@if(operation.folioId){ · Рахунок #{{operation.folioId}}}</td></tr>}
+      @empty {<tr><td colspan="9" class="empty">Операцій поки немає</td></tr>}
+    </tbody></table></div>
+  </section>
+</main>
+@if (serviceModal(); as modal) {
+  <div class="modal-backdrop" (click)="serviceModal.set(null)">
+    <section class="service-modal" role="dialog" aria-modal="true" [attr.aria-label]="modal === 'IN' ? 'Службове внесення' : 'Службова видача'" (click)="$event.stopPropagation()">
+      <button class="modal-close" aria-label="Закрити" (click)="serviceModal.set(null)">×</button>
+      <span class="eyebrow">КАСОВА ЗМІНА #{{shift()?.id}}</span><h2>{{modal === 'IN' ? 'Службове внесення' : 'Службова видача'}}</h2>
+      <p>Юридична особа: {{registers().find(item => item.id === selectedRegisterId())?.legalEntityShortName}}</p>
+      <label>Сума<input type="number" min="0.01" step="0.01" [(ngModel)]="serviceAmount" placeholder="0,00"></label>
+      <label>Призначення операції · необов’язково<textarea maxlength="500" [(ngModel)]="serviceDescription" placeholder="Можна додати коментар"></textarea></label>
+      @if (modal === 'OUT') {<small>Доступно готівкою: {{shift()?.currentCash | currency:'UAH':'symbol':'1.2-2':'uk-UA'}}</small>}
+      <div class="modal-actions"><button class="button secondary" (click)="serviceModal.set(null)">Скасувати</button><button class="button primary" [disabled]="busy() || !isValidPositiveAmount(serviceAmount)" (click)="addService(modal === 'IN')">Підтвердити</button></div>
+    </section>
+  </div>
+}
+@if (closeModal()) {
+  <div class="modal-backdrop" (click)="closeModal.set(false)">
+    <section class="service-modal" role="dialog" aria-modal="true" aria-label="Закриття касової зміни" (click)="$event.stopPropagation()">
+      <button class="modal-close" aria-label="Закрити" (click)="closeModal.set(false)">×</button>
+      <span class="eyebrow">ФІНАЛЬНИЙ ЗВІТ</span><h2>Z-звіт і закриття зміни</h2>
+      <p>Очікуваний залишок готівки: <strong>{{shift()?.currentCash | currency:'UAH':'symbol':'1.2-2':'uk-UA'}}</strong></p>
+      <label>Фактична готівка після перерахунку<input type="number" min="0" step="0.01" [(ngModel)]="closeActual"></label>
+      <small>Після підтвердження зміна закриється, а звіт зафіксує фактичний залишок і різницю.</small>
+      <div class="modal-actions"><button class="button secondary" (click)="closeModal.set(false)">Назад</button><button class="button primary" [disabled]="busy() || !isValidNonNegativeAmount(closeActual)" (click)="closeShift()">Підтвердити закриття</button></div>
+    </section>
+  </div>
+}
+@if (xReportData(); as report) {
+  <div class="modal-backdrop report-backdrop" (click)="xReportData.set(null)">
+    <section class="service-modal x-report-modal" role="dialog" aria-modal="true" aria-label="X-звіт касової зміни" (click)="$event.stopPropagation()">
+      <button class="modal-close" aria-label="Закрити звіт" (click)="xReportData.set(null)">×</button>
+      <span class="eyebrow">ПРОМІЖНИЙ ЗВІТ · ЗМІНА #{{report.shift.id}}</span><h2>X-звіт</h2>
+      <p>{{report.cashRegister.hotelName}} · {{report.cashRegister.legalEntityShortName}} · ЄДРПОУ {{report.cashRegister.edrpou}}</p>
+      <p>Каса: {{report.cashRegister.name}} · Касир: {{report.shift.openedByEmail}} · Відкрито {{report.shift.openedAt | date:'dd.MM.yyyy HH:mm'}}</p>
+      <p>Сформовано {{report.generatedAt | date:'dd.MM.yyyy HH:mm:ss'}}</p>
+      <div class="report-metrics"><div><span>Початковий залишок</span><b>{{report.shift.openingBalance | currency:'UAH':'symbol':'1.2-2':'uk-UA'}}</b></div><div><span>Готівкові оплати</span><b>{{report.shift.cashPayments | currency:'UAH':'symbol':'1.2-2':'uk-UA'}}</b></div><div><span>Повернення готівкою</span><b>{{report.shift.cashRefunds | currency:'UAH':'symbol':'1.2-2':'uk-UA'}}</b></div><div><span>Службові внесення</span><b>{{report.shift.serviceIn | currency:'UAH':'symbol':'1.2-2':'uk-UA'}}</b></div><div><span>Службові видачі</span><b>{{report.shift.serviceOut | currency:'UAH':'symbol':'1.2-2':'uk-UA'}}</b></div><div class="report-total"><span>Очікувана готівка</span><b>{{report.shift.currentCash | currency:'UAH':'symbol':'1.2-2':'uk-UA'}}</b></div></div>
+      <h3>Операції · {{report.operations.length}}</h3>
+      <div class="table-wrap"><table><thead><tr><th>Час</th><th>Операція</th><th>Метод</th><th>Сума</th><th>Призначення</th></tr></thead><tbody>@for(op of report.operations;track op.id){<tr><td>{{op.operationDate | date:'dd.MM.yyyy HH:mm'}}</td><td>{{typeLabel(op.operationType)}}</td><td>{{methodLabel(op.paymentMethod)}}</td><td>{{op.amount | currency:'UAH':'symbol':'1.2-2':'uk-UA'}}</td><td>{{op.description || '—'}}</td></tr>}@empty{<tr><td colspan="5" class="empty">У цій зміні ще немає операцій</td></tr>}</tbody></table></div>
+      <div class="modal-actions"><button class="button secondary" (click)="xReportData.set(null)">Закрити</button></div>
+    </section>
+  </div>
+}

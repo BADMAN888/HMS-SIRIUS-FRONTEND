@@ -36,6 +36,11 @@ export const routes: Routes = [
           import('./features/search/search').then(m => m.SearchComponent)
       },
       {
+        path: 'finance',
+        loadComponent: () =>
+          import('./features/finance/finance').then(m => m.Finance)
+      },
+      {
         path: 'hotel-grid',
         loadComponent: () =>
           import('./features/hotel-grid/hotel-grid').then(

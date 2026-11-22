@@ -12,6 +12,10 @@ export class HotelService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = 'http://localhost:8080/api/hotels';
 
+  getAll(): Observable<HotelResponse[]> {
+    return this.http.get<HotelResponse[]>(this.apiUrl);
+  }
+
   getHotelById(id: number): Observable<HotelResponse> {
     return this.http.get<HotelResponse>(`${this.apiUrl}/${id}`);
   }
