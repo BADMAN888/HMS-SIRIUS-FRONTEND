@@ -32,6 +32,17 @@ export class ReservationService {
     return this.http.get<ReservationResponse>(`${this.apiUrl}/${id}`);
   }
 
+  getRegistrationCard(id: number, format: 'PDF' | 'DOCX' | 'XLSX' = 'PDF'): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}/${id}/registration-card`, {
+      params: { format },
+      responseType: 'blob'
+    });
+  }
+
+  getRegistrationCardPreview(id: number): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}/${id}/registration-card/preview`, { responseType: 'blob' });
+  }
+
   getByStatus(status: ReservationStatus): Observable<ReservationResponse[]> {
     return this.http.get<ReservationResponse[]>(`${this.apiUrl}/status/${status}`);
   }
