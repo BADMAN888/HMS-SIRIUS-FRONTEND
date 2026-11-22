@@ -1,1 +1,35 @@
-<p>confirmation-tab works!</p>
+<section class="confirmation-document">
+  <header class="form-toolbar">
+    <div>
+      <h2>Підтвердження бронювання</h2>
+      <p>Перегляд документа у форматі PDF</p>
+    </div>
+
+    <div class="form-actions">
+      <label for="booking-confirmation-format">Формат завантаження</label>
+      <select
+        id="booking-confirmation-format"
+        [value]="format()"
+        (change)="format.set($any($event.target).value)"
+      >
+        <option value="PDF">PDF</option>
+        <option value="DOCX">Word (.docx)</option>
+        <option value="XLSX">Excel (.xlsx)</option>
+      </select>
+      <button type="button" [disabled]="loadingPreview()" (click)="print()">Друкувати</button>
+      <button type="button" [disabled]="downloading() || loadingPreview()" (click)="download()">
+        {{ downloading() ? 'Завантаження…' : 'Завантажити' }}
+      </button>
+    </div>
+  </header>
+
+  @if (error()) {
+    <div class="form-error" role="alert">{{ error() }}</div>
+  }
+
+  @if (loadingPreview()) {
+    <div class="preview-state">Формування перегляду…</div>
+  } @else if (previewUrl(); as imageUrl) {
+    <img class="document-preview" [src]="imageUrl" alt="Підтвердження бронювання" />
+  }
+</section>
