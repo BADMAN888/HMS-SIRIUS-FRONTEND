@@ -4,6 +4,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { RateRequest } from '../models/billing/rate-request.model';
 import { RateResponse } from '../models/billing/rate-response.model';
+import { RateQuoteResponse } from '../models/billing/rate-quote.model';
 
 @Injectable({
   providedIn: 'root'
@@ -22,6 +23,11 @@ export class RateService {
 
   getAll(): Observable<RateResponse[]> {
     return this.http.get<RateResponse[]>(this.apiUrl);
+  }
+
+  getQuote(rateId: number, checkIn: string, checkOut: string, adults: number, children: number): Observable<RateQuoteResponse> {
+    const params = { checkIn, checkOut, adults, children };
+    return this.http.get<RateQuoteResponse>(`${this.apiUrl}/${rateId}/quote`, { params });
   }
 
   update(id: number, request: RateRequest): Observable<RateResponse> {

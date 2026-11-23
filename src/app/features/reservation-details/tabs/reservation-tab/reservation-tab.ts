@@ -954,12 +954,6 @@ export class ReservationTab implements OnInit {
     return `${year}-${month}-${day}`;
   }
 
-  private shiftStayDate(value: string, days: number, time: string): string {
-    const date = new Date(`${value.slice(0, 10)}T12:00:00`);
-    date.setDate(date.getDate() + days);
-    return `${this.formatIsoDate(date)}T${time.slice(0, 5)}`;
-  }
-
   private formatStayDate(value: string): string {
     if (!value) return '—';
     const [year, month, day] = value.slice(0, 10).split('-');
@@ -1145,13 +1139,10 @@ export class ReservationTab implements OnInit {
     let earlyExtraNightAccepted = false;
     let lateCheckOutAccepted = false;
     let lateExtraNightAccepted = false;
-    let persistedCheckIn = checkIn;
-    let persistedCheckOut = checkOut;
 
     if (hotel?.earlyCheckInTime && hotel.checkInTime && arrival < hotel.earlyCheckInTime) {
       if (window.confirm(`Заїзд о ${arrival} раніше за межу раннього заїзду (${hotel.earlyCheckInTime}). Додати додаткову ніч проживання?`)) {
         earlyExtraNightAccepted = true;
-        persistedCheckIn = this.shiftStayDate(checkIn, -1, hotel.checkInTime ?? arrival);
       }
     } else if (hotel?.checkInTime && arrival < hotel.checkInTime) {
       if (window.confirm(`Додати окрему послугу «Ранній заїзд» за 50% від вартості проживання?`)) {
@@ -1162,7 +1153,6 @@ export class ReservationTab implements OnInit {
     if (hotel?.checkOutTime && hotel.lateCheckOutTime && departure > hotel.lateCheckOutTime) {
       if (window.confirm(`Виїзд о ${departure} пізніше за межу пізнього виїзду (${hotel.lateCheckOutTime}). Додати додаткову ніч проживання?`)) {
         lateExtraNightAccepted = true;
-        persistedCheckOut = this.shiftStayDate(checkOut, 1, hotel.checkOutTime ?? departure);
       }
     } else if (hotel?.checkOutTime && departure > hotel.checkOutTime) {
       if (window.confirm(`Додати окрему послугу «Пізній виїзд» за 50% від вартості проживання?`)) {
@@ -1189,8 +1179,8 @@ export class ReservationTab implements OnInit {
       guestEmail,
       roomLocked: this.editRoomLocked(),
       guestIds,
-      checkIn: this.toLocalDateTime(persistedCheckIn),
-      checkOut: this.toLocalDateTime(persistedCheckOut),
+      checkIn: this.toLocalDateTime(checkIn),
+      checkOut: this.toLocalDateTime(checkOut),
       adults: this.editAdults(),
       children: this.editChildren(),
       taxStatus: this.editTaxStatus(),

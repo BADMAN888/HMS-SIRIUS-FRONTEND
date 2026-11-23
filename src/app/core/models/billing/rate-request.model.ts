@@ -4,5 +4,4 @@ export interface RateRequest {
   currency: string;
   categoryId: number;
   active: boolean;
-  breakfastIncluded: boolean;
 }

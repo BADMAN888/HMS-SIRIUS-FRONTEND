@@ -6,5 +6,4 @@ export interface RateResponse {
   categoryId: number;
   currentPrice: number;
   active: boolean;
-  breakfastIncluded: boolean;
 }

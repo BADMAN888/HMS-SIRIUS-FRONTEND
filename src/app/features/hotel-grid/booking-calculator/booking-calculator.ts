@@ -4,7 +4,6 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { catchError, finalize, forkJoin, of } from 'rxjs';
 import { RateService } from '../../../core/services/rate.service';
-import { PriceService } from '../../../core/services/price.service';
 import { RoomCategoryService } from '../../../core/services/room-category.service';
 import { FacilityService } from '../../../core/services/ facility.service';
 import { FacilityPriceService } from '../../../core/services/facility-price.service';
@@ -34,7 +33,6 @@ export class BookingCalculator implements OnInit {
   private readonly router = inject(Router);
   private readonly categoryService = inject(RoomCategoryService);
   private readonly rateService = inject(RateService);
-  private readonly priceService = inject(PriceService);
   private readonly facilityService = inject(FacilityService);
   private readonly facilityPriceService = inject(FacilityPriceService);
 
@@ -76,7 +74,7 @@ export class BookingCalculator implements OnInit {
   readonly facilitiesLoading = signal(false);
   readonly calculating = signal(false);
   readonly error = signal('');
-  readonly estimate = signal<{ accommodation: number; touristTax: number; total: number; nights: number; currency: string } | null>(null);
+  readonly estimate = signal<{ accommodation: number; touristTax: number; total: number; nights: number; currency: string; components: Array<{ name: string; amount: number }> } | null>(null);
   readonly taxStatuses = TaxStatus;
 
   readonly availableCategories = computed(() => this.categories().filter(category => category.hotelId === this.hotelId()));
@@ -265,15 +263,15 @@ export class BookingCalculator implements OnInit {
     this.error.set('');
     this.estimate.set(null);
     forkJoin({
-      roomPrices: serviceDates.length ? forkJoin(serviceDates.map(date => this.priceService.getPriceForDate(rate.id, date))) : of([]),
+      rateQuote: this.rateService.getQuote(rate.id, checkIn, checkOut, this.guestCount(), 0),
       touristTaxPrices: taxFacility && serviceDates.length
         ? forkJoin(serviceDates.map(date => this.facilityPriceService.getPriceForDate(taxFacility.id, date)))
         : of([] as FacilityPriceResponse[])
     }).subscribe({
       next: prices => {
-        const accommodation = this.roundMoney(prices.roomPrices.reduce((sum, price) => sum + Number(price.price), 0));
+        const accommodation = this.roundMoney(Number(prices.rateQuote.total));
         const touristTax = this.roundMoney(prices.touristTaxPrices.reduce((sum, price) => sum + Number(price.price), 0) * this.guestCount());
-        this.estimate.set({ accommodation, touristTax, total: this.roundMoney(accommodation + touristTax), nights, currency: rate.currency });
+        this.estimate.set({ accommodation, touristTax, total: this.roundMoney(accommodation + touristTax), nights, currency: rate.currency, components: prices.rateQuote.components.map(component => ({ name: component.name, amount: Number(component.amount) })) });
         this.calculating.set(false);
       },
       error: error => {

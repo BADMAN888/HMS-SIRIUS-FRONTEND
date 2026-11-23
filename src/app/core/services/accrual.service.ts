@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 
 import { AccrualRequest } from '../models/billing/accrual-request.model';
 import { AccrualResponse } from '../models/billing/accrual-response.model';
+import { PackageAccrualRequest } from '../models/billing/package-accrual-request.model';
 
 @Injectable({
   providedIn: 'root'
@@ -42,6 +43,10 @@ export class AccrualService {
 
   create(request: AccrualRequest): Observable<AccrualResponse> {
     return this.http.post<AccrualResponse>(this.apiUrl, request);
+  }
+
+  createPackage(request: PackageAccrualRequest): Observable<AccrualResponse[]> {
+    return this.http.post<AccrualResponse[]>(`${this.apiUrl}/package`, request);
   }
 
   delete(id: number): Observable<void> {

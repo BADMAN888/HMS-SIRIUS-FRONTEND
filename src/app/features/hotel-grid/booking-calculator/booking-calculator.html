@@ -116,7 +116,7 @@
       @if (estimate(); as result) {
         <section class="estimate-card" aria-live="polite">
           <div class="estimate-heading"><span>Розрахунок</span><strong>{{ result.nights }} {{ result.nights === 1 ? 'ніч' : 'ночей' }}</strong></div>
-          <div class="estimate-row"><span>Проживання</span><strong>{{ result.accommodation | currency:result.currency:'symbol-narrow':'1.2-2':'uk-UA' }}</strong></div>
+          @for (component of result.components; track $index) { <div class="estimate-row"><span>{{ component.name }}</span><strong>{{ component.amount | currency:result.currency:'symbol-narrow':'1.2-2':'uk-UA' }}</strong></div> }
           <div class="estimate-row"><span>Туристичний збір <small>({{ guestCount() }} {{ guestCount() === 1 ? 'гість' : 'гостей' }})</small></span><strong>{{ result.touristTax | currency:result.currency:'symbol-narrow':'1.2-2':'uk-UA' }}</strong></div>
           <div class="estimate-total"><span>Разом</span><strong>{{ result.total | currency:result.currency:'symbol-narrow':'1.2-2':'uk-UA' }}</strong></div>
         </section>
