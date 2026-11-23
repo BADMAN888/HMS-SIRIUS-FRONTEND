@@ -12,7 +12,7 @@
 }
 
 .calculator-dialog {
-  width: min(560px, 100%);
+  width: min(680px, 100%);
   max-height: min(760px, calc(100vh - 36px));
   overflow: auto;
   scrollbar-width: none;
@@ -187,18 +187,27 @@
 }
 
 .calculator-calendar-header { display: flex; align-items: center; justify-content: space-between;
+  margin: 2px 0 5px;
   strong { color: #dce8f6; font-size: 12px; text-transform: capitalize; }
-  button { width: 29px; height: 29px; border: 1px solid #29415e; border-radius: 7px; background: #102943; color: #dce8f6; font-size: 17px; cursor: pointer; &:hover { border-color: #4b9bd1; background: #143653; } }
+  button { display: grid; place-items: center; width: 36px; height: 36px; border: 1px solid #294c6b; border-radius: 10px; background: linear-gradient(145deg, #143452, #0d243b); color: #c9e7ff; font-size: 21px; cursor: pointer; transition: 150ms ease; &:hover { border-color: #4b9bd1; background: #174469; transform: translateY(-1px); } }
 }
 
-.calculator-calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px;
-  > span { padding: 4px 0; color: #718ba5; font-size: 9px; text-align: center; }
-  > button { min-height: 30px; border: 1px solid transparent; border-radius: 7px; background: transparent; color: #c9d9e9; font: inherit; font-size: 11px; cursor: pointer;
-    &:hover, &.in-range { background: #12395c; }
-    &.selected { border-color: #4b9bd1; background: linear-gradient(135deg, #2874a9, #19527e); color: #fff; font-weight: 700; }
-    &.other-month { color: #526b84; }
+.calculator-calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px;
+  > span { padding: 8px 0 5px; color: #7897b3; font-size: 10px; font-weight: 700; letter-spacing: .04em; text-align: center; text-transform: uppercase; }
+  > button { min-height: 42px; border: 1px solid transparent; border-radius: 10px; background: rgba(13, 37, 60, .42); color: #d4e4f3; font: inherit; font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; cursor: pointer; transition: 140ms ease;
+    &:hover { border-color: #3678a8; background: #174469; color: #fff; transform: translateY(-1px); }
+    &.in-range { border-color: rgba(67, 145, 198, .12); background: rgba(30, 91, 137, .42); color: #e5f4ff; }
+    &.selected { border-color: #64b7ed; background: linear-gradient(145deg, #318cc2, #1c6293); color: #fff; font-weight: 800; box-shadow: 0 5px 14px rgba(18, 98, 150, .3), inset 0 1px 0 rgba(255,255,255,.16); }
+    &.other-month { background: transparent; color: #536e87; font-weight: 500; }
   }
 }
+
+.guest-counter { display: grid; grid-template-columns: 42px minmax(30px, 1fr) 42px; align-items: center; min-height: 43px; overflow: hidden; border: 1px solid #294766; border-radius: 9px; background: rgba(5, 19, 34, .76);
+  button { display: grid; place-items: center; align-self: stretch; border: 0; background: #102943; color: #e7f0f9; font: inherit; font-size: 22px; cursor: pointer; transition: background 150ms ease; &:hover:not(:disabled) { background: #174469; } &:disabled { opacity: .35; cursor: not-allowed; } }
+  button:first-child { border-right: 1px solid rgba(41, 71, 102, .55); }
+  button:last-child { border-left: 1px solid rgba(41, 71, 102, .55); }
+}
+.guest-counter-value { color: #eef6ff; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; text-align: center; }
 
 .period-picker-hint { margin: -3px 0 0; color: #718ba5; font-size: 9px; line-height: 1.4; }
 
@@ -294,6 +303,7 @@
   .calculator-header h2 { font-size: 16px; }
   .calculator-title-icon { flex-basis: 36px; width: 36px; height: 36px; }
   .calculator-fields { gap: 11px; }
+  .calculator-calendar-grid { gap: 3px; > button { min-height: 38px; font-size: 14px; } }
 }
 
 @media (max-width: 380px) {

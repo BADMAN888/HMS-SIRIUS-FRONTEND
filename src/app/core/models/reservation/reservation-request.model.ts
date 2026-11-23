@@ -19,4 +19,8 @@ export interface ReservationRequest {
   bookingSource?: string | null;
   sourceCompanyId?: number | null;
   operatorCompanyId?: number | null;
+  earlyCheckInAccepted?: boolean;
+  lateCheckOutAccepted?: boolean;
+  earlyExtraNightAccepted?: boolean;
+  lateExtraNightAccepted?: boolean;
 }

@@ -49,6 +49,7 @@ export class BookingCalculator implements OnInit {
   readonly checkOutDate = signal(this.localDate(this.addDays(new Date(), 1)));
   readonly checkInTime = signal('14:00');
   readonly checkOutTime = signal('12:00');
+  readonly guestCount = signal(1);
   readonly periodPickerOpen = signal(true);
   readonly calendarMonth = signal(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   readonly calendarDays = computed(() => {
@@ -224,6 +225,16 @@ export class BookingCalculator implements OnInit {
     this.estimate.set(null);
   }
 
+  decreaseGuestCount(): void {
+    this.guestCount.update(count => Math.max(1, count - 1));
+    this.estimate.set(null);
+  }
+
+  increaseGuestCount(): void {
+    this.guestCount.update(count => Math.min(20, count + 1));
+    this.estimate.set(null);
+  }
+
   close(): void {
     this.closed.emit();
   }
@@ -261,7 +272,7 @@ export class BookingCalculator implements OnInit {
     }).subscribe({
       next: prices => {
         const accommodation = this.roundMoney(prices.roomPrices.reduce((sum, price) => sum + Number(price.price), 0));
-        const touristTax = this.roundMoney(prices.touristTaxPrices.reduce((sum, price) => sum + Number(price.price), 0));
+        const touristTax = this.roundMoney(prices.touristTaxPrices.reduce((sum, price) => sum + Number(price.price), 0) * this.guestCount());
         this.estimate.set({ accommodation, touristTax, total: this.roundMoney(accommodation + touristTax), nights, currency: rate.currency });
         this.calculating.set(false);
       },
@@ -282,6 +293,7 @@ export class BookingCalculator implements OnInit {
         categoryId: category.id,
         rateId: rate.id,
         taxStatus: this.taxStatus(),
+        adults: this.guestCount(),
         checkIn: `${this.checkInDate()}T${this.checkInTime()}`,
         checkOut: `${this.checkOutDate()}T${this.checkOutTime()}`
       }

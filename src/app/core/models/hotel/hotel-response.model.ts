@@ -7,6 +7,8 @@ export interface HotelResponse {
   email: string | null;
   phone: string | null;
   checkInTime: string | null;
+  earlyCheckInTime: string | null;
   checkOutTime: string | null;
+  lateCheckOutTime: string | null;
   legalEntities: LegalEntityResponse[];
 }

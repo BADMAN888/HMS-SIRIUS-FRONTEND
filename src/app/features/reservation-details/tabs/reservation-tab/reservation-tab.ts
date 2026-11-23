@@ -48,6 +48,8 @@ import { AccrualService } from '../../../../core/services/accrual.service';
 import { FolioResponse } from '../../../../core/models/billing/folio-response.model';
 import { AccrualResponse } from '../../../../core/models/billing/accrual-response.model';
 import { FolioStatus } from '../../../../core/models/enums/folio-status.enum';
+import { HotelService } from '../../../../core/services/hotel.service';
+import { HotelResponse } from '../../../../core/models/hotel/hotel-response.model';
 
 @Component({
   selector: 'app-reservation-tab',
@@ -90,6 +92,7 @@ export class ReservationTab implements OnInit {
   private readonly companyService = inject(CompanyService);
   private readonly folioService = inject(FolioService);
   private readonly accrualService = inject(AccrualService);
+  private readonly hotelService = inject(HotelService);
 
   readonly reservation = signal<ReservationResponse | null>(null);
   readonly reservationBalance = signal<number | null>(null);
@@ -103,6 +106,7 @@ export class ReservationTab implements OnInit {
   readonly rates = signal<RateResponse[]>([]);
   readonly roomCategories = signal<RoomCategoryResponse[]>([]);
   readonly companies = signal<CompanyResponse[]>([]);
+  readonly hotels = signal<HotelResponse[]>([]);
 
   readonly guestSearch = signal('');
   readonly guestPhoneSearch = signal('');
@@ -616,7 +620,8 @@ export class ReservationTab implements OnInit {
       roomCategories: this.roomCategoryService.getAll(),
       companies: this.companyService.getAll(),
       rooms: this.roomService.getAll(),
-      reservations: this.reservationService.getAll()
+      reservations: this.reservationService.getAll(),
+      hotels: this.hotelService.getAll()
     }).pipe(
       finalize(() => {
         this.loading.set(false);
@@ -630,6 +635,7 @@ export class ReservationTab implements OnInit {
         this.companies.set(data.companies.filter(company => company.active && company.legalEntity.active));
         this.rooms.set(data.rooms);
         this.allReservations.set(data.reservations);
+        this.hotels.set(data.hotels);
 
         this.reservation.set(null);
         this.comments.set([]);
@@ -725,7 +731,8 @@ export class ReservationTab implements OnInit {
       roomCategories: this.roomCategoryService.getAll(),
       companies: this.companyService.getAll(),
       allRooms: this.roomService.getAll(),
-      reservations: this.reservationService.getAll()
+      reservations: this.reservationService.getAll(),
+      hotels: this.hotelService.getAll()
     }).pipe(
       finalize(() => {
         this.loading.set(false);
@@ -739,6 +746,7 @@ export class ReservationTab implements OnInit {
         this.companies.set(data.companies.filter(company => company.active && company.legalEntity.active));
         this.rooms.set(data.allRooms);
         this.allReservations.set(data.reservations);
+        this.hotels.set(data.hotels);
 
         this.reservation.set(data.reservation);
         this.loadReservationBalance(data.reservation.id);
@@ -946,6 +954,12 @@ export class ReservationTab implements OnInit {
     return `${year}-${month}-${day}`;
   }
 
+  private shiftStayDate(value: string, days: number, time: string): string {
+    const date = new Date(`${value.slice(0, 10)}T12:00:00`);
+    date.setDate(date.getDate() + days);
+    return `${this.formatIsoDate(date)}T${time.slice(0, 5)}`;
+  }
+
   private formatStayDate(value: string): string {
     if (!value) return '—';
     const [year, month, day] = value.slice(0, 10).split('-');
@@ -1021,6 +1035,10 @@ export class ReservationTab implements OnInit {
       status !== ReservationStatus.COMPLETED &&
       status !== ReservationStatus.CANCELLED &&
       status !== ReservationStatus.NO_SHOW;
+  }
+
+  isInHouse(): boolean {
+    return this.reservation()?.status === ReservationStatus.IN_HOUSE;
   }
 
   save(
@@ -1107,7 +1125,8 @@ export class ReservationTab implements OnInit {
 
     const checkIn = this.editCheckIn();
     const checkInTime = new Date(checkIn).getTime();
-    const checkOutTime = new Date(this.editCheckOut()).getTime();
+    const checkOut = this.editCheckOut();
+    const checkOutTime = new Date(checkOut).getTime();
 
     if (
       !Number.isFinite(checkInTime) ||
@@ -1116,6 +1135,39 @@ export class ReservationTab implements OnInit {
     ) {
       this.saveError.set('Дата виїзду має бути пізніше дати заїзду.');
       return;
+    }
+
+    const room = this.rooms().find(item => item.id === this.editRoomId());
+    const hotel = this.hotels().find(item => item.id === room?.hotelId);
+    const arrival = checkIn.slice(11, 16);
+    const departure = checkOut.slice(11, 16);
+    let earlyCheckInAccepted = false;
+    let earlyExtraNightAccepted = false;
+    let lateCheckOutAccepted = false;
+    let lateExtraNightAccepted = false;
+    let persistedCheckIn = checkIn;
+    let persistedCheckOut = checkOut;
+
+    if (hotel?.earlyCheckInTime && hotel.checkInTime && arrival < hotel.earlyCheckInTime) {
+      if (window.confirm(`Заїзд о ${arrival} раніше за межу раннього заїзду (${hotel.earlyCheckInTime}). Додати додаткову ніч проживання?`)) {
+        earlyExtraNightAccepted = true;
+        persistedCheckIn = this.shiftStayDate(checkIn, -1, hotel.checkInTime ?? arrival);
+      }
+    } else if (hotel?.checkInTime && arrival < hotel.checkInTime) {
+      if (window.confirm(`Додати окрему послугу «Ранній заїзд» за 50% від вартості проживання?`)) {
+        earlyCheckInAccepted = true;
+      }
+    }
+
+    if (hotel?.checkOutTime && hotel.lateCheckOutTime && departure > hotel.lateCheckOutTime) {
+      if (window.confirm(`Виїзд о ${departure} пізніше за межу пізнього виїзду (${hotel.lateCheckOutTime}). Додати додаткову ніч проживання?`)) {
+        lateExtraNightAccepted = true;
+        persistedCheckOut = this.shiftStayDate(checkOut, 1, hotel.checkOutTime ?? departure);
+      }
+    } else if (hotel?.checkOutTime && departure > hotel.checkOutTime) {
+      if (window.confirm(`Додати окрему послугу «Пізній виїзд» за 50% від вартості проживання?`)) {
+        lateCheckOutAccepted = true;
+      }
     }
 
     this.saving.set(true);
@@ -1137,8 +1189,8 @@ export class ReservationTab implements OnInit {
       guestEmail,
       roomLocked: this.editRoomLocked(),
       guestIds,
-      checkIn: this.toLocalDateTime(checkIn),
-      checkOut: this.toLocalDateTime(this.editCheckOut()),
+      checkIn: this.toLocalDateTime(persistedCheckIn),
+      checkOut: this.toLocalDateTime(persistedCheckOut),
       adults: this.editAdults(),
       children: this.editChildren(),
       taxStatus: this.editTaxStatus(),
@@ -1146,7 +1198,11 @@ export class ReservationTab implements OnInit {
       sourceCompanyId: this.editSourceCompanyId(),
       operatorCompanyId: this.editOperatorCompanyId(),
       externalBookingNumber:
-        this.editExternalBookingNumber().trim() || null
+        this.editExternalBookingNumber().trim() || null,
+      earlyCheckInAccepted,
+      lateCheckOutAccepted,
+      earlyExtraNightAccepted,
+      lateExtraNightAccepted
     };
 
     const saveRequest = this.isCreateMode()

@@ -5,5 +5,7 @@ export interface HotelRequest {
   email?: string | null;
   address?: string | null;
   checkInTime?: string | null;
+  earlyCheckInTime?: string | null;
   checkOutTime?: string | null;
+  lateCheckOutTime?: string | null;
 }

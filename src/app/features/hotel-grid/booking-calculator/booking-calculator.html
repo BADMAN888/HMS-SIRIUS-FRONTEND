@@ -81,6 +81,14 @@
             </div>
           }
         </div>
+        <div class="calculator-field guest-field">
+          <span>Кількість гостей</span>
+          <div class="guest-counter" role="group" aria-label="Кількість гостей">
+            <button type="button" aria-label="Зменшити кількість гостей" [disabled]="guestCount() <= 1" (click)="decreaseGuestCount()">−</button>
+            <span class="guest-counter-value" aria-live="polite">{{ guestCount() }}</span>
+            <button type="button" aria-label="Збільшити кількість гостей" [disabled]="guestCount() >= 20" (click)="increaseGuestCount()">+</button>
+          </div>
+        </div>
         <label class="calculator-field">
           <span>Категорія номера</span>
           <select [ngModel]="categoryId()" (ngModelChange)="selectCategory($event)">
@@ -109,7 +117,7 @@
         <section class="estimate-card" aria-live="polite">
           <div class="estimate-heading"><span>Розрахунок</span><strong>{{ result.nights }} {{ result.nights === 1 ? 'ніч' : 'ночей' }}</strong></div>
           <div class="estimate-row"><span>Проживання</span><strong>{{ result.accommodation | currency:result.currency:'symbol-narrow':'1.2-2':'uk-UA' }}</strong></div>
-          <div class="estimate-row"><span>Туристичний збір <small>(1 гість)</small></span><strong>{{ result.touristTax | currency:result.currency:'symbol-narrow':'1.2-2':'uk-UA' }}</strong></div>
+          <div class="estimate-row"><span>Туристичний збір <small>({{ guestCount() }} {{ guestCount() === 1 ? 'гість' : 'гостей' }})</small></span><strong>{{ result.touristTax | currency:result.currency:'symbol-narrow':'1.2-2':'uk-UA' }}</strong></div>
           <div class="estimate-total"><span>Разом</span><strong>{{ result.total | currency:result.currency:'symbol-narrow':'1.2-2':'uk-UA' }}</strong></div>
         </section>
       }
