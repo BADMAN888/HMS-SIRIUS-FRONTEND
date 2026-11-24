@@ -53,6 +53,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/housekeeping/housekeeping').then(m => m.Housekeeping)
       },
       {
+        path: 'reports',
+        loadComponent: () => import('./features/reports/reports').then(m => m.Reports)
+      },
+      {
         path: 'hotel-grid',
         loadComponent: () =>
           import('./features/hotel-grid/hotel-grid').then(

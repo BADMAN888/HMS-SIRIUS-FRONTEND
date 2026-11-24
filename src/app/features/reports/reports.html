@@ -1,0 +1,39 @@
+<main class="reports-page">
+  <header class="page-heading">
+    <div><span class="eyebrow">ДОКУМЕНТИ ГОТЕЛЮ</span><h1>Звіти</h1><p>Оберіть звіт, період і сформуйте файл для роботи або друку</p></div>
+    <label class="hotel-select">Готель<select [disabled]="loading() || loadingPreview()" [ngModel]="hotelId()" (ngModelChange)="selectHotel($event)">@for(hotel of hotels();track hotel.id){<option [ngValue]="hotel.id">{{hotel.hotelName}}</option>}</select></label>
+  </header>
+
+  @if(error()){<div class="alert error">{{error()}}</div>}
+  @if(notice()){<div class="alert success">{{notice()}}</div>}
+
+  <section class="report-builder panel">
+    <div class="builder-copy"><span class="step">ОБРАНИЙ ЗВІТ</span><h2>{{selectedReport().title}}</h2><p>{{selectedReport().description}}</p></div>
+    <div class="builder-fields">
+      <label>Період від<input type="date" [disabled]="loading() || loadingPreview()" [ngModel]="fromDate()" (ngModelChange)="changeFromDate($event)"></label>
+      <label>Період до<input type="date" [disabled]="loading() || loadingPreview()" [ngModel]="toDate()" (ngModelChange)="changeToDate($event)"></label>
+      <label>Формат файлу<select [disabled]="loading() || loadingPreview() || downloading()" [ngModel]="format()" (ngModelChange)="format.set($event)"><option value="PDF">PDF</option><option value="DOCX">Word (.docx)</option><option value="XLSX">Excel (.xlsx)</option></select></label>
+      <button class="button primary" [disabled]="loading() || loadingPreview() || !hotelId()" (click)="generate()">{{loading()?'Збираємо дані…':loadingPreview()?'Формуємо перегляд…':'Підготувати перегляд'}}</button>
+    </div>
+    <div class="format-note"><span class="file-icon">{{format()==='DOCX'?'DOC':format()}}</span><span><strong>Формат файлу</strong><small>Можна змінити перед завантаженням</small></span></div>
+  </section>
+
+  <section class="catalog panel">
+    <div class="catalog-heading"><div><h2>Каталог звітів</h2><p>Оберіть форму, яку потрібно сформувати</p></div><label class="search"><span>⌕</span><input type="search" placeholder="Знайти звіт" [ngModel]="search()" (ngModelChange)="search.set($event)"></label></div>
+    <nav class="categories">@for(item of categories();track item){<button [class.active]="category()===item" (click)="selectCategory(item)">{{item}}</button>}</nav>
+    <div class="report-list">
+      @for(report of filteredReports();track report.id){
+        <button class="report-row" [disabled]="loading() || loadingPreview()" [class.selected]="selectedReportId()===report.id" (click)="selectReport(report.id)">
+          <span class="row-number">{{ $index + 1 }}</span><span class="report-info"><small>{{report.category}}</small><strong>{{report.title}}</strong><span>{{report.description}}</span></span><span class="select-mark">{{selectedReportId()===report.id?'✓':'→'}}</span>
+        </button>
+      }@empty{<div class="empty">За цим пошуком звітів не знайдено.</div>}
+    </div>
+  </section>
+
+  @if(loadingPreview() || previewUrl()){
+    <section class="panel preview-panel">
+      <header class="preview-toolbar"><div><span class="step">ПЕРЕГЛЯД ЗВІТУ</span><h2>{{fileName()}}</h2><p>{{fromDate()|date:'dd.MM.yyyy'}} — {{toDate()|date:'dd.MM.yyyy'}} · PDF</p></div><div class="preview-actions"><label class="preview-width-label">Ширина {{previewWidth()}}%</label><input class="preview-width-input" type="range" min="40" max="100" step="5" [value]="previewWidth()" (input)="previewWidth.set(+$any($event.target).value)" aria-label="Ширина перегляду звіту"><button class="button secondary" [disabled]="loadingPreview()" (click)="print()">Друкувати</button><button class="button primary" [disabled]="downloading() || loadingPreview()" (click)="download()">{{downloading()?'Готуємо файл…':'Завантажити '+format()}}</button></div></header>
+      @if(loadingPreview()){<div class="preview-state">Формування перегляду звіту…</div>}@else if(previewUrl();as pdfUrl){<iframe class="pdf-preview" [style.width.%]="previewWidth()" [src]="pdfUrl" [title]="'Перегляд: '+fileName()"></iframe>}
+    </section>
+  }
+</main>

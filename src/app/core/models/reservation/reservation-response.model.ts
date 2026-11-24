@@ -30,6 +30,7 @@ export interface ReservationResponse {
   cancellationReason: ReservationCancellationReason | null;
   comments: ReservationCommentResponse[];
   createdAt: string;
+  cancelledAt: string | null;
   folioId: number | null;
   externalBookingNumber: string | null;
   bookingSource: string | null;
