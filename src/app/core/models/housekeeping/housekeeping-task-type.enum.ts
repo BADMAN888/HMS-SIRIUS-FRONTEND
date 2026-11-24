@@ -1,0 +1,7 @@
+export enum HousekeepingTaskType {
+  TURNOVER = 'TURNOVER',
+  CHECKOUT = 'CHECKOUT',
+  ARRIVAL = 'ARRIVAL',
+  VACANT_DIRTY = 'VACANT_DIRTY',
+  STAYOVER = 'STAYOVER'
+}

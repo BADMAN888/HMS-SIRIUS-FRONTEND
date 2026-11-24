@@ -1,0 +1,70 @@
+<main class="housekeeping-page">
+  <header class="page-heading">
+    <div><span class="eyebrow">ОПЕРАЦІЙНА РОБОТА</span><h1>Housekeeping</h1><p>Денний план прибирання, поточний стан номерів і ремонт</p></div>
+    <div class="header-controls">
+      <label>Готель<select [ngModel]="hotelId()" (ngModelChange)="selectHotel($event)">@for(hotel of hotels();track hotel.id){<option [ngValue]="hotel.id">{{hotel.hotelName}}</option>}</select></label>
+      <label>Дата<input type="date" [ngModel]="date()" (ngModelChange)="changeDate($event)"></label>
+    </div>
+  </header>
+
+  @if(error()){<div class="alert error">{{error()}}</div>}
+  @if(notice()){<div class="alert success">{{notice()}}</div>}
+
+  <nav class="section-tabs"><button [class.active]="section()==='day'" (click)="setSection('day')">План дня</button><button [class.active]="section()==='repairs'" (click)="setSection('repairs')">Ремонт <span>{{repairs().filter(r=>!r.completedAt).length}}</span></button></nav>
+
+  @if(section()==='day'){
+    <section class="plan-controls panel">
+      <div><h2>Підготувати роботу</h2><p>Система зіставить усі номери з бронюваннями й розподілить завдання за покоївками.</p></div>
+      <label>Кількість покоївок<input type="number" min="1" max="50" step="1" [(ngModel)]="attendantCount"></label>
+      <button class="button primary" [disabled]="loading()||saving()||!rooms().length" (click)="prepareWork()">{{plan()?'Оновити план':'Підготувати'}}</button>@if(plan()){<button class="button secondary print-button" (click)="printPlan()">Друкувати</button>}
+    </section>
+
+    @if(plan();as dayPlan){
+      <section class="metrics">
+        <article><span>Завдань</span><strong>{{taskCount()}}</strong></article>
+        <article><span>Виконано</span><strong>{{completedCount()}}</strong></article>
+        <article><span>Покоївок</span><strong>{{dayPlan.attendantCount}}</strong></article>
+        <article><span>Оцінка роботи</span><strong>{{totalWorkMinutes()}} хв</strong></article>
+      </section>
+      <section class="attendant-grid"><h2>Розподіл роботи за покоївками</h2><div class="attendant-cards">@for(attendant of attendantWorkloads();track attendant.number){<article class="attendant-card"><header><strong>Покоївка {{attendant.number}}</strong><span>{{attendant.tasks.length}} завдань · {{attendant.minutes}} хв</span></header>@for(task of attendant.tasks;track task.id){<div class="attendant-task"><strong>№{{task.roomNumber}}</strong><span>{{taskTypeLabel(task.taskType)}}</span><small>{{task.estimatedMinutes}} хв</small></div>}@empty{<p class="muted">Завдань поки немає.</p>}</article>}</div></section>
+    }
+
+    <section class="panel room-panel">
+      <div class="panel-title"><div><h2>Номери · {{date()|date:'dd.MM.yyyy'}}</h2><p>Відображаються всі номери готелю. Вільні фільтри допомагають сформувати робочий список.</p></div><span class="room-count">{{filteredRooms().length}} / {{rooms().length}}</span></div>
+      <div class="filters"><label>Пошук номера<input type="search" placeholder="Наприклад, 204" [ngModel]="query()" (ngModelChange)="query.set($event)"></label><label>Поверх<select [ngModel]="floorFilter()" (ngModelChange)="floorFilter.set($event)"><option value="">Усі поверхи</option>@for(floor of floors();track floor){<option [value]="floor">{{floor}} поверх</option>}</select></label></div>
+      @if(loading()){<div class="empty">Завантаження номерів і бронювань…</div>}@else{
+        <div class="table-wrap"><table><thead><tr><th>Номер</th><th>Поточний стан</th><th>Робота на день</th><th>Гість / час</th><th>Покоївка</th><th>Виконання</th><th>Примітка</th></tr></thead><tbody>
+          @for(room of filteredRooms();track room.id){
+            @let task = taskFor(room.id);
+            @let repair = repairFor(room.id);
+            <tr [class.priority-row]="task?.priority===1 || task?.priority===2">
+              <td><strong class="room-number">{{room.roomNumber}}</strong><small>{{room.floor??'—'}} поверх</small></td>
+              <td><div class="room-state"><span class="clean-indicator" [class.clean]="room.clean"></span><span>{{room.status}}</span></div><select class="status-select" [ngModel]="room.status" [ngModelOptions]="{standalone:true}" [disabled]="saving()" (ngModelChange)="roomStatusChanged(room,$event)">@for(status of roomStatuses;track status){<option [ngValue]="$any(status)">{{status}}</option>}</select><small>{{room.clean?'Чистий':'Потребує прибирання'}}</small></td>
+              <td>@if(task){<span class="task-chip" [class.urgent]="task.priority<=2">{{taskTypeLabel(task.taskType)}}</span><small>{{task.estimatedMinutes}} хв</small>}@else if(repair){<span class="repair-chip">{{repairStatusLabel(repair.status)}}</span>}@else{<span class="muted">{{plan()?'Робота не потрібна':'План ще не підготовлено'}}</span>}</td>
+              <td>@if(task){<span>{{guestLabel(task)}}</span>@if(bookingSchedule(task)){<small>{{bookingSchedule(task)}}</small>}}@else{<span class="muted">—</span>}</td>
+              <td>@if(task){<select [ngModel]="task.attendantNumber" [ngModelOptions]="{standalone:true}" [disabled]="saving()" (ngModelChange)="attendantChanged(task,$event)">@for(number of attendantNumbers();track number){<option [ngValue]="number">Покоївка {{number}}</option>}</select><span class="attendant-print">Покоївка {{task.attendantNumber}}</span>}@else{<span class="muted">—</span>}</td>
+              <td>@if(task){<select [ngModel]="task.status" [ngModelOptions]="{standalone:true}" [disabled]="saving()" (ngModelChange)="taskStatusChanged(task,$event)">@for(status of taskStatuses;track status){<option [ngValue]="$any(status)">{{taskStatusLabel(status)}}</option>}</select>}@else{<span class="muted">—</span>}</td>
+              <td>@if(task){<div class="note-edit"><input #noteInput [ngModel]="task.notes" [ngModelOptions]="{standalone:true}" maxlength="500" placeholder="Додати примітку"><button class="icon-button" title="Зберегти примітку" [disabled]="saving()" (click)="notesChanged(task,noteInput.value)">✓</button></div><span class="note-print">{{task.notes||'—'}}</span>}@else{<span class="muted">—</span>}</td>
+            </tr>
+          }@empty{<tr><td colspan="7" class="empty">Номерів за цим фільтром не знайдено.</td></tr>}
+        </tbody></table></div>
+      }
+    </section>
+  }
+
+  @if(section()==='repairs'){
+    <div class="repair-layout">
+      <section class="panel repair-create"><div class="panel-title"><div><h2>Запланувати ремонт</h2><p>Оберіть номери, період та статус недоступності.</p></div></div>
+        <label>Період від<input type="datetime-local" [(ngModel)]="repairStartAt"></label>
+        <label>Період до<input type="datetime-local" [(ngModel)]="repairEndAt"></label>
+        <label>Статус<select [(ngModel)]="repairStatus"><option [ngValue]="repairStatuses[0]">OUT_OF_SERVICE</option><option [ngValue]="repairStatuses[1]">OUT_OF_ORDER</option></select></label>
+        <label>Причина<textarea [(ngModel)]="repairReason" maxlength="500" placeholder="Наприклад, заміна сантехніки" required></textarea></label>
+        <div class="room-pick-list"><strong>Номери</strong>@for(room of rooms();track room.id){<label class="room-pick"><input type="checkbox" [checked]="repairRoomIds().includes(room.id)" [disabled]="room.status==='OCCUPIED' || saving()" (change)="toggleRepairRoom(room.id,$any($event.target).checked)"><span>{{room.roomNumber}}</span><small>{{room.status}}{{room.status==='OCCUPIED'?' · зараз зайнятий':''}}</small></label>}</div>
+        <button class="button primary full-width" [disabled]="saving()||!repairRoomIds().length" (click)="createRepair()">Створити ремонт для {{repairRoomIds().length}} номерів</button>
+      </section>
+      <section class="panel repair-list"><div class="panel-title"><div><h2>Ремонти за обрану дату</h2><p>Періоди, що перетинають {{date()|date:'dd.MM.yyyy'}}</p></div><button class="button secondary" [disabled]="loading()" (click)="loadDay()">Оновити</button></div>
+        <div class="table-wrap"><table><thead><tr><th>Номер</th><th>Статус</th><th>Період</th><th>Причина</th><th>Стан</th><th></th></tr></thead><tbody>@for(repair of repairs();track repair.id){<tr><td><strong>{{repair.roomNumber}}</strong></td><td><span class="repair-chip">{{repairStatusLabel(repair.status)}}</span></td><td>{{repair.startAt|date:'dd.MM.yyyy HH:mm'}} — {{repair.endAt|date:'dd.MM.yyyy HH:mm'}}</td><td>{{repair.reason}}</td><td>{{repair.completedAt?'Завершено':'Заплановано / активно'}}</td><td>@if(!repair.completedAt){<button class="button secondary" [disabled]="saving()" (click)="finishRepair(repair)">Завершити</button>}</td></tr>}@empty{<tr><td colspan="6" class="empty">На цю дату ремонтів немає.</td></tr>}</tbody></table></div>
+      </section>
+    </div>
+  }
+</main>

@@ -1,0 +1,7 @@
+export enum HousekeepingTaskStatus {
+  PENDING = 'PENDING',
+  IN_PROGRESS = 'IN_PROGRESS',
+  CLEANED = 'CLEANED',
+  INSPECTED = 'INSPECTED',
+  SKIPPED = 'SKIPPED'
+}
