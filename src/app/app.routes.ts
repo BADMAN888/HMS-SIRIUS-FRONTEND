@@ -41,6 +41,14 @@ export const routes: Routes = [
           import('./features/finance/finance').then(m => m.Finance)
       },
       {
+        path: 'hotel',
+        loadComponent: () => import('./features/hotel-admin/hotel-admin').then(m => m.HotelAdmin)
+      },
+      {
+        path: 'pricing',
+        loadComponent: () => import('./features/pricing-admin/pricing-admin').then(m => m.PricingAdmin)
+      },
+      {
         path: 'hotel-grid',
         loadComponent: () =>
           import('./features/hotel-grid/hotel-grid').then(

@@ -3,6 +3,7 @@ import { LegalEntityResponse } from '../legal-entity-response.model';
 export interface HotelResponse {
   id: number;
   hotelName: string;
+  description: string | null;
   address: string | null;
   email: string | null;
   phone: string | null;

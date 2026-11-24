@@ -15,7 +15,6 @@ import { BalanceAccountResponse } from '../../../../core/models/billing/balance-
 import { FolioPartiesRequest } from '../../../../core/models/billing/folio-parties-request.model';
 import { FolioRequest } from '../../../../core/models/billing/folio-request.model';
 import { FolioReopenRequest } from '../../../../core/models/billing/folio-reopen-request.model';
-import { FacilityType } from '../../../../core/models/enums/facility-type.enum';
 import { FolioStatus } from '../../../../core/models/enums/folio-status.enum';
 import { PaymentMethod } from '../../../../core/models/enums/payment-method.enum';
 import { BalanceAccountStatus } from '../../../../core/models/enums/balance-account-status.enum';
@@ -292,22 +291,22 @@ export class AccrualTab implements OnInit {
   ): void {
     this.facilityService.getActiveByHotelId(hotelId).subscribe({
       next: facilities => {
-        const standardFacilities = (facilities ?? []).filter(
-          facility => facility.type === FacilityType.STANDARD
-        );
+        // The endpoint already returns every active facility for this hotel.
+        // Keep all types available here, including breakfast, check-in/out,
+        // and tourist-tax services.
+        const availableFacilities = facilities ?? [];
+        this.facilities.set(availableFacilities);
 
-        this.facilities.set(standardFacilities);
-
-        if (standardFacilities.length > 0) {
-          this.selectedFacilityId.set(standardFacilities[0].id);
-          this.facilitySearch.set(this.facilityOptionLabel(standardFacilities[0]));
+        if (availableFacilities.length > 0) {
+          this.selectedFacilityId.set(availableFacilities[0].id);
+          this.facilitySearch.set(this.facilityOptionLabel(availableFacilities[0]));
           this.loadFacilityPrice();
         } else {
           this.selectedFacilityId.set(null);
           this.facilitySearch.set('');
           this.facilityPrice.set(null);
           this.priceError.set(
-            'Для цього готелю немає активних звичайних послуг.'
+            'Для цього готелю немає активних послуг.'
           );
         }
 

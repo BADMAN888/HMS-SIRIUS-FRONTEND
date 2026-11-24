@@ -36,6 +36,10 @@ export class HotelService {
     return this.http.put<HotelResponse>(`${this.apiUrl}/${id}`, request);
   }
 
+  setLegalEntities(id: number, legalEntityIds: number[]): Observable<HotelResponse> {
+    return this.http.put<HotelResponse>(`${this.apiUrl}/${id}/legal-entities`, legalEntityIds);
+  }
+
   deleteHotel(id: number): Observable<string> {
     return this.http.delete(`${this.apiUrl}/${id}`, {
       responseType: 'text'
