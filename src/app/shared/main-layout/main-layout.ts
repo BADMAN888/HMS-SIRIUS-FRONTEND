@@ -75,6 +75,11 @@ export class MainLayout {
       route: '/guests'
     },
     {
+      label: 'Групи',
+      icon: 'groups',
+      route: '/groups'
+    },
+    {
       label: 'Hotel',
       icon: 'apartment',
       route: '/hotel'

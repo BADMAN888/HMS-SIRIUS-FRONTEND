@@ -5,6 +5,50 @@
   color: #e2e8f0;
 }
 
+.history-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(2, 8, 18, 0.72);
+  backdrop-filter: blur(5px);
+}
+
+.history-dialog {
+  width: min(620px, 100%);
+  max-height: min(760px, 90vh);
+  overflow: auto;
+  padding: 24px;
+  color: #e2e8f0;
+  background: linear-gradient(145deg, #10243a, #091727);
+  border: 1px solid #294563;
+  border-radius: 18px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, .45);
+}
+
+.history-dialog header, .history-meta { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.history-dialog h2 { margin: 4px 0 0; font-size: 22px; }
+.history-eyebrow { color: #7dd3fc; font-size: 12px; text-transform: uppercase; letter-spacing: .1em; }
+.history-close { display: grid; place-items: center; width: 38px; height: 38px; color: #cbd5e1; background: #142b43; border: 1px solid #294563; border-radius: 10px; cursor: pointer; }
+.history-state { padding: 34px 8px; color: #a9bbce; text-align: center; }
+.history-list { display: grid; gap: 0; margin: 24px 0 0; padding: 0; list-style: none; }
+.history-list li { position: relative; display: grid; grid-template-columns: 16px 1fr; gap: 12px; padding-bottom: 22px; }
+.history-list li:not(:last-child)::before { position: absolute; top: 14px; bottom: 0; left: 6px; width: 1px; background: #294563; content: ''; }
+.history-dot { z-index: 1; width: 13px; height: 13px; margin-top: 3px; background: #38bdf8; border: 3px solid #15324e; border-radius: 50%; }
+.history-entry { min-width: 0; }
+.history-meta strong { overflow-wrap: anywhere; color: #f1f5f9; font-size: 13px; }
+.history-meta time { flex: 0 0 auto; color: #8fa6bd; font-size: 12px; }
+.history-entry p { margin: 7px 0 0; color: #cbd5e1; font-size: 14px; }
+.history-entry p span { color: #94a3b8; }
+.history-entry p strong { color: #7dd3fc; font-weight: 500; }
+
+@media (max-width: 600px) {
+  .history-dialog { padding: 18px; }
+  .history-meta { align-items: flex-start; flex-direction: column; gap: 3px; }
+}
+
 .reservation-details-page app-reservation-tab[hidden],
 .reservation-details-page app-profiles-tab[hidden] {
   display: none !important;

@@ -795,7 +795,7 @@ $color-tab-active: #3b9bea;
 .action-bar {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   flex-wrap: wrap;
   gap: 12px;
   margin-top: 22px;
@@ -810,6 +810,20 @@ $color-tab-active: #3b9bea;
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.history-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+
+  mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+    line-height: 18px;
+  }
 }
 
 .muted {

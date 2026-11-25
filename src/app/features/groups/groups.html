@@ -1,0 +1,79 @@
+<main class="groups-page">
+  <header class="page-header">
+    <div><p class="eyebrow">БРОНЮВАННЯ</p><h1>Групи</h1><p class="subtitle">Групові заїзди, розміщення та зведення рахунків</p></div>
+    <button class="primary-button" type="button" (click)="createOpen.set(!createOpen())">{{ createOpen() ? 'Закрити форму' : '+ Створити групу' }}</button>
+  </header>
+
+  @if (error()) { <div class="notice error">{{ error() }}</div> }
+  @if (notice()) { <div class="notice success">{{ notice() }}</div> }
+
+  @if (createOpen()) {
+    <section class="create-card">
+      <div class="section-heading"><div><h2>Нове групове бронювання</h2><p>Для кожного номера створиться окреме бронювання</p></div></div>
+      <form (ngSubmit)="submitGroup()">
+        <div class="form-grid">
+          <label>Готель<select name="hotel" [ngModel]="hotelId()" (ngModelChange)="changeHotel($event)">@for (hotel of hotels(); track hotel.id) { <option [ngValue]="hotel.id">{{ hotel.hotelName }}</option> }</select></label>
+          <label>Назва групи<input name="groupName" [(ngModel)]="groupName" required maxlength="100" placeholder="Наприклад, Конференція Sirius" /></label>
+          <label>Організатор<input name="organizer" [(ngModel)]="organizerName" maxlength="150" placeholder="Ім’я або компанія" /></label>
+          <label>Телефон<input name="phone" [(ngModel)]="contactPhone" placeholder="+380…" /></label>
+          <label>Email<input name="email" type="email" [(ngModel)]="contactEmail" placeholder="contact@example.com" /></label>
+          <label>Заїзд<input name="checkIn" type="datetime-local" [(ngModel)]="checkIn" required /></label>
+          <label>Виїзд<input name="checkOut" type="datetime-local" [(ngModel)]="checkOut" required /></label>
+          <label>Номер бронювання групи<input name="externalBooking" [(ngModel)]="externalBookingNumber" maxlength="100" /></label>
+          <label>Джерело бронювання<input name="bookingSource" [(ngModel)]="bookingSource" maxlength="100" placeholder="Сайт, агентство…" /></label>
+          <label class="wide">Примітка<textarea name="notes" [(ngModel)]="notes" rows="2" maxlength="1000"></textarea></label>
+        </div>
+
+        <div class="room-picker">
+          <div><h3>Номери та гості</h3><p>Доступність і ціни додатково перевіряються під час збереження</p></div>
+          <div class="add-room-row"><select name="roomToAdd" [(ngModel)]="selectedRoomId"><option value="">Оберіть вільний номер</option>@for (room of eligibleRooms(); track room.id) { <option [value]="room.id">{{ roomLabel(room) }}</option> }</select><button type="button" class="secondary-button" (click)="addRoom()" [disabled]="!selectedRoomId">Додати номер</button></div>
+        </div>
+        @if (roomLines.length) {
+          <div class="room-lines">
+            @for (line of roomLines; track line.roomId) {
+              <article class="room-line">
+                <div class="room-title"><strong>{{ roomLabelById(line.roomId) }}</strong><button type="button" class="remove-button" (click)="removeRoom(line.roomId)" aria-label="Видалити номер">×</button></div>
+                <div class="line-grid">
+                  <label>Тариф<select name="rate-{{line.roomId}}" [(ngModel)]="line.rateId"><option [ngValue]="0">Оберіть тариф</option>@for(rate of ratesForRoom(line.roomId);track rate.id){<option [ngValue]="rate.id">{{rate.name}} · {{rate.currentPrice | currency:rate.currency:'symbol':'1.0-2':'uk-UA'}}</option>}</select></label>
+                  <div class="profile-picker"><label>Знайти профайл гостя<input name="profileSearch-{{line.roomId}}" [(ngModel)]="line.profileSearch" (ngModelChange)="searchLineProfiles(line)" placeholder="Ім’я, телефон або email" /></label>@if(line.profileResults.length){<div class="profile-options">@for(profile of line.profileResults;track profile.id){<button type="button" (click)="selectLineProfile(line,profile)">{{profile.lastName}} {{profile.firstName}} {{profile.middleName||''}} · №{{profile.id}}</button>}</div>}</div>
+                  <label class="guest-name">Ім’я гостя<input name="guestName-{{line.roomId}}" [(ngModel)]="line.guestName" required placeholder="ПІБ гостя" /></label>
+                  <label>Дорослі<input name="adults-{{line.roomId}}" type="number" min="1" max="20" [(ngModel)]="line.adults" required /></label>
+                  <label>Діти<input name="children-{{line.roomId}}" type="number" min="0" max="20" [(ngModel)]="line.children" required /></label>
+                  <label class="checkbox-label"><input name="locked-{{line.roomId}}" type="checkbox" [(ngModel)]="line.roomLocked" /> Закріпити номер</label>
+                </div>
+              </article>
+            }
+          </div>
+        } @else { <div class="empty-inline">Додайте номери, щоб сформувати склад групи.</div> }
+        <div class="form-footer"><span>{{ roomLines.length }} номерів · {{ guestCount }} гостей</span><button type="submit" class="primary-button" [disabled]="saving()">{{ saving() ? 'Створення…' : 'Створити групу та бронювання' }}</button></div>
+      </form>
+    </section>
+  }
+
+  <section class="list-card">
+    <div class="section-heading"><div><h2>Групові бронювання</h2><p>{{ totalElements() }} груп</p></div>
+      <label class="hotel-filter">Готель<select name="hotelFilter" [ngModel]="hotelId()" (ngModelChange)="changeHotel($event)">@for (hotel of hotels(); track hotel.id) { <option [ngValue]="hotel.id">{{ hotel.hotelName }}</option> }</select></label>
+    </div>
+    <form class="filters" (ngSubmit)="loadGroups(0)"><input name="query" [(ngModel)]="query" placeholder="Назва, номер групи, контакт" /><label>Від<input name="from" type="date" [(ngModel)]="fromDate" /></label><label>До<input name="to" type="date" [(ngModel)]="toDate" /></label><button class="secondary-button" type="submit">Знайти</button><button class="text-button" type="button" (click)="query='';fromDate='';toDate='';loadGroups(0)">Очистити</button></form>
+    @if (loading()) { <div class="empty-state">Завантаження…</div> }
+    @else if (!pageContent().length) { <div class="empty-state">Групових бронювань не знайдено. Створіть першу групу.</div> }
+    @else {
+      <div class="table-scroll"><table><thead><tr><th>Група</th><th>Організатор</th><th>Дати</th><th>Склад</th><th>Фінанси</th><th>Статус</th><th></th></tr></thead><tbody>
+        @for(group of pageContent();track group.id){<tr [class.selected-row]="selected()?.group?.id===group.id"><td><strong>{{group.groupName}}</strong><small>{{group.reference}}</small></td><td>{{group.organizerName||'—'}}<small>{{group.contactPhone||group.contactEmail||''}}</small></td><td>{{group.checkIn|date:'dd.MM.yyyy'}} – {{group.checkOut|date:'dd.MM.yyyy'}}</td><td>{{group.reservationCount}} номерів<br /><small>{{group.guestCount}} гостей</small></td><td><strong>{{group.balance|currency:'UAH':'symbol':'1.0-2':'uk-UA'}}</strong><small>Сплачено {{group.paidAmount|currency:'UAH':'symbol':'1.0-2':'uk-UA'}}</small></td><td><span class="status" [class]="'status '+group.status.toLowerCase()">{{statusLabel(group.status)}}</span></td><td><button class="text-button" type="button" (click)="openDetails(group)">Відкрити</button></td></tr>}
+      </tbody></table></div>
+      <nav class="pagination"><button type="button" class="secondary-button" [disabled]="page()===0" (click)="loadGroups(page()-1)">← Назад</button><div>@for(number of pageNumbers();track number){<button type="button" class="page-button" [class.active]="number===page()" (click)="loadGroups(number)">{{number+1}}</button>}</div><button type="button" class="secondary-button" [disabled]="page()+1>=totalPages()" (click)="loadGroups(page()+1)">Далі →</button></nav>
+    }
+  </section>
+
+  @if (selected(); as details) {
+    <section class="details-card">
+      <div class="section-heading"><div><p class="eyebrow">{{details.group.reference}}</p><h2>{{details.group.groupName}}</h2><p>{{details.group.organizerName||'Організатор не вказаний'}} · {{details.group.contactPhone||details.group.contactEmail||'Контакт не вказаний'}}</p></div><button type="button" class="text-button" (click)="selected.set(null)">Закрити</button></div>
+      <div class="summary-grid"><div><span>Період</span><strong>{{details.group.checkIn|date:'dd.MM.yyyy HH:mm'}} – {{details.group.checkOut|date:'dd.MM.yyyy HH:mm'}}</strong></div><div><span>Номерів / гостей</span><strong>{{details.group.reservationCount}} / {{details.group.guestCount}}</strong></div><div><span>Нараховано</span><strong>{{details.group.totalAmount|currency:'UAH':'symbol':'1.2-2':'uk-UA'}}</strong></div><div><span>Сплачено</span><strong>{{details.group.paidAmount|currency:'UAH':'symbol':'1.2-2':'uk-UA'}}</strong></div><div><span>Залишок</span><strong>{{details.group.balance|currency:'UAH':'symbol':'1.2-2':'uk-UA'}}</strong></div></div>
+      @if(details.notes){<p class="group-notes">{{details.notes}}</p>}
+      <h3>Бронювання в групі</h3>
+      <div class="table-scroll"><table><thead><tr><th>Номер</th><th>Гість</th><th>Тариф</th><th>Дати</th><th>Статус</th><th>Залишок</th><th></th></tr></thead><tbody>
+        @for(item of details.reservations;track item.reservation.id){<tr><td>№{{item.reservation.room.roomNumber}}</td><td>{{item.reservation.guestName||'—'}}<small>{{item.reservation.confirmationNumber}}</small></td><td>{{item.reservation.rate.name}}</td><td>{{item.reservation.checkIn|date:'dd.MM.yyyy'}} – {{item.reservation.checkOut|date:'dd.MM.yyyy'}}</td><td>{{item.reservation.status}}</td><td>{{item.balance|currency:'UAH':'symbol':'1.0-2':'uk-UA'}}</td><td><a [routerLink]="['/reservations',item.reservation.id]">Картка бронювання</a></td></tr>}
+      </tbody></table></div>
+    </section>
+  }
+</main>

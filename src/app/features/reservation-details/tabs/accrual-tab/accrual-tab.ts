@@ -791,11 +791,9 @@ export class AccrualTab implements OnInit {
         this.success.set('Платіж успішно додано.');
         this.refreshFolios();
       },
-      error: () => {
+      error: error => {
         this.saving.set(false);
-        this.error.set(
-          'Не вдалося додати платіж. Перевір стан рахунку та суму.'
-        );
+        this.error.set(error?.error?.message || error?.message || 'Не вдалося додати платіж. Перевірте стан рахунку, касу та відкриту касову зміну.');
       }
     });
   }

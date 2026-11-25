@@ -18,6 +18,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatOptionModule } from '@angular/material/core';
 import { MatSelectModule } from '@angular/material/select';
+import { MatIconModule } from '@angular/material/icon';
 import { catchError, finalize, forkJoin, map, of, switchMap } from 'rxjs';
 
 import { ProfileService } from '../../../../core/services/profile.service';
@@ -61,6 +62,7 @@ import { HotelResponse } from '../../../../core/models/hotel/hotel-response.mode
     MatInputModule,
     MatOptionModule,
     MatSelectModule,
+    MatIconModule,
     DatePipe,
     DecimalPipe
   ],
@@ -242,6 +244,7 @@ export class ReservationTab implements OnInit {
     email: string;
   }>();
   @Output() readonly openGuestProfile = new EventEmitter<number>();
+  @Output() readonly openHistory = new EventEmitter<void>();
 
   private handledCreatedProfileRequestId = 0;
   private handledRemovedProfileEventId = 0;

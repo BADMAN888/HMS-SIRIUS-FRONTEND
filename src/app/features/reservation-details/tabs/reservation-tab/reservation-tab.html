@@ -603,6 +603,12 @@
     }
 
     <footer class="action-bar">
+      @if (!isCreateMode()) {
+        <button class="secondary-button history-button" type="button" (click)="openHistory.emit()">
+          <mat-icon>history</mat-icon>
+          Історія змін
+        </button>
+      }
       <div class="action-group">
         <button
           class="primary-button"

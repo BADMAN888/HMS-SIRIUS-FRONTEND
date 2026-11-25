@@ -13,6 +13,7 @@ import { ReservationCommentResponse } from '../models/reservation/reservation-co
 import { ReservationResponse } from '../models/reservation/reservation-response.model';
 import { ReservationIncludedBreakfastResponse } from '../models/reservation/reservation-included-breakfast-response.model';
 import { ReservationIncludedBreakfastServedRequest } from '../models/reservation/reservation-included-breakfast-served-request.model';
+import { ReservationHistoryResponse } from '../models/reservation/reservation-history-response.model';
 
 @Injectable({
   providedIn: 'root'
@@ -31,6 +32,10 @@ export class ReservationService {
 
   getById(id: number): Observable<ReservationResponse> {
     return this.http.get<ReservationResponse>(`${this.apiUrl}/${id}`);
+  }
+
+  getHistory(id: number): Observable<ReservationHistoryResponse[]> {
+    return this.http.get<ReservationHistoryResponse[]>(`${this.apiUrl}/${id}/history`);
   }
 
   getRegistrationCard(id: number, format: 'PDF' | 'DOCX' | 'XLSX' = 'PDF'): Observable<Blob> {

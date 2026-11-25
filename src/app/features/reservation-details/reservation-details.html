@@ -61,6 +61,7 @@
       [active]="activeTab() === 'reservation'"
       (createGuestProfile)="createGuestProfile($event)"
       (openGuestProfile)="openGuestProfile($event)"
+      (openHistory)="openHistory()"
     />
     <app-profiles-tab
       [hidden]="activeTab() !== 'profiles'"
@@ -88,3 +89,26 @@
     }
   </main>
 </div>
+
+@if (historyOpen()) {
+  <div class="history-backdrop" (click)="closeHistory()" (keydown.escape)="closeHistory()">
+    <section class="history-dialog" role="dialog" aria-modal="true" aria-labelledby="history-title" (click)="$event.stopPropagation()">
+      <header><div><span class="history-eyebrow">Бронювання</span><h2 id="history-title">Історія змін</h2></div>
+        <button type="button" class="history-close" aria-label="Закрити" (click)="closeHistory()"><mat-icon>close</mat-icon></button>
+      </header>
+      @if (historyLoading()) { <p class="history-state">Завантаження історії…</p> }
+      @else if (historyError()) { <p class="history-state" role="alert">Не вдалося завантажити історію.</p> }
+      @else if (history().length === 0) { <p class="history-state">Історія змін поки порожня.</p> }
+      @else {
+        <ol class="history-list">
+          @for (item of history(); track item.id) {
+            <li><span class="history-dot"></span><div class="history-entry">
+              <div class="history-meta"><strong>{{ item.userName }}</strong><time>{{ item.changedAt | date:'dd.MM.yyyy, HH:mm' }}</time></div>
+              <p><b>{{ historyAction(item.action) }}</b> · {{ historyField(item.field.split(':')[0]) }}@if (item.field.includes(':')) { · {{ item.field.split(':')[1] }} }: <span>{{ item.oldValue ?? '—' }}</span> → <strong>{{ item.newValue ?? '—' }}</strong></p>
+            </div></li>
+          }
+        </ol>
+      }
+    </section>
+  </div>
+}

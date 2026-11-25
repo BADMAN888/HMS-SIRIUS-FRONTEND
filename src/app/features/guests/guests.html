@@ -1,0 +1,58 @@
+<main class="guests-page">
+  <header class="page-header">
+    <div><p class="eyebrow">ГОТЕЛЬ</p><h1>Guests</h1><p class="subtitle">Пошук і профайли гостей готелю</p></div>
+    <button class="secondary-button" type="button" (click)="findDuplicates()" [disabled]="duplicateScan()">
+      {{ duplicateScan() ? 'Шукаю схожі профайли…' : 'Знайти можливі дублікати' }}
+    </button>
+  </header>
+
+  @if (error()) { <div class="notice error">{{ error() }}</div> }
+  @if (success()) { <div class="notice success">{{ success() }}</div> }
+
+  <section class="search-card">
+    <div class="section-heading"><div><h2>Пошук гостей</h2><p>Задайте один або кілька параметрів</p></div><button type="button" class="text-button" (click)="firstName=''; lastName=''; middleName=''; phone=''; email=''; dateOfBirth=''; nationality=''; vip=''; blacklisted=''; search()">Очистити</button></div>
+    <form class="search-grid" (ngSubmit)="search()">
+      <label>Ім’я<input name="firstName" [(ngModel)]="firstName" placeholder="Ім’я" /></label>
+      <label>Прізвище<input name="lastName" [(ngModel)]="lastName" placeholder="Прізвище" /></label>
+      <label>По батькові<input name="middleName" [(ngModel)]="middleName" placeholder="По батькові" /></label>
+      <label>Телефон<input name="phone" [(ngModel)]="phone" placeholder="+380…" /></label>
+      <label>Email<input name="email" type="email" [(ngModel)]="email" placeholder="guest@example.com" /></label>
+      <label>Дата народження<input name="dateOfBirth" type="date" [(ngModel)]="dateOfBirth" /></label>
+      <label>Національність<select name="nationality" [(ngModel)]="nationality"><option value="">Усі</option>@for (item of nationalities; track item) { <option [value]="item">{{ item.replaceAll('_', ' ') }}</option> }</select></label>
+      <label>VIP<select name="vip" [(ngModel)]="vip"><option value="">Усі</option><option value="true">Так</option><option value="false">Ні</option></select></label>
+      <label>Чорний список<select name="blacklisted" [(ngModel)]="blacklisted"><option value="">Усі</option><option value="true">Так</option><option value="false">Ні</option></select></label>
+      <div class="search-actions"><button class="primary-button" type="submit" [disabled]="loading()">Знайти профайли</button></div>
+    </form>
+  </section>
+
+  @if (duplicatesSearched()) {
+    <section class="duplicates-card">
+      <div class="section-heading"><div><h2>Підозріло схожі профайли</h2><p>Перевірте пари вручну перед об’єднанням</p></div><button class="text-button" type="button" (click)="similarPairs.set([])">Закрити</button></div>
+      @for (pair of similarPairs(); track pair.first.id + '-' + pair.second.id) {
+        <article class="duplicate-pair">
+          <div class="match-reason">{{ pair.reason }}</div>
+          <div class="pair-profiles">
+            @for (profile of [pair.first, pair.second]; track profile.id) {
+              <div class="mini-profile"><strong>{{ fullName(profile) }}</strong><span>Профайл №{{ profile.id }}</span><span>{{ profile.phoneNumber || 'Телефон не вказано' }}</span><span>{{ profile.email || 'Email не вказано' }}</span><span>{{ profile.dateOfBirth || 'Дата народження не вказана' }}</span></div>
+            }
+          </div>
+          <div class="merge-actions"><button type="button" class="secondary-button" (click)="merge(pair, pair.first, pair.second)">Об’єднати в №{{ pair.first.id }}</button><button type="button" class="secondary-button" (click)="merge(pair, pair.second, pair.first)">Об’єднати в №{{ pair.second.id }}</button></div>
+        </article>
+      } @empty { <p class="empty-state">Схожих профайлів не знайдено.</p> }
+    </section>
+  }
+
+  <section class="list-card">
+    <div class="section-heading"><div><h2>Профайли гостей</h2><p>{{ totalElements() }} профайлів · по 20 на сторінці</p></div><span class="page-indicator">{{ totalPages() ? page() + 1 : 0 }} / {{ totalPages() }}</span></div>
+    @if (loading()) { <div class="empty-state">Завантаження…</div> }
+    @else if (!profiles().length) { <div class="empty-state">За цими параметрами профайлів не знайдено.</div> }
+    @else {
+      <div class="table-scroll"><table><thead><tr><th>Гість</th><th>Телефон</th><th>Email</th><th>Дата народження</th><th>Статус</th></tr></thead><tbody>
+        @for (profile of profiles(); track profile.id) {
+          <tr><td><strong>{{ fullName(profile) }}</strong><small>Профайл №{{ profile.id }}</small></td><td>{{ profile.phoneNumber || '—' }}</td><td>{{ profile.email || '—' }}</td><td>{{ profile.dateOfBirth || '—' }}</td><td><div class="badges">@if(profile.vip){<span class="badge vip">VIP</span>}@if(profile.inBlackList){<span class="badge blocked">Чорний список</span>}@if(!profile.vip && !profile.inBlackList){<span class="muted">Звичайний</span>}</div></td></tr>
+        }
+      </tbody></table></div>
+      <nav class="pagination" aria-label="Сторінки профайлів"><button type="button" class="secondary-button" [disabled]="page()===0 || loading()" (click)="search(page()-1)">← Назад</button><div>@for(number of pageNumbers();track number){<button type="button" class="page-button" [class.active]="number===page()" (click)="search(number)">{{number+1}}</button>}</div><button type="button" class="secondary-button" [disabled]="page()+1>=totalPages() || loading()" (click)="search(page()+1)">Далі →</button></nav>
+    }
+  </section>
+</main>

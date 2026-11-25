@@ -36,6 +36,14 @@ export const routes: Routes = [
           import('./features/search/search').then(m => m.SearchComponent)
       },
       {
+        path: 'guests',
+        loadComponent: () => import('./features/guests/guests').then(m => m.Guests)
+      },
+      {
+        path: 'groups',
+        loadComponent: () => import('./features/groups/groups').then(m => m.Groups)
+      },
+      {
         path: 'finance',
         loadComponent: () =>
           import('./features/finance/finance').then(m => m.Finance)
